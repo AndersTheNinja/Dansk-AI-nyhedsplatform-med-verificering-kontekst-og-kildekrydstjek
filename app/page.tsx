@@ -9,59 +9,51 @@ export default async function Home() {
   const stories = liveStories.length ? liveStories : demoStories;
 
   return (
-    <main>
-      <header className="topbar">
-        <div className="topbarInner shell">
-          <div className="brandWrap">
-            <div className="brandMark">K</div>
-            <div>
-              <div className="brand">KONTEKST</div>
-              <div className="tagline">Nyheder. Krydstjekket af AI.</div>
-            </div>
+    <main className="site">
+      <header className="masthead shell">
+        <div className="logoRow">
+          <div className="logoBlock">K</div>
+          <div>
+            <div className="siteName">KONTEKST<span>News</span></div>
+            <div className="siteTagline">Danske nyheder med AI-kontekst og kildekrydstjek</div>
           </div>
-          <div className="topStatus"><span className="liveDot" /> LIVE NYHEDER</div>
         </div>
+        <div className="headerStatus"><span className="liveDot" /> LIVE</div>
       </header>
 
-      <section className="hero shell">
-        <div className="heroGrid">
-          <div>
-            <p className="eyebrow">DANSK AI-NYHEDSPLATFORM</p>
-            <h1>Få nyheden.<br/><span>Forstå den.</span></h1>
-            <p className="heroText">
-              KONTEKST samler aktuelle danske historier fra flere kilder og viser,
-              hvor stærkt historien foreløbigt er dokumenteret.
-            </p>
-            <div className="trustRow">
-              <span>✓ Live nyhedsfeed</span>
-              <span>✓ Kildekrydstjek</span>
-              <span>✓ Tydelig usikkerhed</span>
-            </div>
-          </div>
+      <div className="tealRule" />
 
-          <aside className="signalCard">
-            <div className="signalLabel">SÅDAN LÆSES KONTEKST</div>
-            <div className="signalLine">
-              <span className="signalIcon ok">✓</span>
-              <div><strong>Bekræftet</strong><small>Kræver egentlig dokumentation fra primærkilder og uafhængige kilder.</small></div>
-            </div>
-            <div className="signalLine">
-              <span className="signalIcon warn">!</span>
-              <div><strong>Kildekrydstjek</strong><small>Flere medier omtaler samme historie, men alle fakta er ikke nødvendigvis verificeret endnu.</small></div>
-            </div>
-            <div className="signalLine">
-              <span className="signalIcon unknown">?</span>
-              <div><strong>Én kilde</strong><small>Historien afventer yderligere dokumentation.</small></div>
-            </div>
-          </aside>
-        </div>
-      </section>
+      <div className="contentShell shell">
+        <section className="mainColumn">
+          <NewsFeed initialStories={stories} />
+        </section>
 
-      <NewsFeed initialStories={stories} />
+        <aside className="sidebar">
+          <section className="sideBox">
+            <h3>AI CHECK</h3>
+            <div className="sideItem"><span className="dot ok">✓</span><div><strong>Bekræftet</strong><small>Understøttet af primærkilder og uafhængige kilder.</small></div></div>
+            <div className="sideItem"><span className="dot warn">!</span><div><strong>Kildekrydstjek</strong><small>Flere medier omtaler samme historie.</small></div></div>
+            <div className="sideItem"><span className="dot neutral">?</span><div><strong>Én kilde</strong><small>Historien afventer mere dokumentation.</small></div></div>
+          </section>
+
+          <section className="sideBox">
+            <h3>KATEGORIER</h3>
+            <a href="#feed">Danmark</a>
+            <a href="#feed">Erhverv</a>
+            <a href="#feed">AI/Tech</a>
+            <a href="#feed">Aarhus</a>
+          </section>
+
+          <section className="sideBox">
+            <h3>OM KONTEKST</h3>
+            <p>Vi samler historier, viser kilderne og markerer tydeligt, hvor stærkt en historie foreløbigt er dokumenteret.</p>
+          </section>
+        </aside>
+      </div>
 
       <footer className="footer shell">
-        <div><strong>KONTEKST</strong> · offentlig MVP</div>
-        <div>Nyhedslinks fører til originaludgiverne. Feed opdateres cirka hvert 5. minut.</div>
+        <span>© KONTEKST</span>
+        <span>Nyhedslinks fører til originaludgiverne.</span>
       </footer>
     </main>
   );
