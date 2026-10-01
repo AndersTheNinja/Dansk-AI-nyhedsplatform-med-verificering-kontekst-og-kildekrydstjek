@@ -5,14 +5,14 @@ import type { Story } from "@/lib/stories";
 
 const labels = {
   confirmed: "✓ Bekræftet",
-  nuance: "! Kræver nuance",
-  unverified: "? Ikke verificeret"
+  nuance: "! Kildekrydstjek",
+  unverified: "? Én kilde"
 };
 
 const scores = {
-  confirmed: "Høj evidens",
-  nuance: "Mellem evidens",
-  unverified: "Lav evidens"
+  confirmed: "Stærk dokumentation",
+  nuance: "Flere kilder",
+  unverified: "Afventer krydstjek"
 };
 
 export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
@@ -27,8 +27,8 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
     <section className="shell">
       <div className="feedHeader">
         <div>
-          <h2 className="feedTitle">Seneste signaler</h2>
-          <div className="feedSubtitle">Én historie. Flere kilder. Tydeligere kontekst.</div>
+          <h2 className="feedTitle">Seneste nyheder</h2>
+          <div className="feedSubtitle">Live danske historier · samlet og kildekrydstjekket automatisk</div>
         </div>
       </div>
 
@@ -77,14 +77,18 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
             <div className="sources">
               <strong>Kilder</strong>
               {story.sources.map((source) => (
-                <a className="sourceLink" key={source.url} href={source.url} target="_blank" rel="noreferrer">
+                <a className="sourceLink" key={source.url + source.label} href={source.url} target="_blank" rel="noreferrer">
                   ↗ {source.label}
                 </a>
               ))}
             </div>
 
             <div className="actions">
-              <a className="button primary" href="#prototype">Spørg AI</a>
+              {story.sources[0] && (
+                <a className="button primary" href={story.sources[0].url} target="_blank" rel="noreferrer">
+                  Læs original
+                </a>
+              )}
               <button className="button" onClick={() => navigator.clipboard?.writeText(story.title)}>
                 Kopiér overskrift
               </button>
