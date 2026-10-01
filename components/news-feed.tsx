@@ -4,9 +4,15 @@ import { useMemo, useState } from "react";
 import type { Story } from "@/lib/stories";
 
 const labels = {
-  confirmed: "✅ Bekræftet",
-  nuance: "⚠️ Kræver nuance",
-  unverified: "❓ Ikke verificeret"
+  confirmed: "✓ Bekræftet",
+  nuance: "! Kræver nuance",
+  unverified: "? Ikke verificeret"
+};
+
+const scores = {
+  confirmed: "Høj evidens",
+  nuance: "Mellem evidens",
+  unverified: "Lav evidens"
 };
 
 export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
@@ -19,6 +25,13 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
 
   return (
     <section className="shell">
+      <div className="feedHeader">
+        <div>
+          <h2 className="feedTitle">Seneste signaler</h2>
+          <div className="feedSubtitle">Én historie. Flere kilder. Tydeligere kontekst.</div>
+        </div>
+      </div>
+
       <div className="filters" aria-label="Nyhedskategorier">
         {categories.map((item) => (
           <button
@@ -35,17 +48,26 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
         {visible.map((story) => (
           <article className="card" key={story.id}>
             <div className="meta">
-              <strong>{story.category}</strong><span>•</span><span>{story.sourceLabel}</span><span>•</span><span>{story.published}</span>
+              <strong>{story.category}</strong>
+              <span>•</span>
+              <span className="metaPill">{story.sourceLabel}</span>
+              <span>{story.published}</span>
             </div>
+
             <h2>{story.title}</h2>
             <p className="summary">{story.summary}</p>
 
             <div className="check">
-              <div className="checkRow">
-                <span className={`badge ${story.verification}`}>{labels[story.verification]}</span>
-                <span>AI CHECK</span>
+              <div className="checkTop">
+                <div className="checkRow">
+                  <span className={`badge ${story.verification}`}>{labels[story.verification]}</span>
+                  <span>AI CHECK</span>
+                </div>
+                <span className="evidenceScore">{scores[story.verification]}</span>
               </div>
-              <p className="summary">{story.verificationText}</p>
+
+              <p className="summary checkText">{story.verificationText}</p>
+
               <div className="why">
                 <strong>Hvorfor relevant</strong>
                 <p className="summary">{story.why}</p>
@@ -55,14 +77,14 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
             <div className="sources">
               <strong>Kilder</strong>
               {story.sources.map((source) => (
-                <a key={source.url} href={source.url} target="_blank" rel="noreferrer">
+                <a className="sourceLink" key={source.url} href={source.url} target="_blank" rel="noreferrer">
                   ↗ {source.label}
                 </a>
               ))}
             </div>
 
             <div className="actions">
-              <a className="button primary" href="#prototype">Spørg AI om historien</a>
+              <a className="button primary" href="#prototype">Spørg AI</a>
               <button className="button" onClick={() => navigator.clipboard?.writeText(story.title)}>
                 Kopiér overskrift
               </button>
