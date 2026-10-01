@@ -22,10 +22,10 @@ type NewsItem = {
 };
 
 const feeds: { category: Category; query: string }[] = [
-  { category: "Danmark", query: "Danmark nyheder -sport" },
-  { category: "Erhverv", query: "dansk erhverv virksomheder startup investering -sport" },
-  { category: "AI/Tech", query: "AI kunstig intelligens teknologi Danmark virksomheder" },
-  { category: "Aarhus", query: "Aarhus kommune erhverv byudvikling kultur ejendom trafik -sport" }
+  { category: "Danmark", query: "Danmark nyheder -sport when:2d" },
+  { category: "Erhverv", query: "dansk erhverv virksomheder startup investering -sport when:2d" },
+  { category: "AI/Tech", query: "AI kunstig intelligens teknologi Danmark virksomheder when:2d" },
+  { category: "Aarhus", query: "Aarhus kommune erhverv byudvikling kultur ejendom trafik -sport when:2d" }
 ];
 
 const parser = new XMLParser({
@@ -58,6 +58,51 @@ const trustedSources: Record<string, number> = {
   "Folketinget": 14,
   "Nationalbanken": 14
 };
+
+const danishSourcePatterns = [
+  /^DR$/i,
+  /^TV 2$/i,
+  /TV2/i,
+  /Ritzau/i,
+  /Børsen/i,
+  /Finans(?!avisen)/i,
+  /FinansWatch/i,
+  /Berlingske/i,
+  /Politiken/i,
+  /Jyllands-Posten/i,
+  /Jyllands-posten/i,
+  /JP\.dk/i,
+  /Altinget/i,
+  /Version2/i,
+  /Ingeniøren/i,
+  /Computerworld/i,
+  /TechSavvy/i,
+  /Aarhus Stiftstidende/i,
+  /Stiften/i,
+  /TV2 Østjylland/i,
+  /TV 2 Østjylland/i,
+  /DK Nyt/i,
+  /dknyt/i,
+  /Kommunen\.dk/i,
+  /Aarhus Kommune/i,
+  /Erhvervsstyrelsen/i,
+  /Finansministeriet/i,
+  /Danmarks Statistik/i,
+  /Folketinget/i,
+  /Nationalbanken/i
+];
+
+function isDanishSource(source: string) {
+  return danishSourcePatterns.some((pattern) => pattern.test(source));
+}
+
+function isFresh(pubDate?: string) {
+  if (!pubDate) return false;
+  const time = new Date(pubDate).getTime();
+  if (Number.isNaN(time)) return false;
+  const ageHours = (Date.now() - time) / 3600000;
+  return ageHours >= -1 && ageHours <= 56;
+}
 
 const lowValueSourcePatterns = [
   /fotmob/i,
@@ -269,6 +314,8 @@ export async function getLiveStories(): Promise<Story[]> {
 
   const all = results
     .flatMap((result) => (result.status === "fulfilled" ? result.value : []))
+    .filter((item) => isDanishSource(item.source))
+    .filter((item) => isFresh(item.pubDate))
     .filter((item) => relevanceScore(item) > 4)
     .sort((a, b) => relevanceScore(b) - relevanceScore(a));
 
