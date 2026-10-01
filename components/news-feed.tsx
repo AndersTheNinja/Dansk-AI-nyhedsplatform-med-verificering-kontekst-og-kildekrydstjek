@@ -9,10 +9,11 @@ const labels = {
   unverified: "? Én kilde"
 };
 
-const scores = {
-  confirmed: "Stærk dokumentation",
-  nuance: "Flere kilder",
-  unverified: "Afventer krydstjek"
+const categoryGlyph: Record<string,string> = {
+  "AI/Tech": "AI",
+  "Erhverv": "E",
+  "Danmark": "DK",
+  "Aarhus": "A"
 };
 
 export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
@@ -23,22 +24,16 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
     [initialStories, category]
   );
 
-  return (
-    <section className="shell">
-      <div className="feedHeader">
-        <div>
-          <h2 className="feedTitle">20 vigtigste lige nu</h2>
-          <div className="feedSubtitle">
-            Automatisk prioriteret efter aktualitet, kildekvalitet, relevans og kildekrydstjek
-          </div>
-        </div>
-      </div>
+  const feature = visible[0];
+  const rest = visible.slice(1);
 
-      <div className="filters" aria-label="Nyhedskategorier">
+  return (
+    <section id="feed">
+      <div className="filterBar">
         {categories.map((item) => (
           <button
             key={item}
-            className={`filter ${category === item ? "active" : ""}`}
+            className={`filterTab ${category === item ? "active" : ""}`}
             onClick={() => setCategory(item)}
           >
             {item}
@@ -46,54 +41,56 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
         ))}
       </div>
 
-      <div className="grid">
-        {visible.map((story) => (
-          <article className="card" key={story.id}>
-            <div className="meta">
-              <strong>{story.category}</strong>
-              <span>•</span>
-              <span className="metaPill">{story.sourceLabel}</span>
-              <span>{story.published}</span>
+      {feature && (
+        <article className="featureStory">
+          <div className="featureVisual">
+            <div className="featureGlyph">{categoryGlyph[feature.category] || "K"}</div>
+            <div className="featureOverlay">
+              <span>{feature.category}</span>
+              <h1>{feature.title}</h1>
+              <p>{feature.summary}</p>
+            </div>
+          </div>
+          <div className="featureMeta">
+            <span>{feature.sourceLabel}</span>
+            <span>•</span>
+            <span>{feature.published}</span>
+            <span className={`miniBadge ${feature.verification}`}>{labels[feature.verification]}</span>
+          </div>
+          <div className="featureActions">
+            {feature.sources[0] && <a href={feature.sources[0].url} target="_blank" rel="noreferrer">Læs historien</a>}
+            <span>{feature.verificationText}</span>
+          </div>
+        </article>
+      )}
+
+      <div className="sectionTitle">Seneste nyheder</div>
+
+      <div className="storyList">
+        {rest.map((story) => (
+          <article className="storyRow" key={story.id}>
+            <div className={`thumb thumb-${story.category.replace(/[^a-z]/gi,"").toLowerCase()}`}>
+              <span>{categoryGlyph[story.category] || "K"}</span>
             </div>
 
-            <h2>{story.title}</h2>
-            <p className="summary">{story.summary}</p>
-
-            <div className="check">
-              <div className="checkTop">
-                <div className="checkRow">
-                  <span className={`badge ${story.verification}`}>{labels[story.verification]}</span>
-                  <span>AI CHECK</span>
-                </div>
-                <span className="evidenceScore">{scores[story.verification]}</span>
+            <div className="storyContent">
+              <h2>{story.title}</h2>
+              <div className="storyMeta">
+                <span>{story.sourceLabel}</span>
+                <span>•</span>
+                <span>{story.published}</span>
+                <span>•</span>
+                <span>{story.category}</span>
               </div>
-
-              <p className="summary checkText">{story.verificationText}</p>
-
-              <div className="why">
-                <strong>Hvorfor relevant</strong>
-                <p className="summary">{story.why}</p>
+              <p>{story.summary}</p>
+              <div className="storyBottom">
+                <span className={`miniBadge ${story.verification}`}>{labels[story.verification]}</span>
+                {story.sources[0] && (
+                  <a className="readMore" href={story.sources[0].url} target="_blank" rel="noreferrer">
+                    Læs mere
+                  </a>
+                )}
               </div>
-            </div>
-
-            <div className="sources">
-              <strong>Kilder</strong>
-              {story.sources.map((source) => (
-                <a className="sourceLink" key={source.url + source.label} href={source.url} target="_blank" rel="noreferrer">
-                  ↗ {source.label}
-                </a>
-              ))}
-            </div>
-
-            <div className="actions">
-              {story.sources[0] && (
-                <a className="button primary" href={story.sources[0].url} target="_blank" rel="noreferrer">
-                  Læs original
-                </a>
-              )}
-              <button className="button" onClick={() => navigator.clipboard?.writeText(story.title)}>
-                Kopiér overskrift
-              </button>
             </div>
           </article>
         ))}
