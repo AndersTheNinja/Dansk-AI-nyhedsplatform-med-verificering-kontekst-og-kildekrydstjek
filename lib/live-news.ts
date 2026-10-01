@@ -22,10 +22,10 @@ type NewsItem = {
 };
 
 const feeds: { category: Category; query: string }[] = [
-  { category: "Danmark", query: "Danmark nyheder -sport when:2d" },
-  { category: "Erhverv", query: "dansk erhverv virksomheder startup investering -sport when:2d" },
-  { category: "AI/Tech", query: "AI kunstig intelligens teknologi Danmark virksomheder when:2d" },
-  { category: "Aarhus", query: "Aarhus kommune erhverv byudvikling kultur ejendom trafik -sport when:2d" }
+  { category: "Danmark", query: "Danmark nyheder -sport" },
+  { category: "Erhverv", query: "dansk erhverv virksomheder startup investering -sport" },
+  { category: "AI/Tech", query: "AI kunstig intelligens teknologi Danmark virksomheder" },
+  { category: "Aarhus", query: "Aarhus kommune erhverv byudvikling kultur ejendom trafik -sport" }
 ];
 
 const parser = new XMLParser({
@@ -111,9 +111,9 @@ function isLikelyDanish(item: NewsItem) {
   if (foreignSourcePatterns.some((pattern) => pattern.test(item.source))) return false;
   if (danishSourcePatterns.some((pattern) => pattern.test(item.source))) return true;
 
-  const text = `${item.title} ${item.description}`;
-  const danishSignals = /\b(danmark|dansk|danske|københavn|aarhus|århus|regeringen|folketinget|kommune|kroner|kr\.|virksomhed|minister|skat|bolig|erhverv)\b/i;
-  return danishSignals.test(text);
+  // Google News-feedet er allerede låst til dansk sprog/region (da-DK).
+  // Ukendte kilder får derfor lov at passere, medmindre de matcher en kendt udenlandsk kilde.
+  return true;
 }
 
 function isFresh(pubDate?: string) {
@@ -332,11 +332,19 @@ export async function getLiveStories(): Promise<Story[]> {
     feeds.map((feed) => fetchFeed(feed.category, feed.query))
   );
 
-  const all = results
-    .flatMap((result) => (result.status === "fulfilled" ? result.value : []))
+  const fetched = results
+    .flatMap((result) => (result.status === "fulfilled" ? result.value : []));
+
+  const strict = fetched
     .filter((item) => isLikelyDanish(item))
     .filter((item) => isFresh(item.pubDate))
-    .filter((item) => relevanceScore(item) > 4)
+    .filter((item) => relevanceScore(item) > 4);
+
+  // Robust fallback: hvis det stramme filter mod forventning giver 0 historier,
+  // vises stadig friske da-DK-resultater, dog med kendte udenlandske kilder blokeret.
+  const all = (strict.length ? strict : fetched
+    .filter((item) => !foreignSourcePatterns.some((pattern) => pattern.test(item.source)))
+    .filter((item) => isFresh(item.pubDate)))
     .sort((a, b) => relevanceScore(b) - relevanceScore(a));
 
   const clusters: NewsItem[][] = [];
