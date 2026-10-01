@@ -1,7 +1,13 @@
 import { NewsFeed } from "@/components/news-feed";
-import { stories } from "@/lib/stories";
+import { demoStories } from "@/lib/stories";
+import { getLiveStories } from "@/lib/live-news";
 
-export default function Home() {
+export const revalidate = 300;
+
+export default async function Home() {
+  const liveStories = await getLiveStories().catch(() => []);
+  const stories = liveStories.length ? liveStories : demoStories;
+
   return (
     <main>
       <header className="topbar">
@@ -13,7 +19,7 @@ export default function Home() {
               <div className="tagline">Nyheder. Krydstjekket af AI.</div>
             </div>
           </div>
-          <div className="topStatus"><span className="liveDot" /> LIVE MVP</div>
+          <div className="topStatus"><span className="liveDot" /> LIVE NYHEDER</div>
         </div>
       </header>
 
@@ -23,13 +29,13 @@ export default function Home() {
             <p className="eyebrow">DANSK AI-NYHEDSPLATFORM</p>
             <h1>Få nyheden.<br/><span>Forstå den.</span></h1>
             <p className="heroText">
-              KONTEKST samler historier fra flere kilder, finder primærkilden og viser
-              verificering, usikkerheder og det vigtigste, du ellers selv skulle grave frem.
+              KONTEKST samler aktuelle danske historier fra flere kilder og viser,
+              hvor stærkt historien foreløbigt er dokumenteret.
             </p>
             <div className="trustRow">
+              <span>✓ Live nyhedsfeed</span>
               <span>✓ Kildekrydstjek</span>
-              <span>✓ AI-kontekst</span>
-              <span>✓ Primærkilder</span>
+              <span>✓ Tydelig usikkerhed</span>
             </div>
           </div>
 
@@ -37,15 +43,15 @@ export default function Home() {
             <div className="signalLabel">SÅDAN LÆSES KONTEKST</div>
             <div className="signalLine">
               <span className="signalIcon ok">✓</span>
-              <div><strong>Bekræftet</strong><small>De centrale fakta understøttes af kilderne.</small></div>
+              <div><strong>Bekræftet</strong><small>Kræver egentlig dokumentation fra primærkilder og uafhængige kilder.</small></div>
             </div>
             <div className="signalLine">
               <span className="signalIcon warn">!</span>
-              <div><strong>Kræver nuance</strong><small>Historien holder, men framing eller detaljer kræver kontekst.</small></div>
+              <div><strong>Kildekrydstjek</strong><small>Flere medier omtaler samme historie, men alle fakta er ikke nødvendigvis verificeret endnu.</small></div>
             </div>
             <div className="signalLine">
               <span className="signalIcon unknown">?</span>
-              <div><strong>Ikke verificeret</strong><small>Der mangler troværdig dokumentation.</small></div>
+              <div><strong>Én kilde</strong><small>Historien afventer yderligere dokumentation.</small></div>
             </div>
           </aside>
         </div>
@@ -55,7 +61,7 @@ export default function Home() {
 
       <footer className="footer shell">
         <div><strong>KONTEKST</strong> · offentlig MVP</div>
-        <div>Kilder og artikler tilhører deres respektive udgivere.</div>
+        <div>Nyhedslinks fører til originaludgiverne. Feed opdateres cirka hvert 5. minut.</div>
       </footer>
     </main>
   );
