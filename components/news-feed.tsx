@@ -27,8 +27,10 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
     <section className="shell">
       <div className="feedHeader">
         <div>
-          <h2 className="feedTitle">Seneste nyheder</h2>
-          <div className="feedSubtitle">Live danske historier · samlet og kildekrydstjekket automatisk</div>
+          <h2 className="feedTitle">20 vigtigste lige nu</h2>
+          <div className="feedSubtitle">
+            Automatisk prioriteret efter aktualitet, kildekvalitet, relevans og kildekrydstjek
+          </div>
         </div>
       </div>
 
