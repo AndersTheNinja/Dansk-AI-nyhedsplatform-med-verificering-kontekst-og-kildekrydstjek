@@ -92,8 +92,28 @@ const danishSourcePatterns = [
   /Nationalbanken/i
 ];
 
-function isDanishSource(source: string) {
-  return danishSourcePatterns.some((pattern) => pattern.test(source));
+const foreignSourcePatterns = [
+  /Finansavisen/i,
+  /Vietnam\.vn/i,
+  /VG\b/i,
+  /Aftenposten/i,
+  /Dagbladet/i,
+  /Nettavisen/i,
+  /NRK/i,
+  /E24/i,
+  /Dagens Næringsliv/i,
+  /Svenska Dagbladet/i,
+  /Aftonbladet/i,
+  /Expressen/i
+];
+
+function isLikelyDanish(item: NewsItem) {
+  if (foreignSourcePatterns.some((pattern) => pattern.test(item.source))) return false;
+  if (danishSourcePatterns.some((pattern) => pattern.test(item.source))) return true;
+
+  const text = `${item.title} ${item.description}`;
+  const danishSignals = /\b(danmark|dansk|danske|københavn|aarhus|århus|regeringen|folketinget|kommune|kroner|kr\.|virksomhed|minister|skat|bolig|erhverv)\b/i;
+  return danishSignals.test(text);
 }
 
 function isFresh(pubDate?: string) {
@@ -314,7 +334,7 @@ export async function getLiveStories(): Promise<Story[]> {
 
   const all = results
     .flatMap((result) => (result.status === "fulfilled" ? result.value : []))
-    .filter((item) => isDanishSource(item.source))
+    .filter((item) => isLikelyDanish(item))
     .filter((item) => isFresh(item.pubDate))
     .filter((item) => relevanceScore(item) > 4)
     .sort((a, b) => relevanceScore(b) - relevanceScore(a));
