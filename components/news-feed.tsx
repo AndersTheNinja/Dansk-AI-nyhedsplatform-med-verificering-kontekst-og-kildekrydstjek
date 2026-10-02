@@ -24,9 +24,6 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
     [initialStories, category]
   );
 
-  const feature = visible[0];
-  const rest = visible.slice(1);
-
   return (
     <section id="feed">
       <div className="filterBar">
@@ -41,33 +38,10 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
         ))}
       </div>
 
-      {feature && (
-        <article className="featureStory">
-          <div className="featureVisual">
-            <div className="featureGlyph">{categoryGlyph[feature.category] || "K"}</div>
-            <div className="featureOverlay">
-              <span>{feature.category}</span>
-              <h1>{feature.title}</h1>
-              <p>{feature.summary}</p>
-            </div>
-          </div>
-          <div className="featureMeta">
-            <span>{feature.sourceLabel}</span>
-            <span>•</span>
-            <span>{feature.published}</span>
-            <span className={`miniBadge ${feature.verification}`}>{labels[feature.verification]}</span>
-          </div>
-          <div className="featureActions">
-            {feature.sources[0] && <a href={feature.sources[0].url} target="_blank" rel="noreferrer">Læs historien</a>}
-            <span>{feature.verificationText}</span>
-          </div>
-        </article>
-      )}
-
       <div className="sectionTitle">Seneste nyheder</div>
 
       <div className="storyList">
-        {rest.map((story) => (
+        {visible.map((story) => (
           <article className="storyRow" key={story.id}>
             <div className={`thumb thumb-${story.category.replace(/[^a-z]/gi,"").toLowerCase()}`}>
               <span>{categoryGlyph[story.category] || "K"}</span>
