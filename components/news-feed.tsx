@@ -16,12 +16,35 @@ function scoreClass(score: number) {
   return "low";
 }
 
+function mediaName(label: string) {
+  if (/^DR\b/i.test(label)) return "Danmarks Radio";
+  if (/TV\s?2/i.test(label)) return "TV2";
+  if (/Berlingske/i.test(label)) return "Berlingske Tidende";
+  return label;
+}
+
 export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
   const [category, setCategory] = useState<string>("Alle");
+  const [media, setMedia] = useState<string>("Alle medier");
   const categories = ["Alle", "AI/Tech", "Erhverv", "Danmark", "Aarhus"];
+
+  const mediaOptions = useMemo(() => {
+    const names = initialStories.flatMap((story) =>
+      story.sources.map((source) => mediaName(source.label))
+    );
+    return ["Alle medier", ...Array.from(new Set(names)).sort((a, b) => a.localeCompare(b, "da"))];
+  }, [initialStories]);
+
   const visible = useMemo(
-    () => initialStories.filter((s) => category === "Alle" || s.category === category),
-    [initialStories, category]
+    () =>
+      initialStories.filter((story) => {
+        const matchesCategory = category === "Alle" || story.category === category;
+        const matchesMedia =
+          media === "Alle medier" ||
+          story.sources.some((source) => mediaName(source.label) === media);
+        return matchesCategory && matchesMedia;
+      }),
+    [initialStories, category, media]
   );
 
   return (
@@ -35,6 +58,21 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
           >
             {item}
           </button>
+        ))}
+      </div>
+
+      <div className="mediaFilter" aria-label="Filtrer efter medie">
+        <span className="mediaLabel">MEDIE:</span>
+        {mediaOptions.map((item, index) => (
+          <span key={item} className="mediaFilterItem">
+            {index > 0 && <span className="mediaSeparator">•</span>}
+            <button
+              className={`mediaLink ${media === item ? "active" : ""}`}
+              onClick={() => setMedia(item)}
+            >
+              {item}
+            </button>
+          </span>
         ))}
       </div>
 
