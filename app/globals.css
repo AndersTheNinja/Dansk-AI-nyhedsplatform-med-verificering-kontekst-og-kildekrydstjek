@@ -75,6 +75,7 @@ button{font:inherit}
 .neutralityFill.unavailable{background:repeating-linear-gradient(90deg,#cfd5d8 0,#cfd5d8 8px,#e9edef 8px,#e9edef 16px)}
 .neutralityHint{font-size:10px;color:#8a949a}
 .storyBottom{display:flex;justify-content:space-between;align-items:center;gap:12px;font-family:Arial,sans-serif}
+.readRow{display:flex;justify-content:flex-end;margin:7px 0 4px;font-family:Arial,sans-serif}
 .readMore{display:inline-block;background:var(--teal);color:#fff;text-decoration:none;padding:5px 9px;font-size:10px;border-radius:2px}
 .miniBadge{display:inline-block;font:700 10px Arial,sans-serif;padding:4px 7px;border-radius:10px;background:#edf0f2;color:#59656c}
 .miniBadge.confirmed{background:#e9f6ee;color:var(--green)}
