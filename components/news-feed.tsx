@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Story } from "@/lib/stories";
 
@@ -17,11 +17,162 @@ function scoreClass(score: number) {
   return "low";
 }
 
+type AiAnalysis = {
+  wordingScore: number;
+  wordingNote: string;
+  wordingExamples: string[];
+  sourcesScore: number | null;
+  sourcesNote: string;
+  sourcesExamples: string[];
+};
+
 function mediaName(label: string) {
   if (/^DR\b/i.test(label)) return "Danmarks Radio";
   if (/TV\s?2/i.test(label)) return "TV2";
   if (/Berlingske/i.test(label)) return "Berlingske Tidende";
   return label;
+}
+
+function StoryCard({ story }: { story: Story }) {
+  const ref = useRef<HTMLElement | null>(null);
+  const [analysis, setAnalysis] = useState<AiAnalysis | null>(null);
+  const [attempted, setAttempted] = useState(false);
+
+  useEffect(() => {
+    const node = ref.current;
+    if (!node || attempted) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        observer.disconnect();
+
+        const cacheKey = `kontekst-ai-v2:${story.id}`;
+        try {
+          const cached = sessionStorage.getItem(cacheKey);
+          if (cached) {
+            setAnalysis(JSON.parse(cached));
+            setAttempted(true);
+            return;
+          }
+        } catch {}
+
+        setAttempted(true);
+        fetch("/api/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: story.title,
+            text: story.summary,
+            sources: story.sources
+          })
+        })
+          .then(async (response) => {
+            if (!response.ok) throw new Error("AI unavailable");
+            return response.json();
+          })
+          .then((result: AiAnalysis) => {
+            setAnalysis(result);
+            try {
+              sessionStorage.setItem(cacheKey, JSON.stringify(result));
+            } catch {}
+          })
+          .catch(() => {});
+      },
+      { rootMargin: "500px 0px" }
+    );
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [story, attempted]);
+
+  const wordingScore = analysis?.wordingScore ?? story.neutrality.wording;
+  const wordingNote = analysis?.wordingNote ?? story.neutrality.wordingNote;
+  const wordingExamples = analysis?.wordingExamples ?? story.neutrality.wordingExamples;
+  const sourcesScore = analysis ? analysis.sourcesScore : story.neutrality.sources;
+  const sourcesNote = analysis?.sourcesNote ?? story.neutrality.sourcesNote;
+  const sourcesExamples = analysis?.sourcesExamples ?? story.neutrality.sourcesExamples;
+
+  return (
+    <article className="storyRow" ref={ref}>
+      <div className="storyContent">
+        <h2>{story.title}</h2>
+        <div className="storyMeta">
+          <span>{categoryLabel[story.category] || story.category}</span>
+          <span>•</span>
+          <span>{story.sourceLabel}</span>
+          <span>•</span>
+          <span>{story.published}</span>
+        </div>
+        <div className="summaryRow">
+          <p>{story.summary}</p>
+          {story.sources[0] && (
+            <a className="readMore" href={story.sources[0].url} target="_blank" rel="noreferrer">
+              Læs mere
+            </a>
+          )}
+        </div>
+
+        <div className="neutralityGrid">
+          <div className="neutralityMetric" tabIndex={0}>
+            <div className="neutralityInline">
+              <span className="neutralityLabel">Objektivitet ift. formulering</span>
+              <div className="neutralityTrack">
+                <span
+                  className={`neutralityFill ${scoreClass(wordingScore)}`}
+                  style={{ width: `${wordingScore}%` }}
+                />
+              </div>
+              <strong>{wordingScore}%</strong>
+            </div>
+            <div className="scoreTooltip" role="tooltip">
+              <strong>Baggrund for scoren</strong>
+              <p>{wordingNote}</p>
+              {wordingExamples.length > 0 ? (
+                <ul>{wordingExamples.map((example) => <li key={example}>{example}</li>)}</ul>
+              ) : (
+                <p>Ingen tydelige sproglige markører blev fremhævet.</p>
+              )}
+            </div>
+          </div>
+
+          <div className="neutralityMetric" tabIndex={0}>
+            <div className="neutralityInline">
+              <span className="neutralityLabel">Objektivitet ift. andre kilder</span>
+              <div className="neutralityTrack">
+                {sourcesScore === null ? (
+                  <span className="neutralityFill unavailable" style={{ width: "100%" }} />
+                ) : (
+                  <span
+                    className={`neutralityFill ${scoreClass(sourcesScore)}`}
+                    style={{ width: `${sourcesScore}%` }}
+                  />
+                )}
+              </div>
+              <strong>{sourcesScore === null ? "Ikke nok data" : `${sourcesScore}%`}</strong>
+            </div>
+            <div className="scoreTooltip" role="tooltip">
+              <strong>Baggrund for scoren</strong>
+              <p>{sourcesNote}</p>
+              {sourcesExamples.length > 0 && (
+                <>
+                  <div className="tooltipLabel">Sammenlignede kilder</div>
+                  <ul>{sourcesExamples.map((example) => <li key={example}>{example}</li>)}</ul>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="storyBottom">
+          <span className="neutralityHint">
+            {analysis ? "AI-analyseret" : attempted ? "Basisvurdering · AI afventer/ikke aktiveret" : "Basisvurdering"}
+            {" · klik/hold over score for forklaring"}
+          </span>
+        </div>
+      </div>
+    </article>
+  );
 }
 
 export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
@@ -89,81 +240,7 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
 
       <div className="storyList">
         {visible.map((story) => (
-          <article className="storyRow" key={story.id}>
-            <div className="storyContent">
-              <h2>{story.title}</h2>
-              <div className="storyMeta">
-                <span>{categoryLabel[story.category] || story.category}</span>
-                <span>•</span>
-                <span>{story.sourceLabel}</span>
-                <span>•</span>
-                <span>{story.published}</span>
-              </div>
-              <div className="summaryRow">
-                <p>{story.summary}</p>
-                {story.sources[0] && (
-                  <a className="readMore" href={story.sources[0].url} target="_blank" rel="noreferrer">
-                    Læs mere
-                  </a>
-                )}
-              </div>
-
-              <div className="neutralityGrid">
-                <div className="neutralityMetric" tabIndex={0}>
-                  <div className="neutralityInline">
-                    <span className="neutralityLabel">Objektivitet ift. formulering</span>
-                    <div className="neutralityTrack">
-                      <span
-                        className={`neutralityFill ${scoreClass(story.neutrality.wording)}`}
-                        style={{ width: `${story.neutrality.wording}%` }}
-                      />
-                    </div>
-                    <strong>{story.neutrality.wording}%</strong>
-                  </div>
-                  <div className="scoreTooltip" role="tooltip">
-                    <strong>Baggrund for scoren</strong>
-                    <p>{story.neutrality.wordingNote}</p>
-                    {story.neutrality.wordingExamples.length > 0 ? (
-                      <ul>{story.neutrality.wordingExamples.map((example) => <li key={example}>{example}</li>)}</ul>
-                    ) : (
-                      <p>Ingen tydelige ladede eller absolutte ord blev fundet i den tilgængelige feedtekst.</p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="neutralityMetric" tabIndex={0}>
-                  <div className="neutralityInline">
-                    <span className="neutralityLabel">Objektivitet ift. andre kilder</span>
-                    <div className="neutralityTrack">
-                      {story.neutrality.sources === null ? (
-                        <span className="neutralityFill unavailable" style={{ width: "100%" }} />
-                      ) : (
-                        <span
-                          className={`neutralityFill ${scoreClass(story.neutrality.sources)}`}
-                          style={{ width: `${story.neutrality.sources}%` }}
-                        />
-                      )}
-                    </div>
-                    <strong>{story.neutrality.sources === null ? "Ikke nok data" : `${story.neutrality.sources}%`}</strong>
-                  </div>
-                  <div className="scoreTooltip" role="tooltip">
-                    <strong>Baggrund for scoren</strong>
-                    <p>{story.neutrality.sourcesNote}</p>
-                    {story.neutrality.sourcesExamples.length > 0 && (
-                      <>
-                        <div className="tooltipLabel">Sammenlignede kilder</div>
-                        <ul>{story.neutrality.sourcesExamples.map((example) => <li key={example}>{example}</li>)}</ul>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="storyBottom">
-                <span className="neutralityHint">AI-vurdering · klik/hold over score for forklaring</span>
-              </div>
-            </div>
-          </article>
+          <StoryCard key={story.id} story={story} />
         ))}
       </div>
     </section>
