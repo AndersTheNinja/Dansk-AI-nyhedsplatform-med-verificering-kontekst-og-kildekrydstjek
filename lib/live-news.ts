@@ -41,6 +41,11 @@ const feeds: FeedConfig[] = [
     category: "Aarhus"
   },
   {
+    name: "Politiken",
+    url: "https://politiken.dk/rss/senestenyt.rss",
+    category: "Danmark"
+  },
+  {
     name: "Version2",
     url: "https://www.version2.dk/feeds/nyheder",
     category: "AI/Tech"
