@@ -37,14 +37,6 @@ export default async function Home() {
           </section>
 
           <section className="sideBox">
-            <h3>KATEGORIER</h3>
-            <a href="#feed">Danmark</a>
-            <a href="#feed">Erhverv</a>
-            <a href="#feed">AI/Tech</a>
-            <a href="#feed">Aarhus</a>
-          </section>
-
-          <section className="sideBox">
             <h3>OM KONTEKST</h3>
             <p>Vi samler historier, viser kilderne og markerer tydeligt, hvor stærkt en historie foreløbigt er dokumenteret.</p>
           </section>
