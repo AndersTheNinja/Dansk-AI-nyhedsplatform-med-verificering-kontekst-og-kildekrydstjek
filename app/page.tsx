@@ -15,7 +15,7 @@ export default async function Home() {
           <div className="logoBlock">K</div>
           <div>
             <div className="siteName">KONTEKST<span>News</span></div>
-            <div className="siteTagline">Danske nyheder med AI-kontekst og kildekrydstjek</div>
+            <div className="siteTagline">Danske nyheder med AI-kontekst og kildekrydstjek • Redaktør og Ai-geni: Anders Grønborg</div>
           </div>
         </div>
         <div className="headerStatus"><span className="liveDot" /> LIVE</div>
