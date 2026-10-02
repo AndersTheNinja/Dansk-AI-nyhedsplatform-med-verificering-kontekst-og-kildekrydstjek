@@ -101,7 +101,16 @@ Fundne kilder: ${JSON.stringify(sources)}`;
   });
 
   if (!response.ok) {
-    return NextResponse.json({ error: "AI-tjenesten svarede med en fejl." }, { status: 502 });
+    const detail = await response.text();
+    console.error("OpenAI /v1/responses failed", {
+      status: response.status,
+      model,
+      detail
+    });
+    return NextResponse.json(
+      { error: "AI-tjenesten svarede med en fejl.", detail, status: response.status },
+      { status: 502 }
+    );
   }
 
   const data = await response.json();
@@ -112,7 +121,11 @@ Fundne kilder: ${JSON.stringify(sources)}`;
 
   try {
     return NextResponse.json(parseJson(output));
-  } catch {
-    return NextResponse.json({ error: "AI-svaret kunne ikke fortolkes." }, { status: 502 });
+  } catch (error) {
+    console.error("OpenAI response JSON parse failed", { model, output, error });
+    return NextResponse.json(
+      { error: "AI-svaret kunne ikke fortolkes.", detail: output.slice(0, 1000) },
+      { status: 502 }
+    );
   }
 }
