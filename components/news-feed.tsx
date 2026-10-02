@@ -71,13 +71,17 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
                 <div className="neutralityMetric" title={story.neutrality.sourcesNote}>
                   <div className="neutralityTop">
                     <span>Neutralitet ift. andre kilder</span>
-                    <strong>{story.neutrality.sources}%</strong>
+                    <strong>{story.neutrality.sources === null ? "Ikke nok data" : `${story.neutrality.sources}%`}</strong>
                   </div>
                   <div className="neutralityTrack">
-                    <span
-                      className={`neutralityFill ${scoreClass(story.neutrality.sources)}`}
-                      style={{ width: `${story.neutrality.sources}%` }}
-                    />
+                    {story.neutrality.sources === null ? (
+                      <span className="neutralityFill unavailable" style={{ width: "100%" }} />
+                    ) : (
+                      <span
+                        className={`neutralityFill ${scoreClass(story.neutrality.sources)}`}
+                        style={{ width: `${story.neutrality.sources}%` }}
+                      />
+                    )}
                   </div>
                 </div>
               </div>
