@@ -1,5 +1,12 @@
 export type Verification = "confirmed" | "nuance" | "unverified";
 
+export type Neutrality = {
+  wording: number;
+  wordingNote: string;
+  sources: number;
+  sourcesNote: string;
+};
+
 export type Story = {
   id: string;
   category: "AI/Tech" | "Erhverv" | "Danmark" | "Aarhus";
@@ -10,6 +17,7 @@ export type Story = {
   why: string;
   verification: Verification;
   verificationText: string;
+  neutrality: Neutrality;
   sources: { label: string; url: string }[];
 };
 
@@ -27,6 +35,12 @@ export const demoStories: Story[] = [
     verification: "unverified",
     verificationText:
       "Ingen ekstern historie er vist i dette fallback-kort.",
+    neutrality: {
+      wording: 100,
+      wordingNote: "Fallback-tekst uden vurderende nyhedsformuleringer.",
+      sources: 0,
+      sourcesNote: "Ingen ekstern nyhed at sammenligne med andre kilder."
+    },
     sources: [
       {
         label: "Projektets GitHub",
