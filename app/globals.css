@@ -49,7 +49,6 @@ button{font:inherit}
 .filterTab{border:1px solid #cfd4d6;background:#fff;padding:7px 11px;font-size:12px;cursor:pointer}
 .filterTab.active{background:var(--teal);color:#fff;border-color:var(--teal)}
 .mediaFilter{display:flex;align-items:center;flex-wrap:wrap;gap:5px;margin:-6px 0 18px;font:11px Arial,sans-serif;color:#6f797f}
-.mediaLabel{font-weight:700;color:#4b555b;margin-right:2px}
 .mediaFilterItem{display:inline-flex;align-items:center;gap:5px}
 .mediaSeparator{color:#a9b0b4}
 .mediaLink{appearance:none;border:0;background:transparent;padding:0;color:#7f473f;cursor:pointer;font:11px Arial,sans-serif;text-decoration:none}
@@ -60,7 +59,9 @@ button{font:inherit}
 .storyContent h2{font-size:20px;line-height:1.12;margin:0 0 5px;color:#315e67}
 .storyMeta{display:flex;gap:5px;flex-wrap:wrap;font:10px Arial,sans-serif;color:#9a6258;margin-bottom:7px}
 .storyMeta span:first-child{font-weight:700}
-.storyContent p{font-size:12.5px;line-height:1.45;color:#59656c;margin:0 0 2px}
+.storyContent p{font-size:12.5px;line-height:1.45;color:#59656c;margin:0}
+.summaryRow{display:flex;align-items:flex-end;gap:12px;margin:0 0 2px}
+.summaryRow p{flex:1;min-width:0}
 .neutralityGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:4px 0 2px;font-family:Arial,sans-serif}
 .neutralityMetric{position:relative;background:#fafbfb;border:1px solid #e1e5e6;padding:6px 8px;cursor:help;outline:none}
 .neutralityMetric:hover,.neutralityMetric:focus{border-color:#aeb9bd;background:#fff}
@@ -83,8 +84,7 @@ button{font:inherit}
 .neutralityFill.unavailable{background:repeating-linear-gradient(90deg,#cfd5d8 0,#cfd5d8 8px,#e9edef 8px,#e9edef 16px)}
 .neutralityHint{font-size:10px;color:#8a949a;line-height:1.1}
 .storyBottom{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:1px;font-family:Arial,sans-serif}
-.readRow{display:flex;justify-content:flex-end;margin:-1px 0 1px;font-family:Arial,sans-serif}
-.readMore{display:inline-block;background:var(--teal);color:#fff;text-decoration:none;padding:4px 8px;font-size:10px;border-radius:2px}
+.readMore{flex:0 0 auto;align-self:flex-end;display:inline-block;background:var(--teal);color:#fff;text-decoration:none;padding:4px 8px;font-size:10px;border-radius:2px;white-space:nowrap}
 .miniBadge{display:inline-block;font:700 10px Arial,sans-serif;padding:4px 7px;border-radius:10px;background:#edf0f2;color:#59656c}
 .miniBadge.confirmed{background:#e9f6ee;color:var(--green)}
 .miniBadge.nuance{background:#fff3e4;color:var(--amber)}
