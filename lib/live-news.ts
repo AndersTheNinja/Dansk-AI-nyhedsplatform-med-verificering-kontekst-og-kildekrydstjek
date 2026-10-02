@@ -150,6 +150,59 @@ function similarity(a: string, b: string) {
   return overlap / Math.min(wa.size, wb.size);
 }
 
+const loadedWords = [
+  "chokerende","skandaløs","skandale","katastrofal","katastrofe","fantastisk","fremragende",
+  "forfærdelig","voldsom","ekstrem","sensationel","opsigtsvækkende","rasende","raseri",
+  "fiasko","sejr","triumf","knusende","uhørt","vanvittig","brutal","dramatisk","massiv",
+  "farlig","genial","elendige","elendigt","historisk","bombe","kaos","krise","mirakel",
+  "afslører","smadrer","slagter","hylder","angriber","advarer"
+];
+
+const absolutistWords = [
+  "altid","aldrig","alle","ingen","helt sikkert","uden tvivl","beviser","åbenlyst","klart"
+];
+
+function scoreWordingNeutrality(text: string) {
+  const normalized = text.toLowerCase();
+  const wordsInText = normalized.split(/\s+/).filter(Boolean);
+  const loadedHits = loadedWords.filter((word) => normalized.includes(word)).length;
+  const absoluteHits = absolutistWords.filter((word) => normalized.includes(word)).length;
+  const exclamations = (text.match(/!/g) || []).length;
+  const densityPenalty = wordsInText.length
+    ? Math.min(45, Math.round((loadedHits / wordsInText.length) * 420))
+    : 0;
+  const score = Math.max(35, Math.min(100, 100 - densityPenalty - absoluteHits * 5 - exclamations * 4));
+
+  const note = loadedHits === 0 && absoluteHits === 0 && exclamations === 0
+    ? "Sproget fremstår overvejende neutralt i overskrift og feedtekst."
+    : `Sproglig vurdering baseret på ladede ord, absolutte formuleringer og tegnsætning i overskrift/feedtekst.`;
+
+  return { score, note };
+}
+
+function scoreSourceNeutrality(lead: NewsItem, sources: NewsItem[]) {
+  if (sources.length < 2) {
+    return {
+      score: 50,
+      note: "Foreløbig score: kun én kilde er fundet, så vinklen kan ikke krydstjekkes sikkert endnu."
+    };
+  }
+
+  const similarities = sources
+    .filter((source) => source.id !== lead.id)
+    .map((source) => similarity(lead.title, source.title));
+
+  const average = similarities.length
+    ? similarities.reduce((sum, value) => sum + value, 0) / similarities.length
+    : 0.5;
+
+  const score = Math.max(45, Math.min(98, Math.round(58 + average * 40 + Math.min(8, (sources.length - 2) * 4))));
+  return {
+    score,
+    note: `Vurderet ud fra ${sources.length} kilder og hvor ens deres centrale framing/overskrifter er. Høj score betyder større overensstemmelse, ikke nødvendigvis fuld sandhed.`
+  };
+}
+
 function categoryWhy(category: Category) {
   switch (category) {
     case "AI/Tech":
@@ -254,6 +307,8 @@ export async function getLiveStories(): Promise<Story[]> {
   return selected.map((entry, index) => {
     const { lead, sources } = entry;
     const hasCrossCheck = sources.length >= 2;
+    const wordingNeutrality = scoreWordingNeutrality(`${lead.title} ${lead.description}`);
+    const sourceNeutrality = scoreSourceNeutrality(lead, sources);
     const summary =
       lead.description.length > 70
         ? lead.description.slice(0, 300).replace(/\s+\S*$/, "") + "…"
@@ -271,6 +326,12 @@ export async function getLiveStories(): Promise<Story[]> {
       verificationText: hasCrossCheck
         ? `KONTEKST har fundet samme historie hos ${sources.length} forskellige kilder. Det er et kildekrydstjek, men ikke en fuld faktaverifikation.`
         : "Historien er foreløbigt kun fundet hos én kilde og markeres derfor ikke som fuldt verificeret.",
+      neutrality: {
+        wording: wordingNeutrality.score,
+        wordingNote: wordingNeutrality.note,
+        sources: sourceNeutrality.score,
+        sourcesNote: sourceNeutrality.note
+      },
       sources: sources.slice(0, 4).map((item) => ({
         label: item.source,
         url: item.link
