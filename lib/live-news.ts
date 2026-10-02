@@ -54,6 +54,21 @@ const feeds: FeedConfig[] = [
     name: "Ingeniøren",
     url: "https://www.ing.dk/rss",
     category: "AI/Tech"
+  },
+  {
+    name: "Computerworld",
+    url: "https://www.computerworld.dk/rss/all",
+    category: "AI/Tech"
+  },
+  {
+    name: "TechSavvy",
+    url: "https://techsavvy.media/feed",
+    category: "AI/Tech"
+  },
+  {
+    name: "Altinget",
+    url: "https://www.altinget.dk/christiansborg/rss.aspx",
+    category: "Danmark"
   }
 ];
 
