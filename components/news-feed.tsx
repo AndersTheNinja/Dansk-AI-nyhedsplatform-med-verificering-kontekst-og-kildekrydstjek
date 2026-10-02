@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { Story } from "@/lib/stories";
 
 const categoryLabel: Record<string,string> = {
@@ -24,6 +25,7 @@ function mediaName(label: string) {
 }
 
 export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
+  const router = useRouter();
   const [category, setCategory] = useState<string>("Alle");
   const [media, setMedia] = useState<string>("Alle medier");
   const categories = ["Alle", "AI/Tech", "Erhverv", "Danmark", "Aarhus"];
@@ -47,6 +49,14 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
     [initialStories, category, media]
   );
 
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      router.refresh();
+    }, 300000);
+
+    return () => window.clearInterval(interval);
+  }, [router]);
+
   return (
     <section id="feed">
       <div className="filterBar">
@@ -62,7 +72,6 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
       </div>
 
       <div className="mediaFilter" aria-label="Filtrer efter medie">
-        <span className="mediaLabel">MEDIE:</span>
         {mediaOptions.map((item, index) => (
           <span key={item} className="mediaFilterItem">
             {index > 0 && <span className="mediaSeparator">•</span>}
@@ -90,15 +99,14 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
                 <span>•</span>
                 <span>{story.published}</span>
               </div>
-              <p>{story.summary}</p>
-
-              {story.sources[0] && (
-                <div className="readRow">
+              <div className="summaryRow">
+                <p>{story.summary}</p>
+                {story.sources[0] && (
                   <a className="readMore" href={story.sources[0].url} target="_blank" rel="noreferrer">
                     Læs mere
                   </a>
-                </div>
-              )}
+                )}
+              </div>
 
               <div className="neutralityGrid">
                 <div className="neutralityMetric" tabIndex={0}>
