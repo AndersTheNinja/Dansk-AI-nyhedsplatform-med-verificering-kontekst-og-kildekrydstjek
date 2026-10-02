@@ -155,7 +155,10 @@ const loadedWords = [
   "forfærdelig","voldsom","ekstrem","sensationel","opsigtsvækkende","rasende","raseri",
   "fiasko","sejr","triumf","knusende","uhørt","vanvittig","brutal","dramatisk","massiv",
   "farlig","genial","elendige","elendigt","historisk","bombe","kaos","krise","mirakel",
-  "afslører","smadrer","slagter","hylder","angriber","advarer"
+  "afslører","smadrer","slagter","hylder","angriber","advarer","dødelig","dødelige",
+  "alvorlig","alvorlige","vild","vilde","giftig","giftige","raser","kritiserer","kritik",
+  "presser","truer","truet","frygt","frygter","succes","rekord","rekordstor","udsat",
+  "heftig","heftigt","kontroversiel","kontroversielle","mystisk","mystiske"
 ];
 
 const absolutistWords = [
@@ -168,10 +171,14 @@ function scoreWordingNeutrality(text: string) {
   const loadedHits = loadedWords.filter((word) => normalized.includes(word)).length;
   const absoluteHits = absolutistWords.filter((word) => normalized.includes(word)).length;
   const exclamations = (text.match(/!/g) || []).length;
+  const questionMarks = (text.match(/\?/g) || []).length;
+  const quoteMarks = (text.match(/['"“”‘’]/g) || []).length;
+  const colonHeadlines = text.includes(":") ? 1 : 0;
   const densityPenalty = wordsInText.length
-    ? Math.min(45, Math.round((loadedHits / wordsInText.length) * 420))
+    ? Math.min(48, Math.round((loadedHits / wordsInText.length) * 520))
     : 0;
-  const score = Math.max(35, Math.min(100, 100 - densityPenalty - absoluteHits * 5 - exclamations * 4));
+  const rhetoricPenalty = Math.min(10, questionMarks * 2 + Math.floor(quoteMarks / 2) + colonHeadlines);
+  const score = Math.max(35, Math.min(100, 100 - densityPenalty - absoluteHits * 5 - exclamations * 4 - rhetoricPenalty));
 
   const note = loadedHits === 0 && absoluteHits === 0 && exclamations === 0
     ? "Sproget fremstår overvejende neutralt i overskrift og feedtekst."
@@ -183,8 +190,8 @@ function scoreWordingNeutrality(text: string) {
 function scoreSourceNeutrality(lead: NewsItem, sources: NewsItem[]) {
   if (sources.length < 2) {
     return {
-      score: 50,
-      note: "Foreløbig score: kun én kilde er fundet, så vinklen kan ikke krydstjekkes sikkert endnu."
+      score: null,
+      note: "Ikke nok data: kun én kilde er fundet, så vinklen kan ikke krydstjekkes pålideligt."
     };
   }
 
