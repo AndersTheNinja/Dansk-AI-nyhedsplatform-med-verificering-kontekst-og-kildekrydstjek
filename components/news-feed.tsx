@@ -3,18 +3,18 @@
 import { useMemo, useState } from "react";
 import type { Story } from "@/lib/stories";
 
-const labels = {
-  confirmed: "✓ Bekræftet",
-  nuance: "! Kildekrydstjek",
-  unverified: "? Én kilde"
-};
-
 const categoryLabel: Record<string,string> = {
   "AI/Tech": "AI",
   "Erhverv": "Erhverv",
   "Danmark": "DK",
   "Aarhus": "Aarhus"
 };
+
+function scoreClass(score: number) {
+  if (score >= 80) return "high";
+  if (score >= 60) return "medium";
+  return "low";
+}
 
 export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
   const [category, setCategory] = useState<string>("Alle");
@@ -53,8 +53,37 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
                 <span>{story.published}</span>
               </div>
               <p>{story.summary}</p>
+
+              <div className="neutralityGrid">
+                <div className="neutralityMetric" title={story.neutrality.wordingNote}>
+                  <div className="neutralityTop">
+                    <span>Neutralitet ift. formulering</span>
+                    <strong>{story.neutrality.wording}%</strong>
+                  </div>
+                  <div className="neutralityTrack">
+                    <span
+                      className={`neutralityFill ${scoreClass(story.neutrality.wording)}`}
+                      style={{ width: `${story.neutrality.wording}%` }}
+                    />
+                  </div>
+                </div>
+
+                <div className="neutralityMetric" title={story.neutrality.sourcesNote}>
+                  <div className="neutralityTop">
+                    <span>Neutralitet ift. andre kilder</span>
+                    <strong>{story.neutrality.sources}%</strong>
+                  </div>
+                  <div className="neutralityTrack">
+                    <span
+                      className={`neutralityFill ${scoreClass(story.neutrality.sources)}`}
+                      style={{ width: `${story.neutrality.sources}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+
               <div className="storyBottom">
-                <span className={`miniBadge ${story.verification}`}>{labels[story.verification]}</span>
+                <span className="neutralityHint">AI-vurdering · klik/hold over score for forklaring</span>
                 {story.sources[0] && (
                   <a className="readMore" href={story.sources[0].url} target="_blank" rel="noreferrer">
                     Læs mere
