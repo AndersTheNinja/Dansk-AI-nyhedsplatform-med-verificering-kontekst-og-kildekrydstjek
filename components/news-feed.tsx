@@ -9,11 +9,11 @@ const labels = {
   unverified: "? Én kilde"
 };
 
-const categoryGlyph: Record<string,string> = {
+const categoryLabel: Record<string,string> = {
   "AI/Tech": "AI",
-  "Erhverv": "E",
+  "Erhverv": "Erhverv",
   "Danmark": "DK",
-  "Aarhus": "A"
+  "Aarhus": "Aarhus"
 };
 
 export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
@@ -43,18 +43,14 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
       <div className="storyList">
         {visible.map((story) => (
           <article className="storyRow" key={story.id}>
-            <div className={`thumb thumb-${story.category.replace(/[^a-z]/gi,"").toLowerCase()}`}>
-              <span>{categoryGlyph[story.category] || "K"}</span>
-            </div>
-
             <div className="storyContent">
               <h2>{story.title}</h2>
               <div className="storyMeta">
+                <span>{categoryLabel[story.category] || story.category}</span>
+                <span>•</span>
                 <span>{story.sourceLabel}</span>
                 <span>•</span>
                 <span>{story.published}</span>
-                <span>•</span>
-                <span>{story.category}</span>
               </div>
               <p>{story.summary}</p>
               <div className="storyBottom">
