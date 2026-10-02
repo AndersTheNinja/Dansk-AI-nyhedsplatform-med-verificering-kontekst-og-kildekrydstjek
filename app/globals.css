@@ -48,6 +48,13 @@ button{font:inherit}
 .filterBar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px;font-family:Arial,sans-serif}
 .filterTab{border:1px solid #cfd4d6;background:#fff;padding:7px 11px;font-size:12px;cursor:pointer}
 .filterTab.active{background:var(--teal);color:#fff;border-color:var(--teal)}
+.mediaFilter{display:flex;align-items:center;flex-wrap:wrap;gap:5px;margin:-6px 0 18px;font:11px Arial,sans-serif;color:#6f797f}
+.mediaLabel{font-weight:700;color:#4b555b;margin-right:2px}
+.mediaFilterItem{display:inline-flex;align-items:center;gap:5px}
+.mediaSeparator{color:#a9b0b4}
+.mediaLink{appearance:none;border:0;background:transparent;padding:0;color:#7f473f;cursor:pointer;font:11px Arial,sans-serif;text-decoration:none}
+.mediaLink:hover{text-decoration:underline}
+.mediaLink.active{font-weight:700;color:var(--teal-dark);text-decoration:underline}
 .sectionTitle{font:700 16px Arial,sans-serif;color:#455158;border-bottom:5px solid var(--teal);padding-bottom:7px;margin-bottom:4px}
 .storyRow{padding:16px 0;border-bottom:1px dotted #bfc6c8}
 .storyContent h2{font-size:20px;line-height:1.12;margin:0 0 5px;color:#315e67}
