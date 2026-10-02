@@ -69,6 +69,41 @@ const feeds: FeedConfig[] = [
     name: "Altinget",
     url: "https://www.altinget.dk/christiansborg/rss.aspx",
     category: "Danmark"
+  },
+  {
+    name: "Nordjyske",
+    url: "https://nordjyske.dk/rss/nyheder",
+    category: "Danmark"
+  },
+  {
+    name: "Fyens Stiftstidende",
+    url: "https://fyens.dk/feed/danmark",
+    category: "Danmark"
+  },
+  {
+    name: "JydskeVestkysten",
+    url: "https://jv.dk/feed/danmark",
+    category: "Danmark"
+  },
+  {
+    name: "Horsens Folkeblad",
+    url: "https://hsfo.dk/feed/danmark",
+    category: "Danmark"
+  },
+  {
+    name: "Fredericia Dagblad",
+    url: "https://frdb.dk/feed/danmark",
+    category: "Danmark"
+  },
+  {
+    name: "Journalisten",
+    url: "https://journalisten.dk/feed/",
+    category: "Erhverv"
+  },
+  {
+    name: "Berlingske",
+    url: "https://www.berlingske.dk/content/rss",
+    category: "Danmark"
   }
 ];
 
@@ -306,7 +341,7 @@ async function fetchFeed(feed: FeedConfig): Promise<NewsItem[]> {
   const rawItems = rssItems ?? atomItems ?? [];
   const items = Array.isArray(rawItems) ? rawItems : rawItems ? [rawItems] : [];
 
-  return items.slice(0, 100).map((raw: unknown, index: number) => {
+  return items.slice(0, 150).map((raw: unknown, index: number) => {
     const item = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
     const title = stripHtml(textValue(item.title) || "Ukendt historie");
     const link = linkValue(item.link) || feed.url;
@@ -359,10 +394,10 @@ export async function getLiveStories(): Promise<Story[]> {
     .sort((a, b) => b.age - a.age);
 
   const quotas: Record<Category, number> = {
-    Danmark: 30,
-    Erhverv: 15,
-    "AI/Tech": 20,
-    Aarhus: 15
+    Danmark: 55,
+    Erhverv: 25,
+    "AI/Tech": 30,
+    Aarhus: 20
   };
 
   const selected = ranked
