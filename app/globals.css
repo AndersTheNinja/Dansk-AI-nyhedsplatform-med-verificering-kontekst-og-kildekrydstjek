@@ -29,7 +29,6 @@ button{font:inherit}
 .sidebar{font-family:Arial,sans-serif}
 .sideBox{background:#fff;border:1px solid #d7dbdd;margin-bottom:18px;padding:14px}
 .sideBox h3{margin:0 0 12px;padding-bottom:8px;border-bottom:3px solid var(--teal);font-size:12px;letter-spacing:.08em;color:#4a565e}
-.sideBox>a{display:block;padding:8px 0;border-bottom:1px dotted #cbd0d2;text-decoration:none;font-size:13px}
 .sideBox p{font-size:12px;line-height:1.5;color:#667179;margin:0}
 .sideItem{display:flex;gap:9px;padding:9px 0;border-bottom:1px solid #eceeef}
 .sideItem:last-child{border-bottom:0}
@@ -42,17 +41,6 @@ button{font:inherit}
 .filterBar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px;font-family:Arial,sans-serif}
 .filterTab{border:1px solid #cfd4d6;background:#fff;padding:7px 11px;font-size:12px;cursor:pointer}
 .filterTab.active{background:var(--teal);color:#fff;border-color:var(--teal)}
-.featureStory{background:#fff;border:1px solid #cfd4d6;margin-bottom:24px}
-.featureVisual{position:relative;min-height:285px;background:linear-gradient(135deg,#173d43,#0d737c 58%,#7caeb1);overflow:hidden}
-.featureVisual:before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 25% 20%,rgba(255,255,255,.2),transparent 34%)}
-.featureGlyph{position:absolute;right:28px;top:18px;font:900 88px Arial,sans-serif;color:rgba(255,255,255,.15)}
-.featureOverlay{position:absolute;left:0;right:0;bottom:0;padding:20px 22px;background:linear-gradient(transparent,rgba(0,0,0,.78));color:white}
-.featureOverlay span{font:700 11px Arial,sans-serif;text-transform:uppercase;letter-spacing:.08em}
-.featureOverlay h1{font-size:30px;line-height:1.05;margin:7px 0 8px}
-.featureOverlay p{font-size:14px;line-height:1.45;margin:0;color:#ecf2f2}
-.featureMeta{display:flex;gap:7px;align-items:center;padding:11px 14px;font:11px Arial,sans-serif;color:#777;border-top:1px solid #d5dadc}
-.featureActions{padding:13px 14px 15px;font:12px/1.45 Arial,sans-serif;color:#667179;display:flex;gap:14px;align-items:flex-start}
-.featureActions a{font-weight:bold;white-space:nowrap}
 .sectionTitle{font:700 16px Arial,sans-serif;color:#455158;border-bottom:5px solid var(--teal);padding-bottom:7px;margin-bottom:4px}
 .storyRow{display:grid;grid-template-columns:150px minmax(0,1fr);gap:16px;padding:15px 0;border-bottom:1px dotted #bfc6c8}
 .thumb{height:105px;display:grid;place-items:center;border:1px solid #cfd4d6;background:linear-gradient(135deg,#dce8e8,#7ea7aa);overflow:hidden}
@@ -74,7 +62,6 @@ button{font:inherit}
   body{background:#fff}
   .contentShell{grid-template-columns:1fr}.sidebar{display:none}
   .masthead{height:74px}.siteName{font-size:25px}.logoBlock{width:38px;height:38px;font-size:20px}
-  .featureVisual{min-height:235px}.featureOverlay h1{font-size:25px}
 }
 @media(max-width:560px){
   .shell{width:min(100% - 24px,1030px)}
@@ -83,5 +70,4 @@ button{font:inherit}
   .thumb{height:88px}.thumb span{font-size:26px}
   .storyContent h2{font-size:17px}
   .storyContent p{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
-  .featureActions{flex-direction:column}
 }
