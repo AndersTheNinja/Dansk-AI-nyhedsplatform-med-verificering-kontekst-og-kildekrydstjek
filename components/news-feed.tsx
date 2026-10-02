@@ -102,15 +102,15 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
 
               <div className="neutralityGrid">
                 <div className="neutralityMetric" tabIndex={0}>
-                  <div className="neutralityTop">
-                    <span>Neutralitet ift. formulering</span>
+                  <div className="neutralityInline">
+                    <span className="neutralityLabel">Neutralitet ift. formulering</span>
+                    <div className="neutralityTrack">
+                      <span
+                        className={`neutralityFill ${scoreClass(story.neutrality.wording)}`}
+                        style={{ width: `${story.neutrality.wording}%` }}
+                      />
+                    </div>
                     <strong>{story.neutrality.wording}%</strong>
-                  </div>
-                  <div className="neutralityTrack">
-                    <span
-                      className={`neutralityFill ${scoreClass(story.neutrality.wording)}`}
-                      style={{ width: `${story.neutrality.wording}%` }}
-                    />
                   </div>
                   <div className="scoreTooltip" role="tooltip">
                     <strong>Baggrund for scoren</strong>
@@ -124,19 +124,19 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
                 </div>
 
                 <div className="neutralityMetric" tabIndex={0}>
-                  <div className="neutralityTop">
-                    <span>Neutralitet ift. andre kilder</span>
+                  <div className="neutralityInline">
+                    <span className="neutralityLabel">Neutralitet ift. andre kilder</span>
+                    <div className="neutralityTrack">
+                      {story.neutrality.sources === null ? (
+                        <span className="neutralityFill unavailable" style={{ width: "100%" }} />
+                      ) : (
+                        <span
+                          className={`neutralityFill ${scoreClass(story.neutrality.sources)}`}
+                          style={{ width: `${story.neutrality.sources}%` }}
+                        />
+                      )}
+                    </div>
                     <strong>{story.neutrality.sources === null ? "Ikke nok data" : `${story.neutrality.sources}%`}</strong>
-                  </div>
-                  <div className="neutralityTrack">
-                    {story.neutrality.sources === null ? (
-                      <span className="neutralityFill unavailable" style={{ width: "100%" }} />
-                    ) : (
-                      <span
-                        className={`neutralityFill ${scoreClass(story.neutrality.sources)}`}
-                        style={{ width: `${story.neutrality.sources}%` }}
-                      />
-                    )}
                   </div>
                   <div className="scoreTooltip" role="tooltip">
                     <strong>Baggrund for scoren</strong>
