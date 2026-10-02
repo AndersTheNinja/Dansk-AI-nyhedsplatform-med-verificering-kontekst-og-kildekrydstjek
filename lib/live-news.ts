@@ -230,6 +230,29 @@ function similarity(a: string, b: string) {
   return overlap / Math.min(wa.size, wb.size);
 }
 
+function sameStory(a: NewsItem, b: NewsItem) {
+  if (a.category !== b.category) return false;
+
+  const aTime = a.pubDate ? new Date(a.pubDate).getTime() : 0;
+  const bTime = b.pubDate ? new Date(b.pubDate).getTime() : 0;
+  if (aTime && bTime && Math.abs(aTime - bTime) > 48 * 3600000) return false;
+
+  const titleScore = similarity(a.title, b.title);
+  const descriptionScore = similarity(
+    `${a.title} ${a.description.slice(0, 220)}`,
+    `${b.title} ${b.description.slice(0, 220)}`
+  );
+
+  return titleScore >= 0.38 || (titleScore >= 0.24 && descriptionScore >= 0.34);
+}
+
+function publisherName(source: string) {
+  if (/^DR\b/i.test(source)) return "Danmarks Radio";
+  if (/TV\s?2/i.test(source)) return "TV2";
+  if (/Berlingske/i.test(source)) return "Berlingske Tidende";
+  return source;
+}
+
 const loadedWords = [
   "chokerende","skandaløs","skandale","katastrofal","katastrofe","fantastisk","fremragende",
   "forfærdelig","voldsom","ekstrem","sensationel","opsigtsvækkende","rasende","raseri",
@@ -374,9 +397,7 @@ export async function getLiveStories(): Promise<Story[]> {
   const clusters: NewsItem[][] = [];
   for (const item of fetched) {
     const match = clusters.find(
-      (cluster) =>
-        cluster[0]?.category === item.category &&
-        similarity(cluster[0].title, item.title) >= 0.56
+      (cluster) => cluster[0] && sameStory(cluster[0], item)
     );
     if (match) match.push(item);
     else clusters.push([item]);
@@ -386,7 +407,7 @@ export async function getLiveStories(): Promise<Story[]> {
     .map((cluster) => {
       const lead = cluster[0];
       const sources = Array.from(
-        new Map(cluster.map((item) => [item.source, item])).values()
+        new Map(cluster.map((item) => [publisherName(item.source), item])).values()
       );
       const age = lead.pubDate ? new Date(lead.pubDate).getTime() : 0;
       return { lead, sources, age };
@@ -406,7 +427,7 @@ export async function getLiveStories(): Promise<Story[]> {
       quotas[entry.lead.category]--;
       return true;
     })
-    .slice(0, 20);
+    .slice(0, 120);
 
   return selected.map((entry, index) => {
     const { lead, sources } = entry;
@@ -439,8 +460,9 @@ export async function getLiveStories(): Promise<Story[]> {
         sourcesExamples: sourceNeutrality.examples
       },
       sources: sources.slice(0, 4).map((item) => ({
-        label: item.source,
-        url: item.link
+        label: publisherName(item.source),
+        url: item.link,
+        title: item.title
       }))
     } satisfies Story;
   });
