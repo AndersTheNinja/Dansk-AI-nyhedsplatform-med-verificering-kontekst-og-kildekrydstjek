@@ -163,12 +163,12 @@ function timeAgo(pubDate?: string) {
   return `${days} d. siden`;
 }
 
-function isFresh(pubDate?: string, category?: Category) {
+function isFresh(pubDate?: string) {
   if (!pubDate) return true;
   const time = new Date(pubDate).getTime();
   if (Number.isNaN(time)) return true;
   const ageHours = (Date.now() - time) / 3600000;
-  const maxHours = category === "Aarhus" ? 168 : 72;
+  const maxHours = 14 * 24;
   return ageHours >= -2 && ageHours <= maxHours;
 }
 
@@ -306,7 +306,7 @@ async function fetchFeed(feed: FeedConfig): Promise<NewsItem[]> {
   const rawItems = rssItems ?? atomItems ?? [];
   const items = Array.isArray(rawItems) ? rawItems : rawItems ? [rawItems] : [];
 
-  return items.slice(0, 25).map((raw: unknown, index: number) => {
+  return items.slice(0, 100).map((raw: unknown, index: number) => {
     const item = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
     const title = stripHtml(textValue(item.title) || "Ukendt historie");
     const link = linkValue(item.link) || feed.url;
@@ -332,7 +332,7 @@ export async function getLiveStories(): Promise<Story[]> {
 
   const fetched = results
     .flatMap((result) => (result.status === "fulfilled" ? result.value : []))
-    .filter((item) => isFresh(item.pubDate, item.category));
+    .filter((item) => isFresh(item.pubDate));
 
   if (!fetched.length) return [];
 
@@ -359,10 +359,10 @@ export async function getLiveStories(): Promise<Story[]> {
     .sort((a, b) => b.age - a.age);
 
   const quotas: Record<Category, number> = {
-    Danmark: 6,
-    Erhverv: 4,
-    "AI/Tech": 5,
-    Aarhus: 5
+    Danmark: 30,
+    Erhverv: 15,
+    "AI/Tech": 20,
+    Aarhus: 15
   };
 
   const selected = ranked
