@@ -3,7 +3,7 @@ export type Verification = "confirmed" | "nuance" | "unverified";
 export type Neutrality = {
   wording: number;
   wordingNote: string;
-  sources: number;
+  sources: number | null;
   sourcesNote: string;
 };
 
@@ -38,7 +38,7 @@ export const demoStories: Story[] = [
     neutrality: {
       wording: 100,
       wordingNote: "Fallback-tekst uden vurderende nyhedsformuleringer.",
-      sources: 0,
+      sources: null,
       sourcesNote: "Ingen ekstern nyhed at sammenligne med andre kilder."
     },
     sources: [
