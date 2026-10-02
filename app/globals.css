@@ -47,6 +47,16 @@ button{font:inherit}
 .storyMeta{display:flex;gap:5px;flex-wrap:wrap;font:10px Arial,sans-serif;color:#9a6258;margin-bottom:7px}
 .storyMeta span:first-child{font-weight:700}
 .storyContent p{font-size:12.5px;line-height:1.5;color:#59656c;margin:0 0 8px}
+.neutralityGrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:12px 0 10px;font-family:Arial,sans-serif}
+.neutralityMetric{background:#fafbfb;border:1px solid #e1e5e6;padding:9px 10px}
+.neutralityTop{display:flex;justify-content:space-between;gap:10px;align-items:center;font-size:10px;color:#59656c;margin-bottom:7px}
+.neutralityTop strong{font-size:12px;color:#26353c}
+.neutralityTrack{height:7px;background:#e6eaeb;overflow:hidden}
+.neutralityFill{display:block;height:100%}
+.neutralityFill.high{background:#2c8b68}
+.neutralityFill.medium{background:#c49b2c}
+.neutralityFill.low{background:#b85c54}
+.neutralityHint{font-size:10px;color:#8a949a}
 .storyBottom{display:flex;justify-content:space-between;align-items:center;gap:12px;font-family:Arial,sans-serif}
 .readMore{display:inline-block;background:var(--teal);color:#fff;text-decoration:none;padding:5px 9px;font-size:10px;border-radius:2px}
 .miniBadge{display:inline-block;font:700 10px Arial,sans-serif;padding:4px 7px;border-radius:10px;background:#edf0f2;color:#59656c}
@@ -63,4 +73,5 @@ button{font:inherit}
   .siteTagline{display:none}.headerStatus{font-size:10px}
   .storyContent h2{font-size:17px}
   .storyContent p{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+  .neutralityGrid{grid-template-columns:1fr}
 }
