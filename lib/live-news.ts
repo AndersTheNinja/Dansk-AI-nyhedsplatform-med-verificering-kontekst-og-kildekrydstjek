@@ -3,12 +3,10 @@ import type { Story } from "@/lib/stories";
 
 type Category = Story["category"];
 
-type RawItem = {
-  title?: string;
-  link?: string;
-  pubDate?: string;
-  description?: string;
-  source?: string | { "#text"?: string };
+type FeedConfig = {
+  name: string;
+  url: string;
+  category: Category;
 };
 
 type NewsItem = {
@@ -21,11 +19,37 @@ type NewsItem = {
   id: string;
 };
 
-const feeds: { category: Category; query: string }[] = [
-  { category: "Danmark", query: "Danmark nyheder -sport" },
-  { category: "Erhverv", query: "dansk erhverv virksomheder startup investering -sport" },
-  { category: "AI/Tech", query: "AI kunstig intelligens teknologi Danmark virksomheder" },
-  { category: "Aarhus", query: "Aarhus kommune erhverv byudvikling kultur ejendom trafik -sport" }
+const feeds: FeedConfig[] = [
+  {
+    name: "DR Nyheder",
+    url: "https://www.dr.dk/nyheder/service/feeds/allenyheder",
+    category: "Danmark"
+  },
+  {
+    name: "DR Indland",
+    url: "https://www.dr.dk/nyheder/service/feeds/indland",
+    category: "Danmark"
+  },
+  {
+    name: "DR Penge",
+    url: "https://www.dr.dk/nyheder/service/feeds/penge",
+    category: "Erhverv"
+  },
+  {
+    name: "DR Østjylland",
+    url: "https://www.dr.dk/Nyheder/Service/feeds/regionale/oestjylland/",
+    category: "Aarhus"
+  },
+  {
+    name: "Version2",
+    url: "https://www.version2.dk/feeds/nyheder",
+    category: "AI/Tech"
+  },
+  {
+    name: "Ingeniøren",
+    url: "https://www.ing.dk/rss",
+    category: "AI/Tech"
+  }
 ];
 
 const parser = new XMLParser({
@@ -34,135 +58,8 @@ const parser = new XMLParser({
   trimValues: true
 });
 
-const trustedSources: Record<string, number> = {
-  "DR": 14,
-  "TV 2": 14,
-  "Ritzau": 14,
-  "Børsen": 13,
-  "Finans": 12,
-  "Berlingske": 11,
-  "Politiken": 11,
-  "Jyllands-Posten": 11,
-  "Jyllands-posten": 11,
-  "Altinget": 11,
-  "Version2": 10,
-  "Ingeniøren": 10,
-  "Computerworld": 9,
-  "TechSavvy": 8,
-  "Aarhus Stiftstidende": 11,
-  "Stiften": 11,
-  "Aarhus Kommune": 14,
-  "Erhvervsstyrelsen": 14,
-  "Finansministeriet": 14,
-  "Danmarks Statistik": 14,
-  "Folketinget": 14,
-  "Nationalbanken": 14
-};
-
-const danishSourcePatterns = [
-  /^DR$/i,
-  /^TV 2$/i,
-  /TV2/i,
-  /Ritzau/i,
-  /Børsen/i,
-  /Finans(?!avisen)/i,
-  /FinansWatch/i,
-  /Berlingske/i,
-  /Politiken/i,
-  /Jyllands-Posten/i,
-  /Jyllands-posten/i,
-  /JP\.dk/i,
-  /Altinget/i,
-  /Version2/i,
-  /Ingeniøren/i,
-  /Computerworld/i,
-  /TechSavvy/i,
-  /Aarhus Stiftstidende/i,
-  /Stiften/i,
-  /TV2 Østjylland/i,
-  /TV 2 Østjylland/i,
-  /DK Nyt/i,
-  /dknyt/i,
-  /Kommunen\.dk/i,
-  /Aarhus Kommune/i,
-  /Erhvervsstyrelsen/i,
-  /Finansministeriet/i,
-  /Danmarks Statistik/i,
-  /Folketinget/i,
-  /Nationalbanken/i
-];
-
-const foreignSourcePatterns = [
-  /Finansavisen/i,
-  /Vietnam\.vn/i,
-  /VG\b/i,
-  /Aftenposten/i,
-  /Dagbladet/i,
-  /Nettavisen/i,
-  /NRK/i,
-  /E24/i,
-  /Dagens Næringsliv/i,
-  /Svenska Dagbladet/i,
-  /Aftonbladet/i,
-  /Expressen/i
-];
-
-function isLikelyDanish(item: NewsItem) {
-  if (foreignSourcePatterns.some((pattern) => pattern.test(item.source))) return false;
-  if (danishSourcePatterns.some((pattern) => pattern.test(item.source))) return true;
-
-  // Google News-feedet er allerede låst til dansk sprog/region (da-DK).
-  // Ukendte kilder får derfor lov at passere, medmindre de matcher en kendt udenlandsk kilde.
-  return true;
-}
-
-function isFresh(pubDate?: string) {
-  if (!pubDate) return false;
-  const time = new Date(pubDate).getTime();
-  if (Number.isNaN(time)) return false;
-  const ageHours = (Date.now() - time) / 3600000;
-  return ageHours >= -1 && ageHours <= 56;
-}
-
-const lowValueSourcePatterns = [
-  /fotmob/i,
-  /flashscore/i,
-  /livescore/i,
-  /bold\.dk/i,
-  /tipsbladet/i,
-  /transfermarkt/i,
-  /odds/i,
-  /resultat/i,
-  /statistik.*division/i
-];
-
-const lowValueTitlePatterns = [
-  /statistik for/i,
-  /blokeringer per 90/i,
-  /opstilling/i,
-  /startopstilling/i,
-  /odds/i,
-  /live score/i,
-  /kampreferat/i
-];
-
-const categorySignals: Record<Category, RegExp[]> = {
-  Danmark: [
-    /regering|folketing|lovforslag|minister|kommune|skat|økonomi|sundhed|uddannelse|bolig|energi|infrastruktur|politi|domstol|forsvar/i
-  ],
-  Erhverv: [
-    /virksomhed|milliard|million|investering|opkøb|fusion|regnskab|omsætning|overskud|underskud|startup|iværksætter|aktie|børs|arbejdsplads|fabrik|produktion/i
-  ],
-  "AI/Tech": [
-    /\bAI\b|kunstig intelligens|chatgpt|openai|anthropic|nvidia|microsoft|google|apple|robot|software|chip|teknologi|cyber|digital|startup/i
-  ],
-  Aarhus: [
-    /aarhus|århus|midtbyen|havnen|letbane|kommune|byråd|byudvikling|bolig|ejendom|erhverv|kultur|trafik|universitet|skejby/i
-  ]
-};
-
 function stripHtml(value = "") {
-  return value
+  return String(value)
     .replace(/<[^>]*>/g, " ")
     .replace(/&nbsp;/g, " ")
     .replace(/&amp;/g, "&")
@@ -172,9 +69,41 @@ function stripHtml(value = "") {
     .trim();
 }
 
-function sourceName(source: RawItem["source"]) {
-  if (typeof source === "string") return source;
-  return source?.["#text"] || "Nyhedskilde";
+function textValue(value: unknown): string {
+  if (typeof value === "string" || typeof value === "number") return String(value);
+  if (value && typeof value === "object") {
+    const obj = value as Record<string, unknown>;
+    return textValue(obj["#text"] ?? obj["@_href"] ?? obj["href"] ?? "");
+  }
+  return "";
+}
+
+function linkValue(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (Array.isArray(value)) {
+    const alternate = value.find((item) => {
+      if (!item || typeof item !== "object") return false;
+      const rel = String((item as Record<string, unknown>)["@_rel"] ?? "");
+      return !rel || rel === "alternate";
+    });
+    return linkValue(alternate ?? value[0]);
+  }
+  if (value && typeof value === "object") {
+    const obj = value as Record<string, unknown>;
+    return String(obj["@_href"] ?? obj["href"] ?? obj["#text"] ?? "");
+  }
+  return "";
+}
+
+function publishedValue(item: Record<string, unknown>): string | undefined {
+  const raw =
+    item.pubDate ??
+    item.published ??
+    item.updated ??
+    item["dc:date"] ??
+    item.date;
+  const value = textValue(raw);
+  return value || undefined;
 }
 
 function timeAgo(pubDate?: string) {
@@ -187,6 +116,15 @@ function timeAgo(pubDate?: string) {
   if (hours < 24) return `${hours} t. siden`;
   const days = Math.floor(hours / 24);
   return `${days} d. siden`;
+}
+
+function isFresh(pubDate?: string, category?: Category) {
+  if (!pubDate) return true;
+  const time = new Date(pubDate).getTime();
+  if (Number.isNaN(time)) return true;
+  const ageHours = (Date.now() - time) / 3600000;
+  const maxHours = category === "Aarhus" ? 168 : 72;
+  return ageHours >= -2 && ageHours <= maxHours;
 }
 
 function words(title: string) {
@@ -212,196 +150,128 @@ function similarity(a: string, b: string) {
   return overlap / Math.min(wa.size, wb.size);
 }
 
-function sourceScore(source: string) {
-  for (const [name, score] of Object.entries(trustedSources)) {
-    if (source.toLowerCase().includes(name.toLowerCase())) return score;
-  }
-  return 3;
-}
-
-function recencyScore(pubDate?: string) {
-  if (!pubDate) return 0;
-  const ageHours = Math.max(0, (Date.now() - new Date(pubDate).getTime()) / 3600000);
-  if (ageHours <= 2) return 16;
-  if (ageHours <= 6) return 13;
-  if (ageHours <= 12) return 10;
-  if (ageHours <= 24) return 7;
-  if (ageHours <= 48) return 3;
-  return 0;
-}
-
-function relevanceScore(item: NewsItem) {
-  const text = `${item.title} ${item.description}`;
-  let score = sourceScore(item.source) + recencyScore(item.pubDate);
-
-  for (const pattern of categorySignals[item.category]) {
-    if (pattern.test(text)) score += 7;
-  }
-
-  if (item.description.length > 100) score += 2;
-  if (item.title.length >= 28 && item.title.length <= 120) score += 2;
-
-  if (item.category === "Aarhus" && /aarhus|århus/i.test(text)) score += 8;
-  if (item.category === "Erhverv" && /regnskab|investering|opkøb|fusion|milliard|million|startup|virksomhed/i.test(text)) score += 6;
-  if (item.category === "AI/Tech" && /\bAI\b|kunstig intelligens|openai|anthropic|nvidia|chatgpt/i.test(text)) score += 6;
-
-  if (lowValueSourcePatterns.some((pattern) => pattern.test(item.source))) score -= 30;
-  if (lowValueTitlePatterns.some((pattern) => pattern.test(item.title))) score -= 30;
-
-  return score;
-}
-
 function categoryWhy(category: Category) {
   switch (category) {
     case "AI/Tech":
-      return "Udvalgt som et stærkt aktuelt signal om AI, teknologi eller nye digitale forretningsmodeller.";
+      return "Aktuel dansk teknologi- eller AI-historie fra en redaktionel kilde.";
     case "Erhverv":
-      return "Udvalgt for sin relevans for dansk erhvervsliv, investeringer eller nye forretningsmuligheder.";
+      return "Aktuel erhvervshistorie med relevans for danske virksomheder og økonomi.";
     case "Aarhus":
-      return "Udvalgt for sin betydning for Aarhus, byudvikling, erhverv eller lokale beslutninger.";
+      return "Aktuel historie fra Østjylland med lokal relevans for Aarhus-området.";
     default:
-      return "Udvalgt som en væsentlig aktuel dansk historie med højere relevans end den øvrige nyhedsstrøm.";
+      return "Aktuel dansk nyhed fra en redaktionel kilde.";
   }
 }
 
-async function fetchFeed(category: Category, query: string) {
-  const url =
-    "https://news.google.com/rss/search?q=" +
-    encodeURIComponent(query) +
-    "&hl=da&gl=DK&ceid=DK:da";
-
-  const response = await fetch(url, {
+async function fetchFeed(feed: FeedConfig): Promise<NewsItem[]> {
+  const response = await fetch(feed.url, {
     next: { revalidate: 300 },
-    headers: { "User-Agent": "KONTEKST-News-MVP/0.3" }
+    headers: {
+      "User-Agent": "Mozilla/5.0 (compatible; KONTEKST/0.4; +https://vercel.app)",
+      Accept: "application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.8"
+    }
   });
 
-  if (!response.ok) throw new Error(`Feed failed: ${response.status}`);
+  if (!response.ok) {
+    throw new Error(`${feed.name} returned ${response.status}`);
+  }
 
   const xml = await response.text();
   const parsed = parser.parse(xml);
-  const items = parsed?.rss?.channel?.item;
-  const list: RawItem[] = Array.isArray(items) ? items : items ? [items] : [];
 
-  return list.slice(0, 30).map((item, index): NewsItem => ({
-    category,
-    title: stripHtml(item.title || "Ukendt historie"),
-    link: item.link || url,
-    pubDate: item.pubDate,
-    description: stripHtml(item.description || ""),
-    source: sourceName(item.source),
-    id: `${category}-${index}-${item.link || item.title || index}`
-  }));
-}
+  const rssItems = parsed?.rss?.channel?.item;
+  const atomItems = parsed?.feed?.entry;
+  const rawItems = rssItems ?? atomItems ?? [];
+  const items = Array.isArray(rawItems) ? rawItems : rawItems ? [rawItems] : [];
 
-function selectBalanced<T extends { category: Category; score: number }>(items: T[]) {
-  const quotas: Record<Category, number> = {
-    Danmark: 5,
-    Erhverv: 5,
-    "AI/Tech": 5,
-    Aarhus: 5
-  };
+  return items.slice(0, 25).map((raw: unknown, index: number) => {
+    const item = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+    const title = stripHtml(textValue(item.title) || "Ukendt historie");
+    const link = linkValue(item.link) || feed.url;
+    const description = stripHtml(
+      textValue(item.description ?? item.summary ?? item.content ?? "")
+    );
+    const pubDate = publishedValue(item);
 
-  const selected: T[] = [];
-  const used = new Set<T>();
-
-  for (const category of Object.keys(quotas) as Category[]) {
-    const categoryItems = items
-      .filter((item) => item.category === category)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, quotas[category]);
-
-    for (const item of categoryItems) {
-      selected.push(item);
-      used.add(item);
-    }
-  }
-
-  if (selected.length < 20) {
-    const extras = items
-      .filter((item) => !used.has(item))
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 20 - selected.length);
-    selected.push(...extras);
-  }
-
-  return selected.sort((a, b) => b.score - a.score).slice(0, 20);
+    return {
+      category: feed.category,
+      title,
+      link,
+      pubDate,
+      description,
+      source: feed.name,
+      id: `${feed.name}-${index}-${link || title}`
+    };
+  }).filter((item: NewsItem) => item.title && item.link);
 }
 
 export async function getLiveStories(): Promise<Story[]> {
-  const results = await Promise.allSettled(
-    feeds.map((feed) => fetchFeed(feed.category, feed.query))
-  );
+  const results = await Promise.allSettled(feeds.map(fetchFeed));
 
   const fetched = results
-    .flatMap((result) => (result.status === "fulfilled" ? result.value : []));
+    .flatMap((result) => (result.status === "fulfilled" ? result.value : []))
+    .filter((item) => isFresh(item.pubDate, item.category));
 
-  const strict = fetched
-    .filter((item) => isLikelyDanish(item))
-    .filter((item) => isFresh(item.pubDate))
-    .filter((item) => relevanceScore(item) > 4);
-
-  // Robust fallback: hvis det stramme filter mod forventning giver 0 historier,
-  // vises stadig friske da-DK-resultater, dog med kendte udenlandske kilder blokeret.
-  const all = (strict.length ? strict : fetched
-    .filter((item) => !foreignSourcePatterns.some((pattern) => pattern.test(item.source)))
-    .filter((item) => isFresh(item.pubDate)))
-    .sort((a, b) => relevanceScore(b) - relevanceScore(a));
+  if (!fetched.length) return [];
 
   const clusters: NewsItem[][] = [];
-  for (const item of all) {
+  for (const item of fetched) {
     const match = clusters.find(
       (cluster) =>
         cluster[0]?.category === item.category &&
-        similarity(cluster[0].title, item.title) >= 0.52
+        similarity(cluster[0].title, item.title) >= 0.56
     );
     if (match) match.push(item);
     else clusters.push([item]);
   }
 
-  const ranked = clusters.map((cluster) => {
-    const uniqueSources = Array.from(
-      new Map(cluster.map((item) => [item.source, item])).values()
-    ).slice(0, 5);
+  const ranked = clusters
+    .map((cluster) => {
+      const lead = cluster[0];
+      const sources = Array.from(
+        new Map(cluster.map((item) => [item.source, item])).values()
+      );
+      const age = lead.pubDate ? new Date(lead.pubDate).getTime() : 0;
+      return { lead, sources, age };
+    })
+    .sort((a, b) => b.age - a.age);
 
-    const lead = [...cluster].sort(
-      (a, b) => relevanceScore(b) - relevanceScore(a)
-    )[0];
+  const quotas: Record<Category, number> = {
+    Danmark: 6,
+    Erhverv: 4,
+    "AI/Tech": 5,
+    Aarhus: 5
+  };
 
-    const crossCheckBonus = Math.min(15, (uniqueSources.length - 1) * 5);
-    return {
-      cluster,
-      lead,
-      uniqueSources,
-      category: lead.category,
-      score: relevanceScore(lead) + crossCheckBonus
-    };
-  });
-
-  const selected = selectBalanced(ranked);
+  const selected = ranked
+    .filter((entry) => {
+      if (quotas[entry.lead.category] <= 0) return false;
+      quotas[entry.lead.category]--;
+      return true;
+    })
+    .slice(0, 20);
 
   return selected.map((entry, index) => {
-    const { lead, uniqueSources } = entry;
-    const hasCrossCheck = uniqueSources.length >= 2;
+    const { lead, sources } = entry;
+    const hasCrossCheck = sources.length >= 2;
     const summary =
-      lead.description && lead.description.length > 70
-        ? lead.description.slice(0, 340).replace(/\s+\S*$/, "") + "…"
-        : `Historien er aktuelt omtalt af ${lead.source}. Åbn kilden for den fulde artikel og detaljerne.`;
+      lead.description.length > 70
+        ? lead.description.slice(0, 300).replace(/\s+\S*$/, "") + "…"
+        : `Historien er publiceret af ${lead.source}. Åbn originalkilden for detaljerne.`;
 
     return {
       id: `live-${index}-${lead.id}`,
       category: lead.category,
       title: lead.title,
-      sourceLabel: hasCrossCheck
-        ? `${uniqueSources.length} kilder`
-        : lead.source,
+      sourceLabel: hasCrossCheck ? `${sources.length} kilder` : lead.source,
       published: timeAgo(lead.pubDate),
       summary,
       why: categoryWhy(lead.category),
       verification: hasCrossCheck ? "nuance" : "unverified",
       verificationText: hasCrossCheck
-        ? `KONTEKST har fundet ${uniqueSources.length} forskellige mediekilder med meget lignende omtale. Det er et stærkere signal end én kilde, men ikke i sig selv en fuld faktaverifikation af alle centrale påstande.`
-        : "Historien er foreløbigt kun fundet hos én registreret kilde. Den markeres derfor ikke som bekræftet, før flere uafhængige kilder eller en primærkilde er koblet på.",
-      sources: uniqueSources.map((item) => ({
+        ? `KONTEKST har fundet samme historie hos ${sources.length} forskellige kilder. Det er et kildekrydstjek, men ikke en fuld faktaverifikation.`
+        : "Historien er foreløbigt kun fundet hos én kilde og markeres derfor ikke som fuldt verificeret.",
+      sources: sources.slice(0, 4).map((item) => ({
         label: item.source,
         url: item.link
       }))
