@@ -55,7 +55,7 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
               <p>{story.summary}</p>
 
               <div className="neutralityGrid">
-                <div className="neutralityMetric" title={story.neutrality.wordingNote}>
+                <div className="neutralityMetric" tabIndex={0}>
                   <div className="neutralityTop">
                     <span>Neutralitet ift. formulering</span>
                     <strong>{story.neutrality.wording}%</strong>
@@ -66,9 +66,18 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
                       style={{ width: `${story.neutrality.wording}%` }}
                     />
                   </div>
+                  <div className="scoreTooltip" role="tooltip">
+                    <strong>Baggrund for scoren</strong>
+                    <p>{story.neutrality.wordingNote}</p>
+                    {story.neutrality.wordingExamples.length > 0 ? (
+                      <ul>{story.neutrality.wordingExamples.map((example) => <li key={example}>{example}</li>)}</ul>
+                    ) : (
+                      <p>Ingen tydelige ladede eller absolutte ord blev fundet i den tilgængelige feedtekst.</p>
+                    )}
+                  </div>
                 </div>
 
-                <div className="neutralityMetric" title={story.neutrality.sourcesNote}>
+                <div className="neutralityMetric" tabIndex={0}>
                   <div className="neutralityTop">
                     <span>Neutralitet ift. andre kilder</span>
                     <strong>{story.neutrality.sources === null ? "Ikke nok data" : `${story.neutrality.sources}%`}</strong>
@@ -81,6 +90,16 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
                         className={`neutralityFill ${scoreClass(story.neutrality.sources)}`}
                         style={{ width: `${story.neutrality.sources}%` }}
                       />
+                    )}
+                  </div>
+                  <div className="scoreTooltip" role="tooltip">
+                    <strong>Baggrund for scoren</strong>
+                    <p>{story.neutrality.sourcesNote}</p>
+                    {story.neutrality.sourcesExamples.length > 0 && (
+                      <>
+                        <div className="tooltipLabel">Sammenlignede kilder</div>
+                        <ul>{story.neutrality.sourcesExamples.map((example) => <li key={example}>{example}</li>)}</ul>
+                      </>
                     )}
                   </div>
                 </div>
