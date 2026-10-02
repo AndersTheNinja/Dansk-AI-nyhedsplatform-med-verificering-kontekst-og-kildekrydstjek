@@ -20,7 +20,7 @@ export type Story = {
   verification: Verification;
   verificationText: string;
   neutrality: Neutrality;
-  sources: { label: string; url: string }[];
+  sources: { label: string; url: string; title?: string }[];
 };
 
 export const demoStories: Story[] = [
