@@ -78,13 +78,38 @@ const parser = new XMLParser({
   trimValues: true
 });
 
+function decodeHtmlEntities(value: string) {
+  const named: Record<string, string> = {
+    amp: "&",
+    quot: '"',
+    apos: "'",
+    nbsp: " ",
+    lt: "<",
+    gt: ">"
+  };
+
+  let decoded = value;
+
+  // Some feeds contain double-escaped entities such as &amp;#248;.
+  for (let pass = 0; pass < 2; pass++) {
+    decoded = decoded
+      .replace(/&#x([0-9a-f]+);/gi, (_, hex: string) =>
+        String.fromCodePoint(parseInt(hex, 16))
+      )
+      .replace(/&#(\d+);/g, (_, num: string) =>
+        String.fromCodePoint(parseInt(num, 10))
+      )
+      .replace(/&([a-z]+);/gi, (match, name: string) =>
+        named[name.toLowerCase()] ?? match
+      );
+  }
+
+  return decoded;
+}
+
 function stripHtml(value = "") {
-  return String(value)
+  return decodeHtmlEntities(String(value))
     .replace(/<[^>]*>/g, " ")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&#39;/g, "'")
-    .replace(/&quot;/g, '"')
     .replace(/\s+/g, " ")
     .trim();
 }
