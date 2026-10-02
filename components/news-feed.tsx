@@ -111,7 +111,7 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
               <div className="neutralityGrid">
                 <div className="neutralityMetric" tabIndex={0}>
                   <div className="neutralityInline">
-                    <span className="neutralityLabel">Neutralitet ift. formulering</span>
+                    <span className="neutralityLabel">Objektivitet ift. formulering</span>
                     <div className="neutralityTrack">
                       <span
                         className={`neutralityFill ${scoreClass(story.neutrality.wording)}`}
@@ -133,7 +133,7 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
 
                 <div className="neutralityMetric" tabIndex={0}>
                   <div className="neutralityInline">
-                    <span className="neutralityLabel">Neutralitet ift. andre kilder</span>
+                    <span className="neutralityLabel">Objektivitet ift. andre kilder</span>
                     <div className="neutralityTrack">
                       {story.neutrality.sources === null ? (
                         <span className="neutralityFill unavailable" style={{ width: "100%" }} />
