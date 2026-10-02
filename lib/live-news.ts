@@ -168,8 +168,10 @@ const absolutistWords = [
 function scoreWordingNeutrality(text: string) {
   const normalized = text.toLowerCase();
   const wordsInText = normalized.split(/\s+/).filter(Boolean);
-  const loadedHits = loadedWords.filter((word) => normalized.includes(word)).length;
-  const absoluteHits = absolutistWords.filter((word) => normalized.includes(word)).length;
+  const loadedMatches = loadedWords.filter((word) => normalized.includes(word));
+  const absoluteMatches = absolutistWords.filter((word) => normalized.includes(word));
+  const loadedHits = loadedMatches.length;
+  const absoluteHits = absoluteMatches.length;
   const exclamations = (text.match(/!/g) || []).length;
   const questionMarks = (text.match(/\?/g) || []).length;
   const quoteMarks = (text.match(/['"“”‘’]/g) || []).length;
@@ -180,18 +182,27 @@ function scoreWordingNeutrality(text: string) {
   const rhetoricPenalty = Math.min(10, questionMarks * 2 + Math.floor(quoteMarks / 2) + colonHeadlines);
   const score = Math.max(35, Math.min(100, 100 - densityPenalty - absoluteHits * 5 - exclamations * 4 - rhetoricPenalty));
 
-  const note = loadedHits === 0 && absoluteHits === 0 && exclamations === 0
-    ? "Sproget fremstår overvejende neutralt i overskrift og feedtekst."
-    : `Sproglig vurdering baseret på ladede ord, absolutte formuleringer og tegnsætning i overskrift/feedtekst.`;
+  const examples: string[] = [];
+  if (loadedMatches.length) examples.push(`Ladede ord: ${loadedMatches.slice(0, 6).join(", ")}`);
+  if (absoluteMatches.length) examples.push(`Absolutte ord: ${absoluteMatches.slice(0, 5).join(", ")}`);
+  if (exclamations) examples.push(`Udråbstegn: ${exclamations}`);
+  if (questionMarks) examples.push(`Spørgsmålstegn: ${questionMarks}`);
+  if (quoteMarks >= 2) examples.push("Citat-/anførselstegn påvirker retorikscoren svagt");
+  if (colonHeadlines) examples.push("Kolon i overskrift/feedtekst påvirker retorikscoren svagt");
 
-  return { score, note };
+  const note = loadedHits === 0 && absoluteHits === 0 && exclamations === 0 && questionMarks === 0
+    ? "Sproget fremstår overvejende neutralt i den tekst, som feedet stiller til rådighed."
+    : "Scoren er beregnet ud fra konkrete sproglige markører i overskrift og feedtekst.";
+
+  return { score, note, examples };
 }
 
 function scoreSourceNeutrality(lead: NewsItem, sources: NewsItem[]) {
   if (sources.length < 2) {
     return {
       score: null,
-      note: "Ikke nok data: kun én kilde er fundet, så vinklen kan ikke krydstjekkes pålideligt."
+      note: "Ikke nok data: kun én kilde er fundet, så vinklen kan ikke krydstjekkes pålideligt.",
+      examples: [`Fundet kilde: ${lead.source}`]
     };
   }
 
@@ -204,9 +215,15 @@ function scoreSourceNeutrality(lead: NewsItem, sources: NewsItem[]) {
     : 0.5;
 
   const score = Math.max(45, Math.min(98, Math.round(58 + average * 40 + Math.min(8, (sources.length - 2) * 4))));
+  const comparisonExamples = sources
+    .filter((source) => source.id !== lead.id)
+    .slice(0, 3)
+    .map((source) => `${source.source}: “${source.title.slice(0, 105)}${source.title.length > 105 ? "…" : ""}”`);
+
   return {
     score,
-    note: `Vurderet ud fra ${sources.length} kilder og hvor ens deres centrale framing/overskrifter er. Høj score betyder større overensstemmelse, ikke nødvendigvis fuld sandhed.`
+    note: `Vurderet ud fra ${sources.length} kilder og hvor ens deres centrale framing/overskrifter er. Høj score betyder større overensstemmelse, ikke nødvendigvis fuld sandhed.`,
+    examples: comparisonExamples
   };
 }
 
@@ -336,8 +353,10 @@ export async function getLiveStories(): Promise<Story[]> {
       neutrality: {
         wording: wordingNeutrality.score,
         wordingNote: wordingNeutrality.note,
+        wordingExamples: wordingNeutrality.examples,
         sources: sourceNeutrality.score,
-        sourcesNote: sourceNeutrality.note
+        sourcesNote: sourceNeutrality.note,
+        sourcesExamples: sourceNeutrality.examples
       },
       sources: sources.slice(0, 4).map((item) => ({
         label: item.source,
