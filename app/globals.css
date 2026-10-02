@@ -48,7 +48,16 @@ button{font:inherit}
 .storyMeta span:first-child{font-weight:700}
 .storyContent p{font-size:12.5px;line-height:1.5;color:#59656c;margin:0 0 8px}
 .neutralityGrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:12px 0 10px;font-family:Arial,sans-serif}
-.neutralityMetric{background:#fafbfb;border:1px solid #e1e5e6;padding:9px 10px}
+.neutralityMetric{position:relative;background:#fafbfb;border:1px solid #e1e5e6;padding:9px 10px;cursor:help;outline:none}
+.neutralityMetric:hover,.neutralityMetric:focus{border-color:#aeb9bd;background:#fff}
+.scoreTooltip{position:absolute;left:0;top:calc(100% + 8px);z-index:30;width:min(390px,85vw);padding:12px 14px;background:#172229;color:#f7fafb;border-radius:6px;box-shadow:0 12px 30px rgba(0,0,0,.2);font:12px/1.45 Arial,sans-serif;opacity:0;visibility:hidden;transform:translateY(-4px);transition:.15s ease;pointer-events:none}
+.scoreTooltip:before{content:"";position:absolute;top:-6px;left:22px;width:12px;height:12px;background:#172229;transform:rotate(45deg)}
+.neutralityMetric:hover .scoreTooltip,.neutralityMetric:focus .scoreTooltip{opacity:1;visibility:visible;transform:translateY(0)}
+.scoreTooltip strong{display:block;font-size:12px;margin-bottom:5px}
+.scoreTooltip p{margin:0 0 7px;color:#dbe3e6;font:12px/1.45 Arial,sans-serif}
+.scoreTooltip ul{margin:5px 0 0;padding-left:17px}
+.scoreTooltip li{margin:3px 0;color:#eef3f5}
+.tooltipLabel{margin-top:8px;color:#9fcbd0;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
 .neutralityTop{display:flex;justify-content:space-between;gap:10px;align-items:center;font-size:10px;color:#59656c;margin-bottom:7px}
 .neutralityTop strong{font-size:12px;color:#26353c}
 .neutralityTrack{height:7px;background:#e6eaeb;overflow:hidden}
