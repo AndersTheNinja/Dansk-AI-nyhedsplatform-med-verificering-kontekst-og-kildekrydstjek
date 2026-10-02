@@ -54,6 +54,14 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
               </div>
               <p>{story.summary}</p>
 
+              {story.sources[0] && (
+                <div className="readRow">
+                  <a className="readMore" href={story.sources[0].url} target="_blank" rel="noreferrer">
+                    Læs mere
+                  </a>
+                </div>
+              )}
+
               <div className="neutralityGrid">
                 <div className="neutralityMetric" tabIndex={0}>
                   <div className="neutralityTop">
@@ -107,11 +115,6 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
 
               <div className="storyBottom">
                 <span className="neutralityHint">AI-vurdering · klik/hold over score for forklaring</span>
-                {story.sources[0] && (
-                  <a className="readMore" href={story.sources[0].url} target="_blank" rel="noreferrer">
-                    Læs mere
-                  </a>
-                )}
               </div>
             </div>
           </article>
