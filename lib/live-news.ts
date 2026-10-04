@@ -403,63 +403,9 @@ async function fetchFeed(feed: FeedConfig): Promise<NewsItem[]> {
 
 
 function extractMetaContent(html: string, key: string) {
-  const escaped = key.replace(/[.*+?^$()|[\]\\]/g, "\\async function fetchBorsenWebsite(): Promise<NewsItem[]> {
-  const response = await fetch("https://borsen.dk/", {
-    next: { revalidate: 300 },
-    headers: {
-      "User-Agent": "Mozilla/5.0 (compatible; KONTEKST/0.5; +https://vercel.app)",
-      Accept: "text/html,application/xhtml+xml"
-    }
-  });
-
-  if (!response.ok) {
-    throw new Error(`Børsen website returned ${response.status}`);
-  }
-
-  const html = await response.text();
-  const items: NewsItem[] = [];
-  const seen = new Set<string>();
-
-  // Børsen is collected directly from links on the website — not from an RSS feed.
-  const anchorPattern = /<a\b([^>]*?)href=["']([^"']+)["']([^>]*)>([\s\S]*?)<\/a>/gi;
-  let match: RegExpExecArray | null;
-
-  while ((match = anchorPattern.exec(html)) && items.length < 12) {
-    const href = decodeHtmlEntities(match[2] || "").trim();
-    const rawTitle = stripHtml(match[4] || "");
-
-    if (rawTitle.length < 25 || rawTitle.length > 220) continue;
-
-    let url: URL;
-    try {
-      url = new URL(href, "https://borsen.dk/");
-    } catch {
-      continue;
-    }
-
-    if (!/(^|\.)borsen\.dk$/i.test(url.hostname)) continue;
-    if (!/^\/nyheder\//i.test(url.pathname)) continue;
-
-    const canonical = `${url.origin}${url.pathname}`;
-    if (seen.has(canonical)) continue;
-    seen.add(canonical);
-
-    items.push({
-      category: "Erhverv",
-      title: rawTitle,
-      link: canonical,
-      description: "",
-      source: "Børsen",
-      method: "WEB",
-      id: `Børsen-web-${items.length}-${canonical}`
-    });
-  }
-
-  return items;
-}");
   const patterns = [
-    new RegExp(`<meta[^>]+(?:property|name)=["']${escaped}["'][^>]+content=["']([^"']+)["']`, "i"),
-    new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']${escaped}["']`, "i")
+    new RegExp(`<meta[^>]+(?:property|name)=["']${key}["'][^>]+content=["']([^"']+)["']`, "i"),
+    new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']${key}["']`, "i")
   ];
   for (const pattern of patterns) {
     const match = html.match(pattern);
@@ -501,9 +447,7 @@ async function enrichBorsenItem(item: NewsItem): Promise<NewsItem> {
       extractMetaContent(html, "og:description") ||
       item.description;
 
-    const headline =
-      extractMetaContent(html, "og:title") ||
-      item.title;
+    const headline = extractMetaContent(html, "og:title") || item.title;
 
     return {
       ...item,
