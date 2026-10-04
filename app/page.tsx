@@ -17,12 +17,12 @@ export default async function Home() {
   return (
     <main className="site">
       <header className="masthead shell">
-        <div className="logoRow">
-          <div className="logoBlock">ØL</div>
-          <div>
+        <div className="brandArea">
+          <div className="logoRow">
+            <div className="logoBlock">ØL</div>
             <div className="siteName"><span className="siteNameAccent">.dk</span></div>
-            <div className="siteTagline"><strong>ØL.dk — Øjeblik &amp; Lødighed</strong><br />Nyheder med AI-resumé, kildekrydstjek og neutralitetsscore.</div>
           </div>
+          <div className="siteTagline"><strong>ØL.dk — Øjeblik &amp; Lødighed</strong><br />Nyheder med AI-resumé, kildekrydstjek og neutralitetsscore.</div>
         </div>
         <div className="headerStatus">
           <div className="liveStatusLine"><span className="liveDot" /> LIVE</div>
