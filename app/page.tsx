@@ -18,15 +18,18 @@ export default async function Home() {
     <main className="site">
       <header className="masthead shell">
         <div className="logoRow">
-          <div className="logoBlock">K</div>
+          <div className="logoBlock">ØL</div>
           <div>
-            <div className="siteName">KONTEKST<span>News</span></div>
+            <div className="siteName">.dk</div>
             <div className="siteTagline">Danske nyheder med objektivitets-score • Redaktør og Ai-geni: Anders Grønborg</div>
           </div>
         </div>
         <div className="headerStatus">
           <div className="liveStatusLine"><span className="liveDot" /> LIVE</div>
-          <div className="headerStats">Nyheder: {stories24h} (24t.) / {stories.length} (i alt)</div>
+          <div className="headerStats">
+            <span>{stories24h} nyheder (24t.)</span>
+            <span>{stories.length} nyheder (i alt)</span>
+          </div>
         </div>
       </header>
 
