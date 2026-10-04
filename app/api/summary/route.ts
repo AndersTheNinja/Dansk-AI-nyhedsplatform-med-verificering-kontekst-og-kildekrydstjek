@@ -111,34 +111,38 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const articleResponse = await fetch(parsedUrl.toString(), {
-      redirect: "follow",
-      cache: "no-store",
-      headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; KONTEKST/0.7)",
-        Accept: "text/html,application/xhtml+xml"
-      },
-      signal: AbortSignal.timeout(8000)
-    });
-
-    if (!articleResponse.ok) {
-      return NextResponse.json({ error: "Artiklen kunne ikke hentes." }, { status: 502 });
-    }
-
-    const html = await articleResponse.text();
-
-    if (looksLikePaywall(html)) {
-      return NextResponse.json(
-        { error: "Fuld artikel kræver abonnement. KONTEKST forsøger ikke at omgå betalingsmuren.", paywall: true },
-        { status: 403 }
-      );
-    }
-
-    let articleText = extractArticleText(html).slice(0, 14000);
     const feedText = String(body.feedText ?? "").slice(0, 2500);
-    let basis = "frit tilgængelig artikeltekst";
+    let articleText = "";
+    let basis = "det frit tilgængelige artikeluddrag";
+    let articleFetched = false;
 
-    if (articleText.length < 500 && feedText.length >= 120) {
+    try {
+      const articleResponse = await fetch(parsedUrl.toString(), {
+        redirect: "follow",
+        cache: "no-store",
+        headers: {
+          "User-Agent": "Mozilla/5.0 (compatible; KONTEKST/0.8)",
+          Accept: "text/html,application/xhtml+xml"
+        },
+        signal: AbortSignal.timeout(8000)
+      });
+
+      if (articleResponse.ok) {
+        const html = await articleResponse.text();
+        const paywall = looksLikePaywall(html);
+        const extracted = extractArticleText(html).slice(0, 14000);
+
+        if (!paywall && extracted.length >= 500) {
+          articleText = extracted;
+          basis = "frit tilgængelig artikeltekst";
+          articleFetched = true;
+        }
+      }
+    } catch {
+      // Fall back to feed text below.
+    }
+
+    if (!articleFetched && feedText.length >= 120) {
       articleText = feedText;
       basis = "det frit tilgængelige artikeluddrag";
     }
