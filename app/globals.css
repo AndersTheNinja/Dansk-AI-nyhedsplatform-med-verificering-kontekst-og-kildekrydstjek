@@ -92,6 +92,7 @@ button{font:inherit}
 .readMore:hover{color:var(--teal-dark);text-decoration:none}
 .readMoreText{text-decoration:underline;text-underline-offset:2px}
 .readMoreAccess{text-decoration:none}
+.externalTextArrow{font-family:Arial,"Helvetica Neue",sans-serif;font-weight:700;font-size:11px;line-height:1;text-decoration:none}
 .miniBadge{display:inline-block;font:700 10px Arial,sans-serif;padding:4px 7px;border-radius:10px;background:#edf0f2;color:#59656c}
 .miniBadge.confirmed{background:#e9f6ee;color:var(--green)}
 .miniBadge.nuance{background:#fff3e4;color:var(--amber)}
@@ -114,12 +115,13 @@ button{font:inherit}
 .scoreLine{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:2px 0 2px;font:10px Arial,sans-serif;color:#9a6258}
 .scoreLine strong{font-weight:400}
 .scoreLine .scoreValue{font-weight:800;color:#9a3f36}
-.aiCheckLink{appearance:none;border:0;background:transparent;padding:0;color:#9a6258;text-decoration:underline;font:700 10px Arial,sans-serif;cursor:pointer}
+.aiCheckLink{appearance:none;border:0;background:transparent;padding:0;color:#9a6258;text-decoration:none;font:700 10px Arial,sans-serif;cursor:pointer}
 .aiCheckLink:hover{color:var(--teal-dark)}
 
-.aiSummaryButton{appearance:none;border:0;background:transparent;padding:0;color:#9a6258;font:700 10px Arial,sans-serif;cursor:pointer;text-decoration:underline}
+.aiSummaryButton{appearance:none;border:0;background:transparent;padding:0;color:#9a6258;font:700 10px Arial,sans-serif;cursor:pointer;text-decoration:none}
 .aiSummaryButton:hover{color:var(--teal-dark)}
-.summaryChevron{display:inline-block;margin-left:2px;transition:transform .2s ease;text-decoration:none}
+.actionLinkText{text-decoration:underline;text-underline-offset:2px}
+.summaryChevron{display:inline-block;margin-left:3px;transition:transform .2s ease;text-decoration:none}
 .summaryChevron.open{transform:rotate(180deg)}
 .aiSummaryPanel{display:grid;grid-template-rows:0fr;opacity:0;transition:grid-template-rows .28s ease,opacity .22s ease;margin-top:0}
 .aiSummaryPanel.open{grid-template-rows:1fr;opacity:1;margin-top:8px}
