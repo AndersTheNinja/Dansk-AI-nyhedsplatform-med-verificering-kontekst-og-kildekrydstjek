@@ -93,10 +93,10 @@ function parseSummary(text: string) {
 export async function POST(req: NextRequest) {
   const body = await req.json();
   const apiKey = process.env.OPENAI_API_KEY;
-  const model = process.env.OPENAI_MODEL;
+  const preferredModel = process.env.OPENAI_MODEL || "gpt-6-luna";
 
-  if (!apiKey || !model) {
-    return NextResponse.json({ error: "AI-resumé er ikke aktiveret." }, { status: 503 });
+  if (!apiKey) {
+    return NextResponse.json({ error: "Resumé er ikke aktiveret: OPENAI_API_KEY mangler." }, { status: 503 });
   }
 
   let parsedUrl: URL | null = null;
@@ -170,38 +170,116 @@ Overskrift: ${title}
 Artikeltekst:
 ${articleText}`;
 
-    const aiResponse = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model,
-        input: prompt,
-        max_output_tokens: 450
-      })
-    });
+    const candidateModels = Array.from(new Set([
+      preferredModel,
+      "gpt-6-luna",
+      "gpt-5.4-mini"
+    ]));
 
-    if (!aiResponse.ok) {
-      const detail = await aiResponse.text();
-      console.error("AI summary failed", { status: aiResponse.status, detail, model });
-      let reason = "AI-tjenesten kunne ikke lave resuméet.";
+    let lastError = "";
+    let lastStatus = 502;
+    let usedModel = candidateModels[0];
+
+    for (const model of candidateModels) {
+      usedModel = model;
+
+      let aiResponse: Response;
       try {
-        const parsed = JSON.parse(detail);
-        const upstream = parsed?.error?.message;
-        if (typeof upstream === "string" && upstream) reason = upstream;
-      } catch {}
-      return NextResponse.json({ error: reason, upstreamStatus: aiResponse.status }, { status: 502 });
+        aiResponse = await fetch("https://api.openai.com/v1/responses", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({
+            model,
+            input: prompt,
+            max_output_tokens: 450
+          }),
+          signal: AbortSignal.timeout(20000)
+        });
+      } catch (error) {
+        lastError = error instanceof Error ? error.message : "AI-kaldet fik timeout.";
+        lastStatus = 504;
+        continue;
+      }
+
+      if (!aiResponse.ok) {
+        const detail = await aiResponse.text();
+        lastStatus = aiResponse.status;
+        lastError = detail;
+
+        console.error("AI summary failed", {
+          status: aiResponse.status,
+          detail,
+          model
+        });
+
+        // Authentication, billing and rate-limit errors are account-level.
+        // Retrying another model will not help.
+        if ([401, 403, 429].includes(aiResponse.status)) {
+          let reason = "AI-tjenesten kunne ikke lave resuméet.";
+          try {
+            const parsed = JSON.parse(detail);
+            const upstream = parsed?.error?.message;
+            if (typeof upstream === "string" && upstream) reason = upstream;
+          } catch {}
+
+          return NextResponse.json(
+            { error: reason, upstreamStatus: aiResponse.status, model },
+            { status: 502 }
+          );
+        }
+
+        // For model/parameter errors, try the next known-supported model.
+        continue;
+      }
+
+      const data = await aiResponse.json();
+      const contentItems = Array.isArray(data.output)
+        ? data.output.flatMap((item: any) => Array.isArray(item?.content) ? item.content : [])
+        : [];
+
+      const output = [
+        typeof data.output_text === "string" ? data.output_text : "",
+        ...contentItems
+          .filter((item: any) => item?.type === "output_text" || typeof item?.text === "string")
+          .map((item: any) => typeof item?.text === "string" ? item.text : "")
+      ].find((text) => typeof text === "string" && text.trim().length > 0) || "";
+
+      if (!output.trim()) {
+        lastStatus = 502;
+        lastError = "OpenAI returnerede et tomt tekstsvar.";
+        console.error("AI summary empty output", { model, data });
+        continue;
+      }
+
+      try {
+        return NextResponse.json({
+          ...parseSummary(output),
+          basis,
+          model: usedModel
+        });
+      } catch (error) {
+        lastStatus = 502;
+        lastError = error instanceof Error ? error.message : "AI-svaret kunne ikke fortolkes.";
+        console.error("AI summary parse failed", { model, output, error });
+      }
     }
 
-    const data = await aiResponse.json();
-    const output =
-      data.output_text ??
-      data.output?.flatMap((x: any) => x.content ?? []).find((x: any) => x.type === "output_text")?.text ??
-      "";
+    let reason = "AI-tjenesten kunne ikke lave resuméet.";
+    try {
+      const parsed = JSON.parse(lastError);
+      const upstream = parsed?.error?.message;
+      if (typeof upstream === "string" && upstream) reason = upstream;
+    } catch {
+      if (lastError) reason = lastError;
+    }
 
-    return NextResponse.json({ ...parseSummary(output), basis });
+    return NextResponse.json(
+      { error: reason, upstreamStatus: lastStatus, model: usedModel },
+      { status: 502 }
+    );
   } catch (error) {
     console.error("AI summary route failed", error);
     return NextResponse.json({ error: "Artiklen kunne ikke behandles." }, { status: 502 });
