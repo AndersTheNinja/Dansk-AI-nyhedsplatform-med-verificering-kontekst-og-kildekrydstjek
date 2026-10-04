@@ -18,7 +18,7 @@ export default async function Home() {
             <div className="siteTagline">Danske nyheder med objektivitets-score • Redaktør og Ai-geni: Anders Grønborg</div>
           </div>
         </div>
-        <div className="headerStatus"><span className="liveDot" /> LIVE</div>
+        <div className="headerStatus"><span className="liveDot" /> LIVE <em className="storyCount">{stories.length} nyheder i alt</em></div>
       </header>
 
       <div className="tealRule" />
