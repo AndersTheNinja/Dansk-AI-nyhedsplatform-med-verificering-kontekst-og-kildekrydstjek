@@ -15,6 +15,7 @@ export type Story = {
   title: string;
   sourceLabel: string;
   published: string;
+  publishedAt?: string;
   publishedDate?: string;
   sourceMethod?: "RSS" | "WEB";
   summary: string;
@@ -32,6 +33,7 @@ export const demoStories: Story[] = [
     title: "Live-nyhedsfeed kunne ikke indlæses",
     sourceLabel: "KONTEKST",
     published: "Nu",
+    publishedAt: new Date().toISOString(),
     publishedDate: new Intl.DateTimeFormat("da-DK", { day: "numeric", month: "short", year: "numeric" }).format(new Date()),
     sourceMethod: "WEB",
     summary:
