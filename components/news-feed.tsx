@@ -121,6 +121,9 @@ function StoryCard({ story }: { story: Story }) {
     setSummaryOpen(nextOpen);
     if (!nextOpen || aiSummary || summaryLoading) return;
 
+    // A previous failure must never permanently disable the control.
+    setSummaryError(null);
+
     const articleUrl = story.sources[0]?.url;
     if (!articleUrl) {
       setSummaryError("Der er ikke noget artikel-link at opsummere.");
@@ -137,7 +140,6 @@ function StoryCard({ story }: { story: Story }) {
     } catch {}
 
     setSummaryLoading(true);
-    setSummaryError(null);
 
     try {
       const response = await fetch("/api/summary", {
@@ -235,18 +237,14 @@ function StoryCard({ story }: { story: Story }) {
           >
             <span className="actionLinkText">Faktatjek</span><span className={`summaryChevron ${factOpen ? "open" : ""}`}>⌄</span>
           </button>
-          {!summaryError && (
-            <>
-              <button
-                type="button"
-                className="aiSummaryButton"
-                onClick={toggleSummary}
-                aria-expanded={summaryOpen}
-              >
-                <span className="actionLinkText">Resumé</span><span className={`summaryChevron ${summaryOpen ? "open" : ""}`}>⌄</span>
-              </button>
-            </>
-          )}
+          <button
+            type="button"
+            className="aiSummaryButton"
+            onClick={toggleSummary}
+            aria-expanded={summaryOpen}
+          >
+            <span className="actionLinkText">Resumé</span><span className={`summaryChevron ${summaryOpen ? "open" : ""}`}>⌄</span>
+          </button>
           {story.sources[0] && subscriptionRequired !== null && (
             <a className="readMore" href={story.sources[0].url} target="_blank" rel="noreferrer">
               <span className="readMoreText">Læs mere</span> <span className="readMoreAccess">({subscriptionRequired ? "abb" : "gratis"})</span> <span className="externalTextArrow" aria-hidden="true">↗︎</span>
