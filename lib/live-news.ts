@@ -379,7 +379,7 @@ async function fetchFeed(feed: FeedConfig): Promise<NewsItem[]> {
   const rawItems = rssItems ?? atomItems ?? [];
   const items = Array.isArray(rawItems) ? rawItems : rawItems ? [rawItems] : [];
 
-  return items.slice(0, 150).map((raw: unknown, index: number) => {
+  return items.slice(0, 300).map((raw: unknown, index: number) => {
     const item = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
     const title = stripHtml(textValue(item.title) || "Ukendt historie");
     const link = linkValue(item.link) || feed.url;
@@ -480,7 +480,7 @@ async function fetchBorsenWebsite(): Promise<NewsItem[]> {
   const anchorPattern = /<a\b([^>]*?)href=["']([^"']+)["']([^>]*)>([\s\S]*?)<\/a>/gi;
   let match: RegExpExecArray | null;
 
-  while ((match = anchorPattern.exec(html)) && items.length < 30) {
+  while ((match = anchorPattern.exec(html)) && items.length < 80) {
     const href = decodeHtmlEntities(match[2] || "").trim();
     const rawTitle = stripHtml(match[4] || "");
 
@@ -547,10 +547,10 @@ export async function getLiveStories(): Promise<Story[]> {
     .sort((a, b) => b.age - a.age);
 
   const quotas: Record<Category, number> = {
-    Danmark: 90,
-    Erhverv: 55,
-    "AI/Tech": 50,
-    Aarhus: 35
+    Danmark: 450,
+    Erhverv: 250,
+    "AI/Tech": 180,
+    Aarhus: 120
   };
 
   const selected = ranked
@@ -559,7 +559,7 @@ export async function getLiveStories(): Promise<Story[]> {
       quotas[entry.lead.category]--;
       return true;
     })
-    .slice(0, 220);
+    .slice(0, 1000);
 
   return selected.map((entry, index) => {
     const { lead, sources } = entry;
