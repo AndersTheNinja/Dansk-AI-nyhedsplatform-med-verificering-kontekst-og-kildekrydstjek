@@ -234,28 +234,7 @@ function StoryCard({ story }: { story: Story }) {
           <span>Neutralitet: <strong className="scoreValue">{wordingScore}%</strong></span>
           <span>•</span>
           <span>Originalitet: <strong className="scoreValue">{originalityScore === null ? "Ikke nok data" : `${originalityScore}%`}</strong></span>
-          <span>•</span>
-          <button
-            type="button"
-            className="aiCheckLink"
-            onClick={toggleFactCheck}
-            aria-expanded={factOpen}
-          >
-            Faktatjek <span className={`summaryChevron ${factOpen ? "open" : ""}`}>⌄</span>
-          </button>
-          {!summaryError && (
-            <>
-              <span>•</span>
-              <button
-                type="button"
-                className="aiSummaryButton"
-                onClick={toggleSummary}
-                aria-expanded={summaryOpen}
-              >
-                AI-resumé <span className={`summaryChevron ${summaryOpen ? "open" : ""}`}>⌄</span>
-              </button>
-            </>
-          )}
+          {/* AI-resumé og faktatjek skjules midlertidigt, mens API-kredit er opbrugt. */}
         </div>
 
         <div className={`aiSummaryPanel ${summaryOpen ? "open" : ""}`}>
