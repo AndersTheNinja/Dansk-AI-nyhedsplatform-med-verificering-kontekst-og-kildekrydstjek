@@ -21,9 +21,9 @@ type AiAnalysis = {
   wordingScore: number;
   wordingNote: string;
   wordingExamples: string[];
-  sourcesScore: number | null;
-  sourcesNote: string;
-  sourcesExamples: string[];
+  originalityScore: number | null;
+  originalityNote: string;
+  originalityExamples: string[];
 };
 
 function mediaName(label: string) {
@@ -37,6 +37,7 @@ function StoryCard({ story }: { story: Story }) {
   const ref = useRef<HTMLElement | null>(null);
   const [analysis, setAnalysis] = useState<AiAnalysis | null>(null);
   const [attempted, setAttempted] = useState(false);
+  const [subscriptionRequired, setSubscriptionRequired] = useState<boolean | null>(null);
 
   useEffect(() => {
     const node = ref.current;
@@ -58,6 +59,22 @@ function StoryCard({ story }: { story: Story }) {
         } catch {}
 
         setAttempted(true);
+        const articleUrl = story.sources[0]?.url;
+        if (articleUrl) {
+          fetch("/api/access", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url: articleUrl })
+          })
+            .then((response) => response.ok ? response.json() : null)
+            .then((result) => {
+              if (result && typeof result.requiresSubscription === "boolean") {
+                setSubscriptionRequired(result.requiresSubscription);
+              }
+            })
+            .catch(() => {});
+        }
+
         fetch("/api/analyze", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -89,9 +106,9 @@ function StoryCard({ story }: { story: Story }) {
   const wordingScore = analysis?.wordingScore ?? story.neutrality.wording;
   const wordingNote = analysis?.wordingNote ?? story.neutrality.wordingNote;
   const wordingExamples = analysis?.wordingExamples ?? story.neutrality.wordingExamples;
-  const sourcesScore = analysis ? analysis.sourcesScore : story.neutrality.sources;
-  const sourcesNote = analysis?.sourcesNote ?? story.neutrality.sourcesNote;
-  const sourcesExamples = analysis?.sourcesExamples ?? story.neutrality.sourcesExamples;
+  const originalityScore = story.neutrality.sources;
+  const originalityNote = story.neutrality.originalityNote;
+  const originalityExamples = story.neutrality.originalityExamples;
 
   return (
     <article className="storyRow" ref={ref}>
@@ -108,7 +125,7 @@ function StoryCard({ story }: { story: Story }) {
           <p>{story.summary}</p>
           {story.sources[0] && (
             <a className="readMore" href={story.sources[0].url} target="_blank" rel="noreferrer">
-              Læs mere
+              Læs mere{subscriptionRequired === true ? " · ABB." : ""}
             </a>
           )}
         </div>
@@ -116,7 +133,7 @@ function StoryCard({ story }: { story: Story }) {
         <div className="neutralityGrid">
           <div className="neutralityMetric" tabIndex={0}>
             <div className="neutralityInline">
-              <span className="neutralityLabel">Objektivitet ift. formulering</span>
+              <span className="neutralityLabel">Neutralitetsscore</span>
               <div className="neutralityTrack">
                 <span
                   className={`neutralityFill ${scoreClass(wordingScore)}`}
@@ -138,26 +155,26 @@ function StoryCard({ story }: { story: Story }) {
 
           <div className="neutralityMetric" tabIndex={0}>
             <div className="neutralityInline">
-              <span className="neutralityLabel">Objektivitet ift. andre kilder</span>
+              <span className="neutralityLabel">Originalitetsscore</span>
               <div className="neutralityTrack">
-                {sourcesScore === null ? (
+                {originalityScore === null ? (
                   <span className="neutralityFill unavailable" style={{ width: "100%" }} />
                 ) : (
                   <span
-                    className={`neutralityFill ${scoreClass(sourcesScore)}`}
-                    style={{ width: `${sourcesScore}%` }}
+                    className={`neutralityFill ${scoreClass(originalityScore)}`}
+                    style={{ width: `${originalityScore}%` }}
                   />
                 )}
               </div>
-              <strong>{sourcesScore === null ? "Ikke nok data" : `${sourcesScore}%`}</strong>
+              <strong>{originalityScore === null ? "Ikke nok data" : `${originalityScore}%`}</strong>
             </div>
             <div className="scoreTooltip" role="tooltip">
               <strong>Baggrund for scoren</strong>
-              <p>{sourcesNote}</p>
-              {sourcesExamples.length > 0 && (
+              <p>{originalityNote}</p>
+              {originalityExamples.length > 0 && (
                 <>
-                  <div className="tooltipLabel">Sammenlignede kilder</div>
-                  <ul>{sourcesExamples.map((example) => <li key={example}>{example}</li>)}</ul>
+                  <div className="tooltipLabel">Andre medier med samme historie</div>
+                  <ul>{originalityExamples.map((example) => <li key={example}>{example}</li>)}</ul>
                 </>
               )}
             </div>
