@@ -300,32 +300,33 @@ function scoreWordingNeutrality(text: string) {
   return { score, note, examples };
 }
 
-function scoreSourceNeutrality(lead: NewsItem, sources: NewsItem[]) {
-  if (sources.length < 2) {
+function scoreOriginality(lead: NewsItem, sources: NewsItem[]) {
+  if (sources.length <= 1) {
     return {
-      score: null,
-      note: "Ikke nok data: kun én kilde er fundet, så vinklen kan ikke krydstjekkes pålideligt.",
-      examples: [`Fundet kilde: ${lead.source}`]
+      score: 100,
+      note: "Historien er kun fundet hos denne ene medieudgiver i KONTEKSTs aktuelle feed-scan.",
+      examples: ["Ingen andre matchende mediekilder fundet."]
     };
   }
 
-  const similarities = sources
-    .filter((source) => source.id !== lead.id)
-    .map((source) => similarity(lead.title, source.title));
-
-  const average = similarities.length
+  const otherSources = sources.filter((source) => source.id !== lead.id);
+  const similarities = otherSources.map((source) => similarity(lead.title, source.title));
+  const averageSimilarity = similarities.length
     ? similarities.reduce((sum, value) => sum + value, 0) / similarities.length
     : 0.5;
 
-  const score = Math.max(45, Math.min(98, Math.round(58 + average * 40 + Math.min(8, (sources.length - 2) * 4))));
-  const comparisonExamples = sources
-    .filter((source) => source.id !== lead.id)
-    .slice(0, 3)
+  // Flere matchende udgivere og meget ens framing sænker originalitetsscoren.
+  const sourcePenalty = Math.min(75, (sources.length - 1) * 18);
+  const similarityPenalty = Math.round(Math.min(20, averageSimilarity * 20));
+  const score = Math.max(5, Math.min(100, 100 - sourcePenalty - similarityPenalty));
+
+  const comparisonExamples = otherSources
+    .slice(0, 4)
     .map((source) => `${source.source}: “${source.title.slice(0, 105)}${source.title.length > 105 ? "…" : ""}”`);
 
   return {
     score,
-    note: `Vurderet ud fra ${sources.length} kilder og hvor ens deres centrale framing/overskrifter er. Høj score betyder større overensstemmelse, ikke nødvendigvis fuld sandhed.`,
+    note: `Historien er fundet hos ${sources.length} forskellige medieudgivere. 100 % betyder, at KONTEKST ikke har fundet samme historie andre steder; en lavere score betyder, at historien deles bredt af andre medier.`,
     examples: comparisonExamples
   };
 }
@@ -433,7 +434,7 @@ export async function getLiveStories(): Promise<Story[]> {
     const { lead, sources } = entry;
     const hasCrossCheck = sources.length >= 2;
     const wordingNeutrality = scoreWordingNeutrality(`${lead.title} ${lead.description}`);
-    const sourceNeutrality = scoreSourceNeutrality(lead, sources);
+    const originality = scoreOriginality(lead, sources);
     const summary =
       lead.description.length > 70
         ? lead.description.slice(0, 300).replace(/\s+\S*$/, "") + "…"
@@ -455,9 +456,9 @@ export async function getLiveStories(): Promise<Story[]> {
         wording: wordingNeutrality.score,
         wordingNote: wordingNeutrality.note,
         wordingExamples: wordingNeutrality.examples,
-        sources: sourceNeutrality.score,
-        sourcesNote: sourceNeutrality.note,
-        sourcesExamples: sourceNeutrality.examples
+        sources: originality.score,
+        sourcesNote: originality.note,
+        sourcesExamples: originality.examples
       },
       sources: sources.slice(0, 4).map((item) => ({
         label: publisherName(item.source),
