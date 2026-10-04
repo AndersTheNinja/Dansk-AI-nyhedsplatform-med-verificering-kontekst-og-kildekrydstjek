@@ -243,21 +243,21 @@ function StoryCard({ story }: { story: Story }) {
                 onClick={toggleSummary}
                 aria-expanded={summaryOpen}
               >
-                AI-resumé <span className={`summaryChevron ${summaryOpen ? "open" : ""}`}>⌄</span>
+                Resumé <span className={`summaryChevron ${summaryOpen ? "open" : ""}`}>⌄</span>
               </button>
             </>
           )}
           {story.sources[0] && subscriptionRequired !== null && (
             <a className="readMore" href={story.sources[0].url} target="_blank" rel="noreferrer">
-              Læs mere ({subscriptionRequired ? "abb" : "gratis"}) <span className="externalIcon" aria-hidden="true">↗</span>
+              <span className="readMoreText">Læs mere</span> <span className="readMoreAccess">({subscriptionRequired ? "abb" : "gratis"})</span> ↗
             </a>
           )}
         </div>
 
         <div className={`aiSummaryPanel ${summaryOpen ? "open" : ""}`}>
           <div className="aiSummaryInner">
-            <div className="aiSummaryHeader">AI-resumé</div>
-            {summaryLoading && <p className="aiSummaryStatus">Henter artikel og laver AI-resumé…</p>}
+            <div className="aiSummaryHeader">Resumé</div>
+            {summaryLoading && <p className="aiSummaryStatus">Henter artikel og laver resumé…</p>}
             {summaryError && <p className="aiSummaryError">{summaryError}</p>}
             {aiSummary && (
               <>
@@ -268,7 +268,7 @@ function StoryCard({ story }: { story: Story }) {
                   </ul>
                 )}
                 <div className="aiSummaryFoot">
-                  AI-genereret resumé baseret på {aiSummary.basis || "frit tilgængelig tekst"}.
+                  Resumé baseret på {aiSummary.basis || "frit tilgængelig tekst"}.
                 </div>
               </>
             )}
