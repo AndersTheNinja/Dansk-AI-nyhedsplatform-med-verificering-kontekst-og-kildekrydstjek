@@ -480,7 +480,7 @@ async function fetchBorsenWebsite(): Promise<NewsItem[]> {
   const anchorPattern = /<a\b([^>]*?)href=["']([^"']+)["']([^>]*)>([\s\S]*?)<\/a>/gi;
   let match: RegExpExecArray | null;
 
-  while ((match = anchorPattern.exec(html)) && items.length < 12) {
+  while ((match = anchorPattern.exec(html)) && items.length < 30) {
     const href = decodeHtmlEntities(match[2] || "").trim();
     const rawTitle = stripHtml(match[4] || "");
 
@@ -547,10 +547,10 @@ export async function getLiveStories(): Promise<Story[]> {
     .sort((a, b) => b.age - a.age);
 
   const quotas: Record<Category, number> = {
-    Danmark: 55,
-    Erhverv: 25,
-    "AI/Tech": 30,
-    Aarhus: 20
+    Danmark: 90,
+    Erhverv: 55,
+    "AI/Tech": 50,
+    Aarhus: 35
   };
 
   const selected = ranked
@@ -559,7 +559,7 @@ export async function getLiveStories(): Promise<Story[]> {
       quotas[entry.lead.category]--;
       return true;
     })
-    .slice(0, 120);
+    .slice(0, 220);
 
   return selected.map((entry, index) => {
     const { lead, sources } = entry;
