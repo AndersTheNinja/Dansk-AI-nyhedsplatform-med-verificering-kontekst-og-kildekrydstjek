@@ -37,8 +37,12 @@ function StoryCard({ story }: { story: Story }) {
   const [subscriptionRequired, setSubscriptionRequired] = useState<boolean | null>(null);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [summaryLoading, setSummaryLoading] = useState(false);
-  const [aiSummary, setAiSummary] = useState<{ summary: string; bullets: string[] } | null>(null);
+  const [aiSummary, setAiSummary] = useState<{ summary: string; bullets: string[]; basis?: string } | null>(null);
   const [summaryError, setSummaryError] = useState<string | null>(null);
+  const [factOpen, setFactOpen] = useState(false);
+  const [factLoading, setFactLoading] = useState(false);
+  const [factCheck, setFactCheck] = useState<{ verdict: string; score: number; explanation: string; claims: string[] } | null>(null);
+  const [factError, setFactError] = useState<string | null>(null);
 
   useEffect(() => {
     const node = ref.current;
@@ -141,7 +145,8 @@ function StoryCard({ story }: { story: Story }) {
         body: JSON.stringify({
           url: articleUrl,
           title: story.title,
-          source: story.sources[0]?.label ?? story.sourceLabel
+          source: story.sources[0]?.label ?? story.sourceLabel,
+          feedText: story.summary
         })
       });
 
@@ -158,6 +163,46 @@ function StoryCard({ story }: { story: Story }) {
       setSummaryError(error instanceof Error ? error.message : "Resuméet kunne ikke laves.");
     } finally {
       setSummaryLoading(false);
+    }
+  }
+
+  async function toggleFactCheck() {
+    const nextOpen = !factOpen;
+    setFactOpen(nextOpen);
+    if (!nextOpen || factCheck || factLoading) return;
+
+    const cacheKey = `kontekst-fact-v1:${story.id}`;
+    try {
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        setFactCheck(JSON.parse(cached));
+        return;
+      }
+    } catch {}
+
+    setFactLoading(true);
+    setFactError(null);
+
+    try {
+      const response = await fetch("/api/factcheck", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: story.title,
+          text: aiSummary?.summary || story.summary,
+          sources: story.sources
+        })
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result?.error || "Faktatjekket kunne ikke laves.");
+      setFactCheck(result);
+      try {
+        sessionStorage.setItem(cacheKey, JSON.stringify(result));
+      } catch {}
+    } catch (error) {
+      setFactError(error instanceof Error ? error.message : "Faktatjekket kunne ikke laves.");
+    } finally {
+      setFactLoading(false);
     }
   }
 
@@ -190,16 +235,14 @@ function StoryCard({ story }: { story: Story }) {
           <span>•</span>
           <span>Originalitet: <strong className="scoreValue">{originalityScore === null ? "Ikke nok data" : `${originalityScore}%`}</strong></span>
           <span>•</span>
-          <a
-            href={`https://chatgpt.com/?q=${encodeURIComponent(
-              `Vurder neutraliteten i denne nyhedstekst. Forklar kort hvilke ord eller formuleringer der er neutrale eller værdiladede, og giv en neutralitetsscore fra 0-100.\n\nOverskrift: ${story.title}\n\nTekst: ${story.summary}\n\nKilde: ${story.sources[0]?.label ?? story.sourceLabel}`
-            )}`}
-            target="_blank"
-            rel="noreferrer"
+          <button
+            type="button"
             className="aiCheckLink"
+            onClick={toggleFactCheck}
+            aria-expanded={factOpen}
           >
-            AI-tjek
-          </a>
+            Faktatjek <span className={`summaryChevron ${factOpen ? "open" : ""}`}>⌄</span>
+          </button>
           <span>•</span>
           <button
             type="button"
@@ -225,7 +268,32 @@ function StoryCard({ story }: { story: Story }) {
                   </ul>
                 )}
                 <div className="aiSummaryFoot">
-                  AI-genereret resumé baseret på frit tilgængelig artikeltekst.
+                  AI-genereret resumé baseret på {aiSummary.basis || "frit tilgængelig tekst"}.
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        <div className={`aiSummaryPanel factPanel ${factOpen ? "open" : ""}`}>
+          <div className="aiSummaryInner">
+            <div className="aiSummaryHeader">Faktatjek</div>
+            {factLoading && <p className="aiSummaryStatus">Tjekker påstandene…</p>}
+            {factError && <p className="aiSummaryError">{factError}</p>}
+            {factCheck && (
+              <>
+                <div className="factVerdict">
+                  <span className={`factBadge ${factCheck.verdict}`}>{factCheck.verdict}</span>
+                  <strong>{factCheck.score}%</strong>
+                </div>
+                <p>{factCheck.explanation}</p>
+                {factCheck.claims.length > 0 && (
+                  <ul>
+                    {factCheck.claims.map((item) => <li key={item}>{item}</li>)}
+                  </ul>
+                )}
+                <div className="aiSummaryFoot">
+                  AI-vurdering af det tilgængelige materiale — ikke en endelig sandhedsdom.
                 </div>
               </>
             )}
