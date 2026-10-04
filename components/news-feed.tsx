@@ -107,8 +107,8 @@ function StoryCard({ story }: { story: Story }) {
   const wordingNote = analysis?.wordingNote ?? story.neutrality.wordingNote;
   const wordingExamples = analysis?.wordingExamples ?? story.neutrality.wordingExamples;
   const originalityScore = story.neutrality.sources;
-  const originalityNote = story.neutrality.originalityNote;
-  const originalityExamples = story.neutrality.originalityExamples;
+  const originalityNote = story.neutrality.sourcesNote;
+  const originalityExamples = story.neutrality.sourcesExamples;
 
   return (
     <article className="storyRow" ref={ref}>
