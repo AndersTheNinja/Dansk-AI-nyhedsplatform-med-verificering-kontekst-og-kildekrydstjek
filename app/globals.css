@@ -65,7 +65,7 @@ button{font:inherit}
 .storyMeta span:first-child{font-weight:700}
 .storyContent p{font-size:12.5px;line-height:1.45;color:#59656c;margin:0}
 .summaryRow{display:flex;align-items:flex-end;gap:12px;margin:0 0 2px}
-.summaryRow p{flex:1;min-width:0}
+.summaryRow p{flex:1;min-width:0;min-height:calc(1.45em * 3);display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:5;overflow:hidden}
 .neutralityGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:4px 0 2px;font-family:Arial,sans-serif}
 .neutralityMetric{position:relative;background:#fafbfb;border:1px solid #e1e5e6;padding:6px 8px;cursor:help;outline:none}
 .neutralityMetric:hover,.neutralityMetric:focus{border-color:#aeb9bd;background:#fff}
@@ -103,7 +103,7 @@ button{font:inherit}
   .shell{width:min(100% - 24px,1030px)}
   .siteTagline{display:block;font-size:10px;line-height:1.2;margin:0;max-width:185px;white-space:normal}.headerStatus{font-size:10px}
   .storyContent h2{font-size:18px;line-height:1.2}
-  .storyContent p{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+  .storyContent p{display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden}
   .neutralityGrid{grid-template-columns:1fr}
   .neutralityInline{grid-template-columns:minmax(135px,auto) minmax(50px,1fr) auto}
   .neutralityLabel{white-space:normal}
