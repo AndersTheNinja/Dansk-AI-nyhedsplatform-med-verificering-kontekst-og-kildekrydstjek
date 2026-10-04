@@ -243,15 +243,19 @@ function StoryCard({ story }: { story: Story }) {
           >
             Faktatjek <span className={`summaryChevron ${factOpen ? "open" : ""}`}>⌄</span>
           </button>
-          <span>•</span>
-          <button
-            type="button"
-            className="aiSummaryButton"
-            onClick={toggleSummary}
-            aria-expanded={summaryOpen}
-          >
-            AI-resumé <span className={`summaryChevron ${summaryOpen ? "open" : ""}`}>⌄</span>
-          </button>
+          {!summaryError && (
+            <>
+              <span>•</span>
+              <button
+                type="button"
+                className="aiSummaryButton"
+                onClick={toggleSummary}
+                aria-expanded={summaryOpen}
+              >
+                AI-resumé <span className={`summaryChevron ${summaryOpen ? "open" : ""}`}>⌄</span>
+              </button>
+            </>
+          )}
         </div>
 
         <div className={`aiSummaryPanel ${summaryOpen ? "open" : ""}`}>
