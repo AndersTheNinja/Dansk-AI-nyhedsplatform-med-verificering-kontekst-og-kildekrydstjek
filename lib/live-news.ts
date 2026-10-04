@@ -244,19 +244,20 @@ function similarity(a: string, b: string) {
 }
 
 function sameStory(a: NewsItem, b: NewsItem) {
-  if (a.category !== b.category) return false;
-
   const aTime = a.pubDate ? new Date(a.pubDate).getTime() : 0;
   const bTime = b.pubDate ? new Date(b.pubDate).getTime() : 0;
-  if (aTime && bTime && Math.abs(aTime - bTime) > 48 * 3600000) return false;
+  if (aTime && bTime && Math.abs(aTime - bTime) > 72 * 3600000) return false;
 
   const titleScore = similarity(a.title, b.title);
   const descriptionScore = similarity(
-    `${a.title} ${a.description.slice(0, 220)}`,
-    `${b.title} ${b.description.slice(0, 220)}`
+    `${a.title} ${a.description.slice(0, 320)}`,
+    `${b.title} ${b.description.slice(0, 320)}`
   );
 
-  return titleScore >= 0.38 || (titleScore >= 0.24 && descriptionScore >= 0.34);
+  // Match across categories too: the same event may be tagged "Danmark" by one
+  // outlet and "Erhverv" by another. Strong title overlap is enough; otherwise
+  // require support from article descriptions.
+  return titleScore >= 0.36 || (titleScore >= 0.20 && descriptionScore >= 0.30);
 }
 
 function publisherName(source: string) {
@@ -401,7 +402,8 @@ async function fetchFeed(feed: FeedConfig): Promise<NewsItem[]> {
 }
 
 
-async function fetchBorsenWebsite(): Promise<NewsItem[]> {
+function extractMetaContent(html: string, key: string) {
+  const escaped = key.replace(/[.*+?^$()|[\]\\]/g, "\\async function fetchBorsenWebsite(): Promise<NewsItem[]> {
   const response = await fetch("https://borsen.dk/", {
     next: { revalidate: 300 },
     headers: {
@@ -454,6 +456,118 @@ async function fetchBorsenWebsite(): Promise<NewsItem[]> {
   }
 
   return items;
+}");
+  const patterns = [
+    new RegExp(`<meta[^>]+(?:property|name)=["']${escaped}["'][^>]+content=["']([^"']+)["']`, "i"),
+    new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']${escaped}["']`, "i")
+  ];
+  for (const pattern of patterns) {
+    const match = html.match(pattern);
+    if (match?.[1]) return decodeHtmlEntities(match[1]).trim();
+  }
+  return "";
+}
+
+function extractPublishedDateFromHtml(html: string) {
+  const meta =
+    extractMetaContent(html, "article:published_time") ||
+    extractMetaContent(html, "datePublished") ||
+    extractMetaContent(html, "date");
+
+  if (meta && !Number.isNaN(new Date(meta).getTime())) return meta;
+
+  const jsonLd = html.match(/"datePublished"\s*:\s*"([^"]+)"/i)?.[1];
+  if (jsonLd && !Number.isNaN(new Date(jsonLd).getTime())) return jsonLd;
+
+  return undefined;
+}
+
+async function enrichBorsenItem(item: NewsItem): Promise<NewsItem> {
+  try {
+    const response = await fetch(item.link, {
+      next: { revalidate: 900 },
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; KONTEKST/0.6; +https://vercel.app)",
+        Accept: "text/html,application/xhtml+xml"
+      },
+      signal: AbortSignal.timeout(6000)
+    });
+
+    if (!response.ok) return item;
+    const html = await response.text();
+
+    const description =
+      extractMetaContent(html, "description") ||
+      extractMetaContent(html, "og:description") ||
+      item.description;
+
+    const headline =
+      extractMetaContent(html, "og:title") ||
+      item.title;
+
+    return {
+      ...item,
+      title: stripHtml(headline) || item.title,
+      description: stripHtml(description),
+      pubDate: extractPublishedDateFromHtml(html) || item.pubDate
+    };
+  } catch {
+    return item;
+  }
+}
+
+async function fetchBorsenWebsite(): Promise<NewsItem[]> {
+  const response = await fetch("https://borsen.dk/", {
+    next: { revalidate: 300 },
+    headers: {
+      "User-Agent": "Mozilla/5.0 (compatible; KONTEKST/0.6; +https://vercel.app)",
+      Accept: "text/html,application/xhtml+xml"
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`Børsen website returned ${response.status}`);
+  }
+
+  const html = await response.text();
+  const items: NewsItem[] = [];
+  const seen = new Set<string>();
+
+  const anchorPattern = /<a\b([^>]*?)href=["']([^"']+)["']([^>]*)>([\s\S]*?)<\/a>/gi;
+  let match: RegExpExecArray | null;
+
+  while ((match = anchorPattern.exec(html)) && items.length < 12) {
+    const href = decodeHtmlEntities(match[2] || "").trim();
+    const rawTitle = stripHtml(match[4] || "");
+
+    if (rawTitle.length < 25 || rawTitle.length > 220) continue;
+
+    let url: URL;
+    try {
+      url = new URL(href, "https://borsen.dk/");
+    } catch {
+      continue;
+    }
+
+    if (!/(^|\.)borsen\.dk$/i.test(url.hostname)) continue;
+    if (!/^\/nyheder\//i.test(url.pathname)) continue;
+
+    const canonical = `${url.origin}${url.pathname}`;
+    if (seen.has(canonical)) continue;
+    seen.add(canonical);
+
+    items.push({
+      category: "Erhverv",
+      title: rawTitle,
+      link: canonical,
+      description: "",
+      source: "Børsen",
+      method: "WEB",
+      id: `Børsen-web-${items.length}-${canonical}`
+    });
+  }
+
+  return Promise.all(items.map(enrichBorsenItem));
 }
 
 export async function getLiveStories(): Promise<Story[]> {
