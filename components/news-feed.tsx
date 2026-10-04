@@ -261,7 +261,7 @@ function StoryCard({ story }: { story: Story }) {
         <div className={`aiSummaryPanel ${summaryOpen ? "open" : ""}`}>
           <div className="aiSummaryInner">
             <div className="aiSummaryHeader">AI-resumé</div>
-            {summaryLoading && <p className="aiSummaryStatus">Laver resumé…</p>}
+            {summaryLoading && <p className="aiSummaryStatus">Henter artikel og laver AI-resumé…</p>}
             {summaryError && <p className="aiSummaryError">{summaryError}</p>}
             {aiSummary && (
               <>
