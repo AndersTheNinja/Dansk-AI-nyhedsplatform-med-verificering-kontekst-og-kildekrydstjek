@@ -20,7 +20,7 @@ export type Story = {
   verification: Verification;
   verificationText: string;
   neutrality: Neutrality;
-  sources: { label: string; url: string; title?: string }[];
+  sources: { label: string; url: string; title?: string; method?: "RSS" | "WEB" }[];
 };
 
 export const demoStories: Story[] = [
