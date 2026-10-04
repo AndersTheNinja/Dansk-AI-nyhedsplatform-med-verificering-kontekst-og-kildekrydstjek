@@ -17,11 +17,11 @@ button{font:inherit}
 .shell{width:min(1030px,calc(100% - 36px));margin:0 auto}
 .masthead{height:92px;display:flex;align-items:center;justify-content:space-between;background:#fff}
 .logoRow{display:flex;align-items:center;gap:16px}
-.logoBlock{width:54px;height:54px;display:grid;place-items:center;background:var(--teal);color:#fff;font:700 34px/1 Arial,sans-serif;border-radius:7px;letter-spacing:-.03em}
+.logoBlock{width:58px;height:54px;display:grid;place-items:center;background:var(--teal);color:#fff;font:700 24px/1 Arial,sans-serif;border-radius:7px;letter-spacing:-.03em}
 .siteName{display:flex;align-items:baseline;font-family:Arial,sans-serif;line-height:1;white-space:nowrap}
 .siteNameMain{font-size:34px;font-weight:700;color:#314047;letter-spacing:-.035em}
 .siteNameAccent{font-size:34px;font-weight:400;color:var(--teal);letter-spacing:-.035em}
-.siteTagline{font:12px Arial,sans-serif;color:#8b949b;margin-top:5px}
+.siteTagline{font:12px/1.35 Arial,sans-serif;color:#8b949b;margin-top:5px}.siteTagline strong{color:#59656c;font-weight:700}
 .headerStatus{font:700 11px Arial,sans-serif;color:#6f7b83;display:flex;flex-direction:column;align-items:flex-end;gap:2px;white-space:nowrap}
 .liveStatusLine{display:flex;align-items:center;gap:7px}
 .headerStats{display:flex;flex-direction:column;align-items:flex-end;gap:1px;font-weight:400;font-style:italic;color:#8b949b;line-height:1.2}
@@ -95,7 +95,7 @@ button{font:inherit}
 @media(max-width:780px){
   body{background:#fff}
   .contentShell{grid-template-columns:1fr}.sidebar{display:none}
-  .masthead{height:74px}.logoBlock{width:44px;height:44px;font-size:28px}.siteNameMain,.siteNameAccent{font-size:29px}
+  .masthead{height:78px}.logoBlock{width:48px;height:44px;font-size:20px}.siteNameAccent{font-size:29px}
 }
 @media(max-width:560px){
   .shell{width:min(100% - 24px,1030px)}
