@@ -53,17 +53,6 @@ function StoryCard({ story }: { story: Story }) {
         if (!entries.some((entry) => entry.isIntersecting)) return;
         observer.disconnect();
 
-        const cacheKey = `kontekst-ai-v2:${story.id}`;
-        try {
-          const cached = sessionStorage.getItem(cacheKey);
-          if (cached) {
-            setAnalysis(JSON.parse(cached));
-            setAttempted(true);
-            return;
-          }
-        } catch {}
-
-        setAttempted(true);
         const articleUrl = story.sources[0]?.url;
         if (articleUrl) {
           fetch("/api/access", {
@@ -79,6 +68,18 @@ function StoryCard({ story }: { story: Story }) {
             })
             .catch(() => {});
         }
+
+        const cacheKey = `kontekst-ai-v2:${story.id}`;
+        try {
+          const cached = sessionStorage.getItem(cacheKey);
+          if (cached) {
+            setAnalysis(JSON.parse(cached));
+            setAttempted(true);
+            return;
+          }
+        } catch {}
+
+        setAttempted(true);
 
         fetch("/api/analyze", {
           method: "POST",
@@ -223,11 +224,6 @@ function StoryCard({ story }: { story: Story }) {
         <h2>{story.title}</h2>
         <div className="summaryRow">
           <p>{story.summary}</p>
-          {story.sources[0] && (
-            <a className="readMore" href={story.sources[0].url} target="_blank" rel="noreferrer">
-              Læs mere{subscriptionRequired === true ? " · ABB." : ""}
-            </a>
-          )}
         </div>
 
         <div className="scoreLine">
@@ -254,6 +250,14 @@ function StoryCard({ story }: { story: Story }) {
               >
                 AI-resumé <span className={`summaryChevron ${summaryOpen ? "open" : ""}`}>⌄</span>
               </button>
+            </>
+          )}
+          {story.sources[0] && subscriptionRequired !== null && (
+            <>
+              <span>•</span>
+              <a className="readMore" href={story.sources[0].url} target="_blank" rel="noreferrer">
+                Læs mere ({subscriptionRequired ? "abb" : "gratis"})
+              </a>
             </>
           )}
         </div>
