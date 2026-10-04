@@ -125,7 +125,7 @@ export async function POST(req: NextRequest) {
           "User-Agent": "Mozilla/5.0 (compatible; KONTEKST/0.8)",
           Accept: "text/html,application/xhtml+xml"
         },
-        signal: AbortSignal.timeout(8000)
+        signal: AbortSignal.timeout(4000)
       });
 
       if (articleResponse.ok) {
@@ -160,15 +160,10 @@ export async function POST(req: NextRequest) {
 
     const source = String(body.source ?? "").slice(0, 120);
 
-    const prompt = `Du laver et kort, neutralt dansk nyhedsresumé til KONTEKST.
-Brug kun oplysninger fra artikelteksten. Tilføj intet, som ikke står i teksten.
-Skriv ikke lange citater og gengiv ikke artiklen. Opsummer selvstændigt.
-
-Returnér KUN gyldig JSON:
-{
-  "summary": "3-5 korte sætninger med historiens vigtigste indhold",
-  "bullets": ["2-4 meget korte nøglepunkter"]
-}
+    const prompt = `Du laver et kort, neutralt dansk nyhedsresumé til ØL.dk.
+Brug kun oplysninger fra teksten nedenfor. Tilføj intet, som ikke fremgår af materialet.
+Skriv 4-6 korte, sammenhængende sætninger på dansk. Ingen markdown, ingen overskrift,
+ingen punktopstilling og ingen lange citater. Gengiv ikke artiklen; opsummer den selvstændigt.
 
 Kilde: ${source}
 Overskrift: ${title}
@@ -184,14 +179,20 @@ ${articleText}`;
       body: JSON.stringify({
         model,
         input: prompt,
-        max_output_tokens: 650
+        max_output_tokens: 450
       })
     });
 
     if (!aiResponse.ok) {
       const detail = await aiResponse.text();
       console.error("AI summary failed", { status: aiResponse.status, detail, model });
-      return NextResponse.json({ error: "AI-tjenesten kunne ikke lave resuméet." }, { status: 502 });
+      let reason = "AI-tjenesten kunne ikke lave resuméet.";
+      try {
+        const parsed = JSON.parse(detail);
+        const upstream = parsed?.error?.message;
+        if (typeof upstream === "string" && upstream) reason = upstream;
+      } catch {}
+      return NextResponse.json({ error: reason, upstreamStatus: aiResponse.status }, { status: 502 });
     }
 
     const data = await aiResponse.json();
