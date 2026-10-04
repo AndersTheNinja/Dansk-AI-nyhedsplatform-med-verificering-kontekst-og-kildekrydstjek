@@ -110,3 +110,19 @@ button{font:inherit}
 .scoreLine .scoreValue{font-weight:800;color:#9a3f36}
 .aiCheckLink{color:#9a6258;text-decoration:underline;font-weight:700}
 .aiCheckLink:hover{color:var(--teal-dark)}
+
+.aiSummaryButton{appearance:none;border:0;background:transparent;padding:0;color:#9a6258;font:700 10px Arial,sans-serif;cursor:pointer;text-decoration:underline}
+.aiSummaryButton:hover{color:var(--teal-dark)}
+.summaryChevron{display:inline-block;margin-left:2px;transition:transform .2s ease;text-decoration:none}
+.summaryChevron.open{transform:rotate(180deg)}
+.aiSummaryPanel{display:grid;grid-template-rows:0fr;opacity:0;transition:grid-template-rows .28s ease,opacity .22s ease;margin-top:0}
+.aiSummaryPanel.open{grid-template-rows:1fr;opacity:1;margin-top:8px}
+.aiSummaryInner{overflow:hidden;background:#f7f9f9;border-left:3px solid var(--teal);padding:0 12px;transition:padding .28s ease}
+.aiSummaryPanel.open .aiSummaryInner{padding:12px}
+.aiSummaryHeader{font:700 11px Arial,sans-serif;color:var(--teal-dark);text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px}
+.aiSummaryInner p{font-size:12.5px;line-height:1.5;color:#4f5c63;margin:0 0 8px}
+.aiSummaryInner ul{margin:7px 0 8px;padding-left:18px;color:#4f5c63;font:12px/1.45 Arial,sans-serif}
+.aiSummaryInner li{margin:3px 0}
+.aiSummaryStatus{font-style:italic;color:#7b858b!important}
+.aiSummaryError{color:#9a3f36!important;font-weight:700}
+.aiSummaryFoot{font:10px/1.35 Arial,sans-serif;color:#8a949a;margin-top:7px}
