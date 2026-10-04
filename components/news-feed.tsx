@@ -132,9 +132,9 @@ function StoryCard({ story }: { story: Story }) {
         </div>
 
         <div className="scoreLine">
-          <span><strong>Neutralitet:</strong> {wordingScore}%</span>
+          <span>Neutralitet: <strong className="scoreValue">{wordingScore}%</strong></span>
           <span>•</span>
-          <span><strong>Originalitet:</strong> {originalityScore === null ? "Ikke nok data" : `${originalityScore}%`}</span>
+          <span>Originalitet: <strong className="scoreValue">{originalityScore === null ? "Ikke nok data" : `${originalityScore}%`}</strong></span>
           <span>•</span>
           <a
             href={`https://chatgpt.com/?q=${encodeURIComponent(
