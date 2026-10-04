@@ -103,3 +103,8 @@ button{font:inherit}
   .neutralityInline{grid-template-columns:minmax(135px,auto) minmax(50px,1fr) auto}
   .neutralityLabel{white-space:normal}
 }
+
+.scoreLine{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:6px 0 2px;font:10px Arial,sans-serif;color:#9a6258}
+.scoreLine strong{font-weight:700}
+.aiCheckLink{color:#9a6258;text-decoration:underline;font-weight:700}
+.aiCheckLink:hover{color:var(--teal-dark)}
