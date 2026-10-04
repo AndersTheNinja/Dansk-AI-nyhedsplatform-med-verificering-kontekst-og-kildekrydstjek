@@ -18,10 +18,10 @@ export default async function Home() {
     <main className="site">
       <header className="masthead shell">
         <div className="logoRow">
-          <div className="logoBlock">Ø</div>
+          <div className="logoBlock">ØL</div>
           <div>
-            <div className="siteName"><span className="siteNameMain">ØL</span><span className="siteNameAccent">.dk</span></div>
-            <div className="siteTagline">Danske nyheder med objektivitets-score • Redaktør og Ai-geni: Anders Grønborg</div>
+            <div className="siteName"><span className="siteNameAccent">.dk</span></div>
+            <div className="siteTagline"><strong>ØL.dk — Øjeblik &amp; Lødighed</strong><br />Nyheder med AI-resumé, kildekrydstjek og neutralitetsscore.</div>
           </div>
         </div>
         <div className="headerStatus">
