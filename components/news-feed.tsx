@@ -35,6 +35,10 @@ function StoryCard({ story }: { story: Story }) {
   const [analysis, setAnalysis] = useState<AiAnalysis | null>(null);
   const [attempted, setAttempted] = useState(false);
   const [subscriptionRequired, setSubscriptionRequired] = useState<boolean | null>(null);
+  const [summaryOpen, setSummaryOpen] = useState(false);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [aiSummary, setAiSummary] = useState<{ summary: string; bullets: string[] } | null>(null);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
 
   useEffect(() => {
     const node = ref.current;
@@ -107,6 +111,56 @@ function StoryCard({ story }: { story: Story }) {
   const originalityNote = story.neutrality.sourcesNote;
   const originalityExamples = story.neutrality.sourcesExamples;
 
+  async function toggleSummary() {
+    const nextOpen = !summaryOpen;
+    setSummaryOpen(nextOpen);
+    if (!nextOpen || aiSummary || summaryLoading) return;
+
+    const articleUrl = story.sources[0]?.url;
+    if (!articleUrl) {
+      setSummaryError("Der er ikke noget artikel-link at opsummere.");
+      return;
+    }
+
+    const cacheKey = `kontekst-summary-v1:${story.id}`;
+    try {
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        setAiSummary(JSON.parse(cached));
+        return;
+      }
+    } catch {}
+
+    setSummaryLoading(true);
+    setSummaryError(null);
+
+    try {
+      const response = await fetch("/api/summary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: articleUrl,
+          title: story.title,
+          source: story.sources[0]?.label ?? story.sourceLabel
+        })
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result?.error || "Resuméet kunne ikke laves.");
+      }
+
+      setAiSummary(result);
+      try {
+        sessionStorage.setItem(cacheKey, JSON.stringify(result));
+      } catch {}
+    } catch (error) {
+      setSummaryError(error instanceof Error ? error.message : "Resuméet kunne ikke laves.");
+    } finally {
+      setSummaryLoading(false);
+    }
+  }
+
   return (
     <article className="storyRow" ref={ref}>
       <div className="storyContent">
@@ -146,6 +200,36 @@ function StoryCard({ story }: { story: Story }) {
           >
             AI-tjek
           </a>
+          <span>•</span>
+          <button
+            type="button"
+            className="aiSummaryButton"
+            onClick={toggleSummary}
+            aria-expanded={summaryOpen}
+          >
+            AI-resumé <span className={`summaryChevron ${summaryOpen ? "open" : ""}`}>⌄</span>
+          </button>
+        </div>
+
+        <div className={`aiSummaryPanel ${summaryOpen ? "open" : ""}`}>
+          <div className="aiSummaryInner">
+            <div className="aiSummaryHeader">AI-resumé</div>
+            {summaryLoading && <p className="aiSummaryStatus">Laver resumé…</p>}
+            {summaryError && <p className="aiSummaryError">{summaryError}</p>}
+            {aiSummary && (
+              <>
+                <p>{aiSummary.summary}</p>
+                {aiSummary.bullets.length > 0 && (
+                  <ul>
+                    {aiSummary.bullets.map((item) => <li key={item}>{item}</li>)}
+                  </ul>
+                )}
+                <div className="aiSummaryFoot">
+                  AI-genereret resumé baseret på frit tilgængelig artikeltekst.
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
       </div>
