@@ -99,24 +99,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "AI-resumé er ikke aktiveret." }, { status: 503 });
   }
 
-  let parsedUrl: URL;
+  let parsedUrl: URL | null = null;
   try {
-    parsedUrl = new URL(String(body.url ?? ""));
+    const candidate = new URL(String(body.url ?? ""));
+    if (candidate.protocol === "https:" && ALLOWED_HOSTS.has(candidate.hostname)) {
+      parsedUrl = candidate;
+    }
   } catch {
-    return NextResponse.json({ error: "Ugyldigt artikel-link." }, { status: 400 });
-  }
-
-  if (parsedUrl.protocol !== "https:" || !ALLOWED_HOSTS.has(parsedUrl.hostname)) {
-    return NextResponse.json({ error: "Denne kilde understøttes ikke endnu." }, { status: 400 });
+    parsedUrl = null;
   }
 
   try {
+    const title = String(body.title ?? "").slice(0, 500);
     const feedText = String(body.feedText ?? "").slice(0, 2500);
     let articleText = "";
     let basis = "det frit tilgængelige artikeluddrag";
     let articleFetched = false;
 
     try {
+      if (!parsedUrl) throw new Error("Article host not eligible for direct fetch");
       const articleResponse = await fetch(parsedUrl.toString(), {
         redirect: "follow",
         cache: "no-store",
@@ -142,19 +143,21 @@ export async function POST(req: NextRequest) {
       // Fall back to feed text below.
     }
 
-    if (!articleFetched && feedText.length >= 120) {
-      articleText = feedText;
-      basis = "det frit tilgængelige artikeluddrag";
+    if (!articleFetched) {
+      const fallbackText = [title, feedText].filter(Boolean).join(". ").trim();
+      if (fallbackText.length >= 40) {
+        articleText = fallbackText;
+        basis = "overskrift og frit tilgængeligt artikeluddrag";
+      }
     }
 
-    if (articleText.length < 120) {
+    if (articleText.length < 40) {
       return NextResponse.json(
         { error: "Der var ikke nok frit tilgængelig tekst til at lave et pålideligt resumé." },
         { status: 422 }
       );
     }
 
-    const title = String(body.title ?? "").slice(0, 500);
     const source = String(body.source ?? "").slice(0, 120);
 
     const prompt = `Du laver et kort, neutralt dansk nyhedsresumé til KONTEKST.
@@ -186,6 +189,8 @@ ${articleText}`;
     });
 
     if (!aiResponse.ok) {
+      const detail = await aiResponse.text();
+      console.error("AI summary failed", { status: aiResponse.status, detail, model });
       return NextResponse.json({ error: "AI-tjenesten kunne ikke lave resuméet." }, { status: 502 });
     }
 
@@ -196,7 +201,8 @@ ${articleText}`;
       "";
 
     return NextResponse.json({ ...parseSummary(output), basis });
-  } catch {
+  } catch (error) {
+    console.error("AI summary route failed", error);
     return NextResponse.json({ error: "Artiklen kunne ikke behandles." }, { status: 502 });
   }
 }
