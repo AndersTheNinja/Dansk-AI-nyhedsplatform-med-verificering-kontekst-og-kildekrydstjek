@@ -7,6 +7,12 @@ export const revalidate = 300;
 export default async function Home() {
   const liveStories = await getLiveStories().catch(() => []);
   const stories = liveStories.length ? liveStories : demoStories;
+  const cutoff24h = Date.now() - 24 * 60 * 60 * 1000;
+  const stories24h = stories.filter((story) => {
+    if (!story.publishedAt) return false;
+    const time = new Date(story.publishedAt).getTime();
+    return Number.isFinite(time) && time >= cutoff24h;
+  }).length;
 
   return (
     <main className="site">
@@ -18,7 +24,13 @@ export default async function Home() {
             <div className="siteTagline">Danske nyheder med objektivitets-score • Redaktør og Ai-geni: Anders Grønborg</div>
           </div>
         </div>
-        <div className="headerStatus"><span className="liveDot" /> LIVE <em className="storyCount">{stories.length} nyheder i alt</em></div>
+        <div className="headerStatus">
+          <div className="liveStatusLine"><span className="liveDot" /> LIVE</div>
+          <div className="headerStats">
+            <span>{stories.length} nyheder i alt</span>
+            <span>{stories24h} nyheder 24 t.</span>
+          </div>
+        </div>
       </header>
 
       <div className="tealRule" />
