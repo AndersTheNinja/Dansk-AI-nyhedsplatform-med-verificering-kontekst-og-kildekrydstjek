@@ -577,6 +577,7 @@ export async function getLiveStories(): Promise<Story[]> {
       title: lead.title,
       sourceLabel: hasCrossCheck ? `${sources.length} kilder` : lead.source,
       published: timeAgo(lead.pubDate),
+      publishedAt: lead.pubDate,
       publishedDate: formatPublishedDate(lead.pubDate),
       sourceMethod: lead.method,
       summary,
