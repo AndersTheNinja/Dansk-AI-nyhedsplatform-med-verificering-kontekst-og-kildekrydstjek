@@ -109,7 +109,7 @@ button{font:inherit}
 .scoreLine{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:6px 0 2px;font:10px Arial,sans-serif;color:#9a6258}
 .scoreLine strong{font-weight:400}
 .scoreLine .scoreValue{font-weight:800;color:#9a3f36}
-.aiCheckLink{color:#9a6258;text-decoration:underline;font-weight:700}
+.aiCheckLink{appearance:none;border:0;background:transparent;padding:0;color:#9a6258;text-decoration:underline;font:700 10px Arial,sans-serif;cursor:pointer}
 .aiCheckLink:hover{color:var(--teal-dark)}
 
 .aiSummaryButton{appearance:none;border:0;background:transparent;padding:0;color:#9a6258;font:700 10px Arial,sans-serif;cursor:pointer;text-decoration:underline}
@@ -127,3 +127,10 @@ button{font:inherit}
 .aiSummaryStatus{font-style:italic;color:#7b858b!important}
 .aiSummaryError{color:#9a3f36!important;font-weight:700}
 .aiSummaryFoot{font:10px/1.35 Arial,sans-serif;color:#8a949a;margin-top:7px}
+
+.factVerdict{display:flex;align-items:center;gap:8px;margin:2px 0 8px;font:12px Arial,sans-serif}
+.factVerdict strong{font-size:13px;color:#9a3f36}
+.factBadge{display:inline-block;padding:3px 7px;border-radius:10px;font-weight:700;text-transform:capitalize}
+.factBadge.understøttet{background:#e7f6ed;color:#278a60}
+.factBadge.blandet{background:#fff1df;color:#9b641c}
+.factBadge.usikkert{background:#edf0f2;color:#667179}
