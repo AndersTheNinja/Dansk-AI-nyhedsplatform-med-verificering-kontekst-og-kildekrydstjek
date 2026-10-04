@@ -21,9 +21,6 @@ type AiAnalysis = {
   wordingScore: number;
   wordingNote: string;
   wordingExamples: string[];
-  originalityScore: number | null;
-  originalityNote: string;
-  originalityExamples: string[];
 };
 
 function mediaName(label: string) {
@@ -113,14 +110,18 @@ function StoryCard({ story }: { story: Story }) {
   return (
     <article className="storyRow" ref={ref}>
       <div className="storyContent">
-        <h2>{story.title}</h2>
         <div className="storyMeta">
           <span>{categoryLabel[story.category] || story.category}</span>
           <span>•</span>
           <span>{story.sourceLabel}</span>
           <span>•</span>
-          <span>{story.published}</span>
+          <span>
+            {story.published}
+            {story.publishedDate ? ` · ${story.publishedDate}` : ""}
+            {story.sourceMethod ? ` · ${story.sourceMethod}` : ""}
+          </span>
         </div>
+        <h2>{story.title}</h2>
         <div className="summaryRow">
           <p>{story.summary}</p>
           {story.sources[0] && (
@@ -130,63 +131,23 @@ function StoryCard({ story }: { story: Story }) {
           )}
         </div>
 
-        <div className="neutralityGrid">
-          <div className="neutralityMetric" tabIndex={0}>
-            <div className="neutralityInline">
-              <span className="neutralityLabel">Neutralitetsscore</span>
-              <div className="neutralityTrack">
-                <span
-                  className={`neutralityFill ${scoreClass(wordingScore)}`}
-                  style={{ width: `${wordingScore}%` }}
-                />
-              </div>
-              <strong>{wordingScore}%</strong>
-            </div>
-            <div className="scoreTooltip" role="tooltip">
-              <strong>Baggrund for scoren</strong>
-              <p>{wordingNote}</p>
-              {wordingExamples.length > 0 ? (
-                <ul>{wordingExamples.map((example) => <li key={example}>{example}</li>)}</ul>
-              ) : (
-                <p>Ingen tydelige sproglige markører blev fremhævet.</p>
-              )}
-            </div>
-          </div>
-
-          <div className="neutralityMetric" tabIndex={0}>
-            <div className="neutralityInline">
-              <span className="neutralityLabel">Originalitetsscore</span>
-              <div className="neutralityTrack">
-                {originalityScore === null ? (
-                  <span className="neutralityFill unavailable" style={{ width: "100%" }} />
-                ) : (
-                  <span
-                    className={`neutralityFill ${scoreClass(originalityScore)}`}
-                    style={{ width: `${originalityScore}%` }}
-                  />
-                )}
-              </div>
-              <strong>{originalityScore === null ? "Ikke nok data" : `${originalityScore}%`}</strong>
-            </div>
-            <div className="scoreTooltip" role="tooltip">
-              <strong>Baggrund for scoren</strong>
-              <p>{originalityNote}</p>
-              {originalityExamples.length > 0 && (
-                <>
-                  <div className="tooltipLabel">Andre medier med samme historie</div>
-                  <ul>{originalityExamples.map((example) => <li key={example}>{example}</li>)}</ul>
-                </>
-              )}
-            </div>
-          </div>
+        <div className="scoreLine">
+          <span><strong>Neutralitet:</strong> {wordingScore}%</span>
+          <span>•</span>
+          <span><strong>Originalitet:</strong> {originalityScore === null ? "Ikke nok data" : `${originalityScore}%`}</span>
+          <span>•</span>
+          <a
+            href={`https://chatgpt.com/?q=${encodeURIComponent(
+              `Vurder neutraliteten i denne nyhedstekst. Forklar kort hvilke ord eller formuleringer der er neutrale eller værdiladede, og giv en neutralitetsscore fra 0-100.\n\nOverskrift: ${story.title}\n\nTekst: ${story.summary}\n\nKilde: ${story.sources[0]?.label ?? story.sourceLabel}`
+            )}`}
+            target="_blank"
+            rel="noreferrer"
+            className="aiCheckLink"
+          >
+            AI-tjek
+          </a>
         </div>
 
-        <div className="storyBottom">
-          <span className="neutralityHint">
-            {analysis ? "AI-analyseret" : attempted ? "Basisvurdering · AI afventer/ikke aktiveret" : "Basisvurdering"}
-            {" · klik/hold over score for forklaring"}
-          </span>
-        </div>
       </div>
     </article>
   );
