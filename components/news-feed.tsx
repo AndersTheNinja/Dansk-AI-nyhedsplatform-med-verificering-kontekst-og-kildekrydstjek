@@ -233,7 +233,7 @@ function StoryCard({ story }: { story: Story }) {
             onClick={toggleFactCheck}
             aria-expanded={factOpen}
           >
-            Faktatjek <span className={`summaryChevron ${factOpen ? "open" : ""}`}>⌄</span>
+            <span className="actionLinkText">Faktatjek</span><span className={`summaryChevron ${factOpen ? "open" : ""}`}>⌄</span>
           </button>
           {!summaryError && (
             <>
@@ -243,13 +243,13 @@ function StoryCard({ story }: { story: Story }) {
                 onClick={toggleSummary}
                 aria-expanded={summaryOpen}
               >
-                Resumé <span className={`summaryChevron ${summaryOpen ? "open" : ""}`}>⌄</span>
+                <span className="actionLinkText">Resumé</span><span className={`summaryChevron ${summaryOpen ? "open" : ""}`}>⌄</span>
               </button>
             </>
           )}
           {story.sources[0] && subscriptionRequired !== null && (
             <a className="readMore" href={story.sources[0].url} target="_blank" rel="noreferrer">
-              <span className="readMoreText">Læs mere</span> <span className="readMoreAccess">({subscriptionRequired ? "abb" : "gratis"})</span> ↗
+              <span className="readMoreText">Læs mere</span> <span className="readMoreAccess">({subscriptionRequired ? "abb" : "gratis"})</span> <span className="externalTextArrow" aria-hidden="true">↗︎</span>
             </a>
           )}
         </div>
