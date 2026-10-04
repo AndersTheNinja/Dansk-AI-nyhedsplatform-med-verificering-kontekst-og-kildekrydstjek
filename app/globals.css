@@ -16,9 +16,11 @@ a{color:var(--teal-dark)}
 button{font:inherit}
 .shell{width:min(1030px,calc(100% - 36px));margin:0 auto}
 .masthead{height:92px;display:flex;align-items:center;justify-content:space-between;background:#fff}
-.logoRow{display:flex;align-items:center;gap:14px}
-.logoBlock{width:54px;height:45px;display:grid;place-items:center;background:var(--teal);color:#fff;font:bold 22px Arial,sans-serif;border-radius:4px;letter-spacing:-.03em}
-.siteName{font:700 31px/1 Arial,sans-serif;color:var(--teal)}
+.logoRow{display:flex;align-items:center;gap:16px}
+.logoBlock{width:54px;height:54px;display:grid;place-items:center;background:var(--teal);color:#fff;font:700 34px/1 Arial,sans-serif;border-radius:7px;letter-spacing:-.03em}
+.siteName{display:flex;align-items:baseline;font-family:Arial,sans-serif;line-height:1;white-space:nowrap}
+.siteNameMain{font-size:34px;font-weight:700;color:#314047;letter-spacing:-.035em}
+.siteNameAccent{font-size:34px;font-weight:400;color:var(--teal);letter-spacing:-.035em}
 .siteTagline{font:12px Arial,sans-serif;color:#8b949b;margin-top:5px}
 .headerStatus{font:700 11px Arial,sans-serif;color:#6f7b83;display:flex;flex-direction:column;align-items:flex-end;gap:2px;white-space:nowrap}
 .liveStatusLine{display:flex;align-items:center;gap:7px}
@@ -93,7 +95,7 @@ button{font:inherit}
 @media(max-width:780px){
   body{background:#fff}
   .contentShell{grid-template-columns:1fr}.sidebar{display:none}
-  .masthead{height:74px}.siteName{font-size:25px}.logoBlock{width:46px;height:38px;font-size:18px}
+  .masthead{height:74px}.logoBlock{width:44px;height:44px;font-size:28px}.siteNameMain,.siteNameAccent{font-size:29px}
 }
 @media(max-width:560px){
   .shell{width:min(100% - 24px,1030px)}
