@@ -21,17 +21,16 @@ function decodeHtml(value: string) {
 
 function looksLikePaywall(html: string) {
   const sample = html.slice(0, 500000).toLowerCase();
-  return [
+  const strongSignals = [
     /"isaccessibleforfree"\s*:\s*false/,
-    /data-paywall/,
-    /class=["'][^"']*paywall[^"']*["']/,
     /kun for abonnenter/,
     /kræver abonnement/,
     /abonnement kræves/,
     /log ind for at læse videre/,
     /bliv abonnent for at læse/,
     /læs videre med abonnement/
-  ].some((pattern) => pattern.test(sample));
+  ];
+  return strongSignals.some((pattern) => pattern.test(sample));
 }
 
 function cleanText(value: string) {
@@ -69,7 +68,17 @@ function extractArticleText(html: string) {
     if (text.length > 700) return text;
   }
 
-  return "";
+  const paragraphs = Array.from(html.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi))
+    .map((match) => cleanText(match[1] || ""))
+    .filter((text) => text.length > 45)
+    .join(" ");
+  if (paragraphs.length > 500) return paragraphs;
+
+  const description =
+    html.match(/<meta[^>]+(?:name|property)=["'](?:description|og:description)["'][^>]+content=["']([^"']+)["']/i)?.[1] ||
+    html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+(?:name|property)=["'](?:description|og:description)["']/i)?.[1] ||
+    "";
+  return cleanText(description);
 }
 
 function parseSummary(text: string) {
@@ -125,10 +134,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const articleText = extractArticleText(html).slice(0, 14000);
-    if (articleText.length < 700) {
+    let articleText = extractArticleText(html).slice(0, 14000);
+    const feedText = String(body.feedText ?? "").slice(0, 2500);
+    let basis = "frit tilgængelig artikeltekst";
+
+    if (articleText.length < 500 && feedText.length >= 120) {
+      articleText = feedText;
+      basis = "det frit tilgængelige artikeluddrag";
+    }
+
+    if (articleText.length < 120) {
       return NextResponse.json(
-        { error: "Der var ikke nok frit tilgængelig artikeltekst til et ordentligt resumé." },
+        { error: "Der var ikke nok frit tilgængelig tekst til at lave et pålideligt resumé." },
         { status: 422 }
       );
     }
@@ -174,7 +191,7 @@ ${articleText}`;
       data.output?.flatMap((x: any) => x.content ?? []).find((x: any) => x.type === "output_text")?.text ??
       "";
 
-    return NextResponse.json(parseSummary(output));
+    return NextResponse.json({ ...parseSummary(output), basis });
   } catch {
     return NextResponse.json({ error: "Artiklen kunne ikke behandles." }, { status: 502 });
   }
