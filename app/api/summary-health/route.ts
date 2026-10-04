@@ -1,18 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
+import { POST as analyzePost } from "../analyze/route";
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
-    const target = new URL("/api/analyze", req.url);
-    const response = await fetch(target, {
+    const testRequest = new NextRequest("http://internal/api/analyze", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         title: "Test",
         text: "Dette er en neutral testtekst.",
         sources: [{ label: "KONTEKST", title: "Test" }]
-      }),
-      cache: "no-store"
+      })
     });
+
+    const response = await analyzePost(testRequest);
 
     let detail: unknown = null;
     try {
