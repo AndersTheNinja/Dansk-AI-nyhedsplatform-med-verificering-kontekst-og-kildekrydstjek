@@ -15,6 +15,8 @@ export type Story = {
   title: string;
   sourceLabel: string;
   published: string;
+  publishedDate?: string;
+  sourceMethod?: "RSS" | "WEB";
   summary: string;
   why: string;
   verification: Verification;
@@ -30,6 +32,8 @@ export const demoStories: Story[] = [
     title: "Live-nyhedsfeed kunne ikke indlæses",
     sourceLabel: "KONTEKST",
     published: "Nu",
+    publishedDate: new Intl.DateTimeFormat("da-DK", { day: "numeric", month: "short", year: "numeric" }).format(new Date()),
+    sourceMethod: "WEB",
     summary:
       "Siden kunne ikke hente det eksterne nyhedsfeed i denne kørsel. Den forsøger automatisk igen ved næste opdatering.",
     why:
