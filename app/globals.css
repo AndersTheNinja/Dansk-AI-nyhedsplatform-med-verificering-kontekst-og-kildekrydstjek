@@ -58,7 +58,7 @@ button{font:inherit}
 .mediaLink.active{font-weight:700;color:var(--teal-dark);text-decoration:underline}
 .sectionTitle{font:700 16px Arial,sans-serif;color:#455158;border-bottom:5px solid var(--teal);padding-bottom:7px;margin-bottom:4px}
 .storyRow{padding:12px 0;border-bottom:1px dotted #bfc6c8}
-.storyContent h2{font:700 16px Arial,sans-serif;line-height:1.2;letter-spacing:0;margin:0 0 6px;color:#455158}
+.storyContent h2{font:700 18px Arial,sans-serif;line-height:1.2;letter-spacing:0;margin:0 0 6px;color:#455158}
 .storyMeta{display:flex;gap:5px;flex-wrap:wrap;font:10px Arial,sans-serif;color:#9a6258;margin-bottom:7px}
 .storyMeta span:first-child{font-weight:700}
 .storyContent p{font-size:12.5px;line-height:1.45;color:#59656c;margin:0}
@@ -99,7 +99,7 @@ button{font:inherit}
 @media(max-width:560px){
   .shell{width:min(100% - 24px,1030px)}
   .siteTagline{display:none}.headerStatus{font-size:10px}
-  .storyContent h2{font-size:16px;line-height:1.2}
+  .storyContent h2{font-size:18px;line-height:1.2}
   .storyContent p{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
   .neutralityGrid{grid-template-columns:1fr}
   .neutralityInline{grid-template-columns:minmax(135px,auto) minmax(50px,1fr) auto}
