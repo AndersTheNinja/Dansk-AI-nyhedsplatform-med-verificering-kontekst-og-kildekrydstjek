@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from "next/server";
 import { POST as analyzePost } from "../analyze/route";
 
@@ -23,17 +25,19 @@ export async function GET() {
     }
 
     return NextResponse.json({
+      version: "v2-direct",
       ok: response.ok,
       status: response.status,
       stage: response.ok ? "openai-ok" : "openai-error",
       detail: response.ok ? "AI-kald virker" : detail
-    });
+    }, { headers: { "Cache-Control": "no-store, max-age=0" } });
   } catch (error) {
     return NextResponse.json({
+      version: "v2-direct",
       ok: false,
       status: 500,
       stage: "healthcheck-error",
       detail: error instanceof Error ? error.message : "Ukendt fejl"
-    });
+    }, { headers: { "Cache-Control": "no-store, max-age=0" } });
   }
 }
