@@ -394,7 +394,7 @@ async function fetchFeed(feed: FeedConfig): Promise<NewsItem[]> {
       pubDate,
       description,
       source: feed.name,
-      method: "RSS",
+      method: "RSS" as const,
       id: `${feed.name}-${index}-${link || title}`
     };
   }).filter((item: NewsItem) => item.title && item.link);
