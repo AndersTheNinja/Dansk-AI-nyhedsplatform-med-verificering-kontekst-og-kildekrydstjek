@@ -26,10 +26,7 @@ export default async function Home() {
         </div>
         <div className="headerStatus">
           <div className="liveStatusLine"><span className="liveDot" /> LIVE</div>
-          <div className="headerStats">
-            <span>{stories.length} nyheder i alt</span>
-            <span>{stories24h} nyheder 24 t.</span>
-          </div>
+          <div className="headerStats">Nyheder: {stories24h} (24t.) / {stories.length} (i alt)</div>
         </div>
       </header>
 
