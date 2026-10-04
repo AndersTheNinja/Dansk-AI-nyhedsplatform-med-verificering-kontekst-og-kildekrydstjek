@@ -16,6 +16,7 @@ type NewsItem = {
   pubDate?: string;
   description: string;
   source: string;
+  method: "RSS" | "WEB";
   id: string;
 };
 
@@ -304,7 +305,7 @@ function scoreOriginality(lead: NewsItem, sources: NewsItem[]) {
   if (sources.length <= 1) {
     return {
       score: 100,
-      note: "Historien er kun fundet hos denne ene medieudgiver i KONTEKSTs aktuelle feed-scan.",
+      note: "Historien er kun fundet hos denne ene medieudgiver i KONTEKSTs aktuelle nyhedsscan.",
       examples: ["Ingen andre matchende mediekilder fundet."]
     };
   }
@@ -381,13 +382,73 @@ async function fetchFeed(feed: FeedConfig): Promise<NewsItem[]> {
       pubDate,
       description,
       source: feed.name,
+      method: "RSS",
       id: `${feed.name}-${index}-${link || title}`
     };
   }).filter((item: NewsItem) => item.title && item.link);
 }
 
+
+async function fetchBorsenWebsite(): Promise<NewsItem[]> {
+  const response = await fetch("https://borsen.dk/", {
+    next: { revalidate: 300 },
+    headers: {
+      "User-Agent": "Mozilla/5.0 (compatible; KONTEKST/0.5; +https://vercel.app)",
+      Accept: "text/html,application/xhtml+xml"
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`Børsen website returned ${response.status}`);
+  }
+
+  const html = await response.text();
+  const items: NewsItem[] = [];
+  const seen = new Set<string>();
+
+  // Børsen is collected directly from links on the website — not from an RSS feed.
+  const anchorPattern = /<a\b([^>]*?)href=["']([^"']+)["']([^>]*)>([\s\S]*?)<\/a>/gi;
+  let match: RegExpExecArray | null;
+
+  while ((match = anchorPattern.exec(html)) && items.length < 12) {
+    const href = decodeHtmlEntities(match[2] || "").trim();
+    const rawTitle = stripHtml(match[4] || "");
+
+    if (rawTitle.length < 25 || rawTitle.length > 220) continue;
+
+    let url: URL;
+    try {
+      url = new URL(href, "https://borsen.dk/");
+    } catch {
+      continue;
+    }
+
+    if (!/(^|\.)borsen\.dk$/i.test(url.hostname)) continue;
+    if (!/^\/nyheder\//i.test(url.pathname)) continue;
+
+    const canonical = `${url.origin}${url.pathname}`;
+    if (seen.has(canonical)) continue;
+    seen.add(canonical);
+
+    items.push({
+      category: "Erhverv",
+      title: rawTitle,
+      link: canonical,
+      description: "",
+      source: "Børsen",
+      method: "WEB",
+      id: `Børsen-web-${items.length}-${canonical}`
+    });
+  }
+
+  return items;
+}
+
 export async function getLiveStories(): Promise<Story[]> {
-  const results = await Promise.allSettled(feeds.map(fetchFeed));
+  const results = await Promise.allSettled([
+    ...feeds.map(fetchFeed),
+    fetchBorsenWebsite()
+  ]);
 
   const fetched = results
     .flatMap((result) => (result.status === "fulfilled" ? result.value : []))
@@ -410,7 +471,7 @@ export async function getLiveStories(): Promise<Story[]> {
       const sources = Array.from(
         new Map(cluster.map((item) => [publisherName(item.source), item])).values()
       );
-      const age = lead.pubDate ? new Date(lead.pubDate).getTime() : 0;
+      const age = lead.pubDate ? new Date(lead.pubDate).getTime() : Date.now();
       return { lead, sources, age };
     })
     .sort((a, b) => b.age - a.age);
@@ -444,7 +505,9 @@ export async function getLiveStories(): Promise<Story[]> {
       id: `live-${index}-${lead.id}`,
       category: lead.category,
       title: lead.title,
-      sourceLabel: hasCrossCheck ? `${sources.length} kilder` : lead.source,
+      sourceLabel: hasCrossCheck
+        ? `${sources.length} kilder · ${Array.from(new Set(sources.map((item) => item.method))).join("+")}`
+        : `${lead.source} · ${lead.method}`,
       published: timeAgo(lead.pubDate),
       summary,
       why: categoryWhy(lead.category),
@@ -463,7 +526,8 @@ export async function getLiveStories(): Promise<Story[]> {
       sources: sources.slice(0, 4).map((item) => ({
         label: publisherName(item.source),
         url: item.link,
-        title: item.title
+        title: item.title,
+        method: item.method
       }))
     } satisfies Story;
   });
