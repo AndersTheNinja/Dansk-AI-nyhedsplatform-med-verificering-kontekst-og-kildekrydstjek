@@ -227,10 +227,6 @@ function StoryCard({ story }: { story: Story }) {
         </div>
 
         <div className="scoreLine">
-          <span>Neutralitet: <strong className="scoreValue">{wordingScore}%</strong></span>
-          <span>•</span>
-          <span>Originalitet: <strong className="scoreValue">{originalityScore === null ? "Ikke nok data" : `${originalityScore}%`}</strong></span>
-          <span>•</span>
           <button
             type="button"
             className="aiCheckLink"
@@ -241,7 +237,6 @@ function StoryCard({ story }: { story: Story }) {
           </button>
           {!summaryError && (
             <>
-              <span>•</span>
               <button
                 type="button"
                 className="aiSummaryButton"
@@ -253,12 +248,9 @@ function StoryCard({ story }: { story: Story }) {
             </>
           )}
           {story.sources[0] && subscriptionRequired !== null && (
-            <>
-              <span>•</span>
-              <a className="readMore" href={story.sources[0].url} target="_blank" rel="noreferrer">
-                Læs mere ({subscriptionRequired ? "abb" : "gratis"})
-              </a>
-            </>
+            <a className="readMore" href={story.sources[0].url} target="_blank" rel="noreferrer">
+              Læs mere ({subscriptionRequired ? "abb" : "gratis"}) <span className="externalIcon" aria-hidden="true">↗</span>
+            </a>
           )}
         </div>
 
