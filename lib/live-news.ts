@@ -187,6 +187,18 @@ function publishedValue(item: Record<string, unknown>): string | undefined {
   return value || undefined;
 }
 
+function formatPublishedDate(pubDate?: string) {
+  if (!pubDate) return undefined;
+  const date = new Date(pubDate);
+  if (Number.isNaN(date.getTime())) return undefined;
+  return new Intl.DateTimeFormat("da-DK", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "Europe/Copenhagen"
+  }).format(date);
+}
+
 function timeAgo(pubDate?: string) {
   if (!pubDate) return "Senest";
   const date = new Date(pubDate);
@@ -505,10 +517,10 @@ export async function getLiveStories(): Promise<Story[]> {
       id: `live-${index}-${lead.id}`,
       category: lead.category,
       title: lead.title,
-      sourceLabel: hasCrossCheck
-        ? `${sources.length} kilder · ${Array.from(new Set(sources.map((item) => item.method))).join("+")}`
-        : `${lead.source} · ${lead.method}`,
+      sourceLabel: hasCrossCheck ? `${sources.length} kilder` : lead.source,
       published: timeAgo(lead.pubDate),
+      publishedDate: formatPublishedDate(lead.pubDate),
+      sourceMethod: lead.method,
       summary,
       why: categoryWhy(lead.category),
       verification: hasCrossCheck ? "nuance" : "unverified",
