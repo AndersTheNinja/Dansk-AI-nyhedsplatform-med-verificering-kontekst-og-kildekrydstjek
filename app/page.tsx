@@ -18,9 +18,9 @@ export default async function Home() {
     <main className="site">
       <header className="masthead shell">
         <div className="logoRow">
-          <div className="logoBlock">ØL</div>
+          <div className="logoBlock">Ø</div>
           <div>
-            <div className="siteName">.dk</div>
+            <div className="siteName"><span className="siteNameMain">ØL</span><span className="siteNameAccent">.dk</span></div>
             <div className="siteTagline">Danske nyheder med objektivitets-score • Redaktør og Ai-geni: Anders Grønborg</div>
           </div>
         </div>
