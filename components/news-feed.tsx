@@ -335,22 +335,9 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
     return () => window.clearInterval(interval);
   }, [router]);
 
-  function scrollToSection(id: string) {
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-
   return (
     <section id="feed">
-      <div className="sectionSwitcher" aria-label="Nyhedssektioner">
-        <button type="button" onClick={() => scrollToSection("pickmix")} className="sectionSwitchButton">
-          Pick ’n’ mix
-        </button>
-        <button type="button" onClick={() => scrollToSection("latest")} className="sectionSwitchButton">
-          Seneste nyheder
-        </button>
-      </div>
-
-      <div id="pickmix" className="filterArea">
+      <div className="filterLabel">Pick ’n’ mix</div>
       <div className="filterBar">
         {categories.map((item) => (
           <button
@@ -377,9 +364,7 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
         ))}
       </div>
 
-      </div>
-
-      <div id="latest" className="sectionTitle">Seneste nyheder</div>
+      <div className="sectionTitle">Seneste nyheder</div>
 
       <div className="storyList">
         {visible.map((story) => (
