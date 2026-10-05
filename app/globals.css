@@ -36,7 +36,7 @@ button{font:inherit}
   .liveDot{animation:none}
 }
 .tealRule{height:12px;background:var(--teal);box-shadow:inset 0 1px rgba(255,255,255,.2)}
-.contentShell{display:grid;grid-template-columns:minmax(0,1fr) 245px;gap:28px;padding:24px 0 36px}
+.contentShell{display:grid;grid-template-columns:minmax(0,1fr) 245px;gap:28px;padding:10px 0 36px}
 .mainColumn{min-width:0}
 .sidebar{font-family:Arial,sans-serif}
 .sideBox{background:#fff;border:1px solid #d7dbdd;margin-bottom:18px;padding:14px}
@@ -50,7 +50,6 @@ button{font:inherit}
 .dot.ok{background:#e7f6ed;color:var(--green)}
 .dot.warn{background:#fff1df;color:var(--amber)}
 .dot.neutral{background:#edf0f2;color:#667179}
-.filterLabel{text-align:left;margin:0 0 8px;font:700 16px Arial,sans-serif;color:#455158}
 .filterBar{display:flex;width:100%;justify-content:flex-start;align-items:center;align-content:flex-start;gap:7px;flex-wrap:wrap;margin-bottom:14px;font-family:Arial,sans-serif;text-align:left}
 .filterTab{appearance:none;border:1px solid #cfd4d6;background:#fff;padding:4px 7px;color:#287ea3;font:11px Arial,sans-serif;cursor:pointer;text-decoration:none;border-radius:2px}
 .filterTab:hover{border-color:var(--teal);color:var(--teal-dark)}
