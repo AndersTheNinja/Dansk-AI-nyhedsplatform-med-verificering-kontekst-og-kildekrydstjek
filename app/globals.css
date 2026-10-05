@@ -99,7 +99,6 @@ button{font:inherit}
 .readMore:hover{color:var(--teal-dark);text-decoration:none}
 .readMoreText{text-decoration:underline;text-underline-offset:2px}
 .readMoreAccess{text-decoration:none;font-weight:400}
-.externalTextArrow{display:inline-block;margin-left:2px;font-family:"Helvetica Neue",Arial,sans-serif;font-weight:400;font-size:12px;line-height:1;text-decoration:none;transform:none}
 .miniBadge{display:inline-block;font:700 10px Arial,sans-serif;padding:4px 7px;border-radius:10px;background:#edf0f2;color:#59656c}
 .miniBadge.confirmed{background:#e9f6ee;color:var(--green)}
 .miniBadge.nuance{background:#fff3e4;color:var(--amber)}
