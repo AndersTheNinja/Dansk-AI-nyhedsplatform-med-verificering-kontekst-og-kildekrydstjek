@@ -23,8 +23,8 @@ button{font:inherit}
 .siteName{display:flex;align-items:baseline;font-family:Arial,sans-serif;line-height:1;white-space:nowrap}
 .siteNameMain{font-size:34px;font-weight:700;color:#314047;letter-spacing:-.035em}
 .siteNameAccent{font-size:34px;font-weight:400;color:var(--teal);letter-spacing:-.035em}
-.siteTagline{font:11px/1.3 Arial,sans-serif;color:#8b949b;margin:0;white-space:nowrap}.siteTagline strong{color:#59656c;font-weight:700}
-.headerStatus{font:700 11px Arial,sans-serif;color:#6f7b83;display:flex;flex-direction:column;align-items:flex-end;gap:2px;white-space:nowrap}
+.siteTagline{font:13px/1.3 Arial,sans-serif;color:#8b949b;margin:0;white-space:nowrap}.siteTagline strong{color:#59656c;font-weight:700}
+.headerStatus{font:700 13px Arial,sans-serif;color:#6f7b83;display:flex;flex-direction:column;align-items:flex-end;gap:2px;white-space:nowrap}
 .liveStatusLine{display:flex;align-items:center;gap:7px}
 .headerStats{display:flex;flex-direction:column;align-items:flex-end;gap:1px;font-weight:400;font-style:normal;color:#8b949b;line-height:1.2}
 .liveDot{width:8px;height:8px;border-radius:50%;background:#23b26d;animation:livePulse 1.25s ease-in-out infinite;box-shadow:0 0 0 0 rgba(35,178,109,.45)}
@@ -68,7 +68,7 @@ button{font:inherit}
 .storyMeta span:first-child{font-weight:700}
 .storyContent p{font-size:calc(12.5px * var(--reader-scale));line-height:1.45;color:#59656c;margin:0}
 .summaryRow{display:flex;align-items:flex-end;gap:12px;margin:0}
-.summaryRow p{flex:1;min-width:0;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:5;overflow:hidden}
+.summaryRow p{flex:1;min-width:0;min-height:calc(1.45em * 3);display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:5;overflow:hidden}
 .neutralityGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:4px 0 2px;font-family:Arial,sans-serif}
 .neutralityMetric{position:relative;background:#fafbfb;border:1px solid #e1e5e6;padding:6px 8px;cursor:help;outline:none}
 .neutralityMetric:hover,.neutralityMetric:focus{border-color:#aeb9bd;background:#fff}
@@ -95,7 +95,7 @@ button{font:inherit}
 .readMore:hover{color:var(--teal-dark);text-decoration:none}
 .readMoreText{text-decoration:underline;text-underline-offset:2px}
 .readMoreAccess{text-decoration:none;font-weight:400}
-.externalTextArrow{font-family:Arial,"Helvetica Neue",sans-serif;font-variant-emoji:text;font-weight:700;font-size:11px;line-height:1;text-decoration:none}
+.externalTextArrow{display:inline-block;margin-left:2px;font-family:Arial,"Helvetica Neue",sans-serif;font-variant-emoji:text;font-weight:700;font-size:11px;line-height:1;text-decoration:none}
 .miniBadge{display:inline-block;font:700 10px Arial,sans-serif;padding:4px 7px;border-radius:10px;background:#edf0f2;color:#59656c}
 .miniBadge.confirmed{background:#e9f6ee;color:var(--green)}
 .miniBadge.nuance{background:#fff3e4;color:var(--amber)}
@@ -107,7 +107,7 @@ button{font:inherit}
 }
 @media(max-width:560px){
   .shell{width:min(100% - 24px,1030px)}
-  .siteTagline{display:block;font-size:10px;line-height:1.2;margin:0;max-width:185px;white-space:normal}.headerStatus{font-size:10px}
+  .siteTagline{display:block;font-size:11px;line-height:1.2;margin:0;max-width:205px;white-space:normal}.headerStatus{font-size:11px}
   .storyContent h2{font-size:calc(17px * var(--reader-scale));line-height:1.2}
   .storyContent p{display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden}
   .neutralityGrid{grid-template-columns:1fr}
@@ -151,3 +151,9 @@ button{font:inherit}
 .textSizeButton{border:1px solid #cfd4d6;background:#fff;padding:5px 8px;font:700 12px Arial,sans-serif;cursor:pointer;color:#455158}
 .textSizeValue{font:11px Arial,sans-serif;color:#77818a;min-width:42px;text-align:center}
 @media(max-width:780px){.textSizeBox{display:none}}
+
+.sectionSwitcher{display:flex;gap:8px;margin:0 0 14px}
+.sectionSwitchButton{appearance:none;border:1px solid #cfd4d6;background:#fff;color:#455158;padding:7px 12px;font:700 12px Arial,sans-serif;cursor:pointer}
+.sectionSwitchButton:hover{border-color:var(--teal);color:var(--teal-dark)}
+.filterArea{scroll-margin-top:12px}
+#latest{scroll-margin-top:12px}
