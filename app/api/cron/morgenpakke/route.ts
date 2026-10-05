@@ -49,6 +49,12 @@ export async function GET(req:NextRequest){
   const auth=req.headers.get("authorization");
   if(secret && auth!==`Bearer ${secret}`) return NextResponse.json({error:"Unauthorized"},{status:401});
 
+  const localHour = Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Copenhagen", hour: "2-digit", hour12: false }).format(new Date()));
+  const manual = req.nextUrl.searchParams.get("manual") === "1";
+  if (!manual && localHour !== 7) {
+    return NextResponse.json({ skipped: true, reason: "Not 07:xx Europe/Copenhagen", localHour });
+  }
+
   const date=copenhagenDate();
   const run=runningDay(date.iso);
   const years=(run/365.2425).toFixed(2).replace(".",",");
