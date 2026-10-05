@@ -131,7 +131,7 @@ const feeds: FeedConfig[] = [
     name: "TV2",
     url: "https://tv2.dk/rss/seneste.xml",
     category: "Danmark"
-  }
+  },
   {
     name: "DR Udland",
     url: "https://www.dr.dk/nyheder/service/feeds/udland",
@@ -876,11 +876,19 @@ export async function getLiveStories(): Promise<Story[]> {
     } satisfies Story;
   });
 
+  const chronologicalStories = [...stories].sort((a, b) => {
+    const aTime = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
+    const bTime = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
+    const safeA = Number.isFinite(aTime) ? aTime : 0;
+    const safeB = Number.isFinite(bTime) ? bTime : 0;
+    return safeB - safeA;
+  });
+
   try {
-    await persistStories(stories);
+    await persistStories(chronologicalStories);
   } catch (error) {
     console.error("Supabase news persistence failed:", error);
   }
 
-  return stories;
+  return chronologicalStories;
 }
