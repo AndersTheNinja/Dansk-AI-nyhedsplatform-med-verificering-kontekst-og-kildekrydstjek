@@ -324,7 +324,13 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
     const names = initialStories.flatMap((story) =>
       story.sources.map((source) => mediaName(source.label))
     );
-    return ["Alle medier", ...Array.from(new Set(names)).sort((a, b) => a.localeCompare(b, "da"))];
+    const hiddenMedia = new Set(["Fredericia Dagblad", "JydskeVestkysten", "Horsens Folkeblad"]);
+    return [
+      "Alle medier",
+      ...Array.from(new Set(names))
+        .filter((name) => !hiddenMedia.has(name))
+        .sort((a, b) => a.localeCompare(b, "da"))
+    ];
   }, [initialStories]);
 
   const visible = useMemo(
