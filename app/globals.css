@@ -24,7 +24,7 @@ button{font:inherit}
 .siteNameMain{font-size:34px;font-weight:700;color:#314047;letter-spacing:-.035em}
 .siteNameAccent{font-size:34px;font-weight:400;color:var(--teal);letter-spacing:-.035em}
 .siteTagline{font:13px/1.3 Arial,sans-serif;color:#8b949b;margin:0;white-space:nowrap}.siteTagline strong{color:#59656c;font-weight:700}
-.headerStatus{font:700 13px Arial,sans-serif;color:#6f7b83;display:flex;flex-direction:column;align-items:flex-end;gap:2px;white-space:nowrap}
+.headerStatus{font:700 13px Arial,sans-serif;color:#6f7b83;display:flex;flex-direction:column;align-items:flex-end;align-self:center;gap:2px;white-space:nowrap;margin-top:17px}
 .liveStatusLine{display:flex;align-items:center;gap:7px}
 .headerStats{display:flex;flex-direction:column;align-items:flex-end;gap:1px;font-weight:400;font-style:normal;color:#8b949b;line-height:1.2}
 .liveDot{width:8px;height:8px;border-radius:50%;background:#23b26d;animation:livePulse 1.25s ease-in-out infinite;box-shadow:0 0 0 0 rgba(35,178,109,.45)}
@@ -67,9 +67,13 @@ button{font:inherit}
 .storyContent h2{font:700 calc(17px * var(--reader-scale)) Arial,sans-serif;line-height:1.2;letter-spacing:0;margin:0 0 6px;color:#455158}
 .storyMeta{display:flex;gap:5px;flex-wrap:wrap;font:calc(10px * var(--reader-scale)) Arial,sans-serif;color:#9a6258;margin-bottom:3px}
 .storyMeta span:first-child{font-weight:700}
-.storyContent p{font-size:calc(12.5px * var(--reader-scale));line-height:1.45;color:#59656c;margin:0}
-.summaryRow{display:flex;align-items:flex-end;gap:12px;margin:0}
-.summaryRow p{flex:1;min-width:0;min-height:calc(1.45em * 3);display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:5;overflow:hidden}
+.storyContent p{font-size:calc(12.5px * var(--reader-scale));line-height:1.45;color:#59656c;margin:0;font-weight:700}
+.summaryRow{display:flex;align-items:flex-end;gap:6px;margin:0}
+.summaryRow p{flex:1;min-width:0;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
+.summaryRow.expanded p{display:block;overflow:visible}
+.storyExpandButton{appearance:none;border:0;background:transparent;color:#9a6258;padding:0 1px 1px;font:700 12px/1 Arial,sans-serif;cursor:pointer;flex:0 0 auto;transition:transform .2s ease}
+.storyExpandButton:hover{color:var(--teal-dark)}
+.storyExpandButton.open{transform:rotate(180deg)}
 .neutralityGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:4px 0 2px;font-family:Arial,sans-serif}
 .neutralityMetric{position:relative;background:#fafbfb;border:1px solid #e1e5e6;padding:6px 8px;cursor:help;outline:none}
 .neutralityMetric:hover,.neutralityMetric:focus{border-color:#aeb9bd;background:#fff}
@@ -110,7 +114,8 @@ button{font:inherit}
   .shell{width:min(100% - 24px,1030px)}
   .siteTagline{display:block;font-size:11px;line-height:1.2;margin:0;max-width:205px;white-space:normal}.headerStatus{font-size:11px}
   .storyContent h2{font-size:calc(17px * var(--reader-scale));line-height:1.2}
-  .storyContent p{display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden}
+  .storyContent p{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+  .summaryRow.expanded p{display:block;overflow:visible}
   .neutralityGrid{grid-template-columns:1fr}
   .neutralityInline{grid-template-columns:minmax(135px,auto) minmax(50px,1fr) auto}
   .neutralityLabel{white-space:normal}
