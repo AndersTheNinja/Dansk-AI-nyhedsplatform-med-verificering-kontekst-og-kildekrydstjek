@@ -70,7 +70,7 @@ button{font:inherit}
 .summaryRow{display:flex;align-items:flex-end;gap:6px;margin:0}
 .summaryRow p{flex:1;min-width:0;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
 .summaryRow.expanded p{display:block;overflow:visible}
-.storyExpandButton{appearance:none;border:0;background:transparent;color:#9a6258;padding:0 1px 1px;font:700 12px/1 Arial,sans-serif;cursor:pointer;flex:0 0 auto;transition:transform .2s ease}
+.storyExpandButton{appearance:none;border:0;background:transparent;color:#9a6258;padding:0 1px 1px;font:700 24px/1 Arial,sans-serif;cursor:pointer;flex:0 0 auto;transition:transform .2s ease}
 .storyExpandButton:hover{color:var(--teal-dark)}
 .storyExpandButton.open{transform:rotate(180deg)}
 .neutralityGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:4px 0 2px;font-family:Arial,sans-serif}
