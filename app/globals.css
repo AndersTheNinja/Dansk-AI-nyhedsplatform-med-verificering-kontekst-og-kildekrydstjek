@@ -68,7 +68,7 @@ button{font:inherit}
 .storyMeta span:first-child{font-weight:700}
 .storyContent p{font-size:calc(12.5px * var(--reader-scale));line-height:1.45;color:#59656c;margin:0}
 .summaryRow{display:flex;align-items:flex-end;gap:12px;margin:0}
-.summaryRow p{flex:1;min-width:0;min-height:calc(1.45em * 3);display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:5;overflow:hidden}
+.summaryRow p{flex:1;min-width:0;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:5;overflow:hidden}
 .neutralityGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:4px 0 2px;font-family:Arial,sans-serif}
 .neutralityMetric{position:relative;background:#fafbfb;border:1px solid #e1e5e6;padding:6px 8px;cursor:help;outline:none}
 .neutralityMetric:hover,.neutralityMetric:focus{border-color:#aeb9bd;background:#fff}
