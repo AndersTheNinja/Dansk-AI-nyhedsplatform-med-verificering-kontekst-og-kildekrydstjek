@@ -23,7 +23,7 @@ export default async function Home() {
             <div className="logoBlock">ØL</div>
             <div className="siteName"><span className="siteNameAccent">.dk</span></div>
           </div>
-          <div className="siteTagline"><strong>ØL.dk — Øjeblik &amp; Lødighed</strong><br />Nyheder med resumé og faktatjek.</div>
+          <div className="siteTagline"><strong>ØL.dk — Øjeblikkelig &amp; Lødig</strong><br />Nyheder med resumé og faktatjek.</div>
         </div>
         <div className="headerStatus">
           <div className="liveStatusLine"><span className="liveDot" /> LIVE</div>
