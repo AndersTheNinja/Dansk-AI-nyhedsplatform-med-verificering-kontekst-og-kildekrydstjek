@@ -1,4 +1,5 @@
 import { concertArtists } from "@/data/concert-artists";
+import { getCalendarBrief } from "@/lib/morgenpakke-calendar";
 import { NextRequest, NextResponse } from "next/server";
 
 export const maxDuration = 300;
@@ -76,9 +77,7 @@ export async function GET(req:NextRequest){
     },
     {
       id:"calendar", subject:`Kalender – ${date.display}`,
-      make:async()=> process.env.MORGENPAKKE_CALENDAR_URL
-        ? ai(`Lav et kompakt kalenderbrief for i dag og de næste to dage. Hent kun data fra denne kalenderkilde: ${process.env.MORGENPAKKE_CALENDAR_URL}. Medtag tider og vigtige noter. Dato: ${date.iso}. Skriv på dansk.`)
-        : "Kalenderkilden er endnu ikke konfigureret på serveren."
+      make:()=>getCalendarBrief(date.iso)
     }
   ];
 
