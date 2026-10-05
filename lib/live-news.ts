@@ -216,7 +216,7 @@ function isFresh(pubDate?: string) {
   const time = new Date(pubDate).getTime();
   if (Number.isNaN(time)) return true;
   const ageHours = (Date.now() - time) / 3600000;
-  const maxHours = 14 * 24;
+  const maxHours = 21 * 24;
   return ageHours >= -2 && ageHours <= maxHours;
 }
 
@@ -257,7 +257,7 @@ function sameStory(a: NewsItem, b: NewsItem) {
   // Match across categories too: the same event may be tagged "Danmark" by one
   // outlet and "Erhverv" by another. Strong title overlap is enough; otherwise
   // require support from article descriptions.
-  return titleScore >= 0.36 || (titleScore >= 0.20 && descriptionScore >= 0.30);
+  return titleScore >= 0.55 || (titleScore >= 0.35 && descriptionScore >= 0.45);
 }
 
 function publisherName(source: string) {
@@ -625,8 +625,8 @@ export async function getLiveStories(): Promise<Story[]> {
   // Only fetch article pages for stories whose RSS/web teaser is too short.
   // This also works for subscriber articles because we only use public metadata/teasers.
   const enrichedSelected = await Promise.all(
-    selected.map(async (entry) => {
-      if (entry.lead.description.length >= 220) return entry;
+    selected.map(async (entry, index) => {
+      if (entry.lead.description.length >= 220 || index >= 120) return entry;
       return { ...entry, lead: await enrichPreview(entry.lead) };
     })
   );
