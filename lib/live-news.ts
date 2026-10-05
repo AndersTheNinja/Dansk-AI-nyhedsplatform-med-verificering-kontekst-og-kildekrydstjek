@@ -158,7 +158,9 @@ function cleanPreviewText(value = "", title = "") {
     /^(?:tilmeld dig|få vores nyhedsbrev|modtag nyhedsbrev|nyhedsbrev)\b[^.!?]*(?:[.!?]|$)\s*/i,
     /^(?:du har nu adgang til|log ind for at læse|bliv abonnent|kun for abonnenter)\b[^.!?]*(?:[.!?]|$)\s*/i,
     /^(?:artiklen fortsætter efter annoncen|fortsætter efter annoncen)\.?\s*/i,
-    /^(?:klik her|tryk her)\b[^.!?]*(?:[.!?]|$)\s*/i
+    /^(?:klik her|tryk her)\b[^.!?]*(?:[.!?]|$)\s*/i,
+    /^pro indhold med dybdegående analyser og nyhedsbreve indenfor finans og iværksætteri\.?s*/i,
+    /^klik her og få adgang\s*/i
   ];
 
   let changed = true;
@@ -172,6 +174,15 @@ function cleanPreviewText(value = "", title = "") {
       }
     }
   }
+
+  // Remove recurring publisher boilerplate wherever it appears, without deleting
+  // the actual article sentence that follows it.
+  text = text
+    .replace(/pro indhold med dybdegående analyser og nyhedsbreve indenfor finans og iværksætteri\.?\s*/gi, "")
+    .replace(/klik her og få adgang\s*/gi, "")
+    .replace(/\s*læs mere og bliv(?: abonnent)?\.?\s*$/gi, "")
+    .replace(/\s*bliv abonnent for at læse videre\.?\s*$/gi, "")
+    .trim();
 
   if (title) {
     const normalizedTitle = stripHtml(title).trim();
