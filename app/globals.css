@@ -52,7 +52,7 @@ button{font:inherit}
 .dot.neutral{background:#edf0f2;color:#667179}
 .filterLabel{text-align:left;margin:0 0 8px;font:700 16px Arial,sans-serif;color:#455158}
 .filterBar{display:flex;width:100%;justify-content:flex-start;align-items:center;align-content:flex-start;gap:7px;flex-wrap:wrap;margin-bottom:14px;font-family:Arial,sans-serif;text-align:left}
-.filterTab{appearance:none;border:1px solid #cfd4d6;background:#fff;padding:6px 10px;color:#287ea3;font:12px Arial,sans-serif;cursor:pointer;text-decoration:none;border-radius:2px}
+.filterTab{appearance:none;border:1px solid #cfd4d6;background:#fff;padding:4px 7px;color:#287ea3;font:11px Arial,sans-serif;cursor:pointer;text-decoration:none;border-radius:2px}
 .filterTab:hover{border-color:var(--teal);color:var(--teal-dark)}
 .filterTab.active{background:var(--teal);border-color:var(--teal);color:#fff;font-weight:700;text-decoration:none}
 .mediaFilter{display:flex;width:100%;align-items:center;align-content:flex-start;justify-content:flex-start;flex-wrap:wrap;gap:5px;margin:-6px 0 18px;font:11px Arial,sans-serif;color:#6f797f;text-align:left}
@@ -100,7 +100,7 @@ button{font:inherit}
 .readMore:hover{color:var(--teal-dark);text-decoration:none}
 .readMoreText{text-decoration:underline;text-underline-offset:2px}
 .readMoreAccess{text-decoration:none;font-weight:400}
-.externalTextArrow{display:inline-block;margin-left:2px;font-family:Arial,"Helvetica Neue",sans-serif;font-variant-emoji:text;font-weight:700;font-size:11px;line-height:1;text-decoration:none}
+.externalTextArrow{display:inline-block;margin-left:1px;font-family:Arial,"Helvetica Neue",sans-serif;font-variant-emoji:text;font-weight:700;font-size:11px;line-height:1;text-decoration:none}
 .miniBadge{display:inline-block;font:700 10px Arial,sans-serif;padding:4px 7px;border-radius:10px;background:#edf0f2;color:#59656c}
 .miniBadge.confirmed{background:#e9f6ee;color:var(--green)}
 .miniBadge.nuance{background:#fff3e4;color:var(--amber)}
@@ -130,7 +130,7 @@ button{font:inherit}
 .aiSummaryButton{appearance:none;border:0;background:transparent;padding:0;color:#9a6258;font:700 10px Arial,sans-serif;cursor:pointer;text-decoration:none}
 .aiSummaryButton:hover{color:var(--teal-dark)}
 .actionLinkText{text-decoration:underline;text-underline-offset:2px}
-.summaryChevron{display:inline-block;margin-left:0;transition:transform .2s ease;text-decoration:none}
+.summaryChevron{display:inline-block;margin-left:2px;font:700 12px/1 Arial,sans-serif;transition:transform .2s ease;text-decoration:none;vertical-align:-1px}
 .summaryChevron.open{transform:rotate(180deg)}
 .aiSummaryPanel{display:grid;grid-template-rows:0fr;opacity:0;transition:grid-template-rows .28s ease,opacity .22s ease;margin-top:0}
 .aiSummaryPanel.open{grid-template-rows:1fr;opacity:1;margin-top:8px}
