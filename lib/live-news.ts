@@ -312,7 +312,20 @@ function cleanPreviewText(value = "", title = "") {
     /\s+det er gratis at oprette\b/i,
     /\s+tilmeld dig gratis\b/i,
     /\s+få fri adgang\b/i,
-    /\s+abonnér(?: nu)?\b/i
+    /\s+abonnér(?: nu)?\b/i,
+    /(?:^|\s+)du kan modtage notifikationer\b/i,
+    /(?:^|\s+)opret et personligt gavelink\b/i,
+    /(?:^|\s+)log ind for at følge\b/i,
+    /(?:^|\s+)du er godt i gang\b/i,
+    /(?:^|\s+)få adgang til hele artiklen\b/i,
+    /(?:^|\s+)dagens e-avis\b/i,
+    /(?:^|\s+)børneavisen\b/i,
+    /(?:^|\s+)politiken fylder \d+ år\b/i,
+    /(?:^|\s+)abonnementet giver adgang til nordjyske\.dk\b/i,
+    /(?:^|\s+)vi har opdateret vore vilkår\b/i,
+    /(?:^|\s+)det er gratis at oprette et intro-abonnement\b/i,
+    /(?:^|\s+)ubegrænset adgang til alt premium-indhold\b/i,
+    /(?:^|\s+)vi sender et link til dig\b/i
   ];
 
   let cutAt = text.length;
@@ -330,6 +343,39 @@ function cleanPreviewText(value = "", title = "") {
   }
 
   return text.replace(/\s+/g, " ").trim();
+}
+
+function isBoilerplatePreview(value: string) {
+  const text = value.toLowerCase();
+  if (!text.trim()) return true;
+
+  const junkSignals = [
+    "du kan modtage notifikationer",
+    "opret et personligt gavelink",
+    "log ind for at følge",
+    "du er godt i gang",
+    "få adgang til hele artiklen",
+    "dagens e-avis",
+    "børneavisen",
+    "abonnementet giver adgang til nordjyske.dk",
+    "det er gratis at oprette et intro-abonnement",
+    "ubegrænset adgang til alt premium-indhold",
+    "vi sender et link til dig",
+    "bliv abonnent",
+    "tilmeld dig vores nyhedsbrev"
+  ];
+
+  return junkSignals.some((signal) => text.includes(signal));
+}
+
+function previewQuality(value: string) {
+  const text = value.trim();
+  if (!text) return -1000;
+  if (isBoilerplatePreview(text)) return -500;
+  let score = Math.min(text.length, 600);
+  if (/[.!?](?:["”’])?(?:\s|$)/.test(text)) score += 80;
+  if (text.length >= 100) score += 80;
+  return score;
 }
 
 function textValue(value: unknown): string {
@@ -625,7 +671,7 @@ async function fetchFeed(feed: FeedConfig): Promise<NewsItem[]> {
     const item = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
     const title = stripHtml(textValue(item.title) || "Ukendt historie");
     const link = linkValue(item.link) || feed.url;
-    const description = cleanPreviewText(
+    const rawDescription = cleanPreviewText(
       textValue(
         item.description ??
         item.summary ??
@@ -636,6 +682,7 @@ async function fetchFeed(feed: FeedConfig): Promise<NewsItem[]> {
       ),
       title
     );
+    const description = isBoilerplatePreview(rawDescription) ? "" : rawDescription;
     const pubDate = publishedValue(item);
 
     return {
@@ -719,8 +766,18 @@ function extractPublicPreview(html: string) {
 }
 
 async function enrichPreview(item: NewsItem): Promise<NewsItem> {
-  // Existing teaser should be long enough for roughly three lines on desktop too.
-  if (item.description.length >= 340) return item;
+  let hostname = "";
+  try {
+    hostname = new URL(item.link).hostname.toLowerCase();
+  } catch {}
+
+  // JFM pages can expose unrelated article metadata in the HTML. Their RSS
+  // teaser is safer than page scraping, even when it is short.
+  const isJfmPublisher = /(?:^|\.)(?:stiften|fyens|jv|hsfo|frdb)\.dk$/i.test(hostname);
+  if (isJfmPublisher) return item;
+
+  // A long teaser is only trusted if it is actually editorial text.
+  if (item.description.length >= 340 && !isBoilerplatePreview(item.description)) return item;
 
   try {
     const response = await fetch(item.link, {
@@ -735,14 +792,23 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
 
     if (!response.ok) return item;
     const html = await response.text();
-    const isJfmPublisher = /(?:stiften|fyens|jv|hsfo|frdb)\.dk$/i.test(new URL(item.link).hostname);
-    const preview = isJfmPublisher
+
+    // These publishers have lots of account/navigation paragraphs in the DOM.
+    // Only use explicit metadata for them, never arbitrary <p> elements.
+    const metadataOnly = /(?:^|\.)(?:ing|version2|computerworld|politiken|nordjyske)\.dk$/i.test(hostname);
+    const preview = metadataOnly
       ? extractMetadataPreview(html)
       : extractPublicPreview(html);
 
+    const cleanedPreview = isBoilerplatePreview(preview) ? "" : preview;
+    const bestDescription =
+      previewQuality(cleanedPreview) > previewQuality(item.description)
+        ? cleanedPreview
+        : item.description;
+
     return {
       ...item,
-      description: preview.length > item.description.length ? preview : item.description,
+      description: bestDescription,
       pubDate: extractPublishedDateFromHtml(html) || item.pubDate
     };
   } catch {
@@ -863,11 +929,17 @@ export async function getLiveStories(): Promise<Story[]> {
         const bTime = b.pubDate ? parseNewsDate(b.pubDate)?.getTime() ?? 0 : 0;
         return bTime - aTime;
       });
-      const lead = orderedCluster[0];
+      const chronologicalLead = orderedCluster[0];
+      const bestContent = [...orderedCluster].sort(
+        (a, b) => previewQuality(b.description) - previewQuality(a.description)
+      )[0];
+      const lead = bestContent && previewQuality(bestContent.description) > previewQuality(chronologicalLead.description)
+        ? { ...chronologicalLead, description: bestContent.description }
+        : chronologicalLead;
       const sources = Array.from(
         new Map(orderedCluster.map((item) => [publisherName(item.source), item])).values()
       );
-      const age = lead?.pubDate ? parseNewsDate(lead.pubDate)?.getTime() ?? 0 : 0;
+      const age = chronologicalLead?.pubDate ? parseNewsDate(chronologicalLead.pubDate)?.getTime() ?? 0 : 0;
       return { lead, sources, age };
     })
     .filter((entry) => entry.lead)
@@ -892,7 +964,7 @@ export async function getLiveStories(): Promise<Story[]> {
   // This also works for subscriber articles because we only use public metadata/teasers.
   const enrichedSelected = await Promise.all(
     selected.map(async (entry, index) => {
-      if (entry.lead.description.length >= 340 || index >= 180) return entry;
+      if ((entry.lead.description.length >= 340 && !isBoilerplatePreview(entry.lead.description)) || index >= 220) return entry;
       return { ...entry, lead: await enrichPreview(entry.lead) };
     })
   );
@@ -902,10 +974,18 @@ export async function getLiveStories(): Promise<Story[]> {
     const hasCrossCheck = sources.length >= 2;
     const wordingNeutrality = scoreWordingNeutrality(`${lead.title} ${lead.description}`);
     const originality = scoreOriginality(lead, sources);
-    const summary =
-      lead.description.length > 70
-        ? lead.description.slice(0, 700).replace(/\s+\S*$/, "") + (lead.description.length > 700 ? "…" : "")
-        : [lead.title, lead.description].filter(Boolean).join(". ");
+    const cleanDescription = isBoilerplatePreview(lead.description) ? "" : lead.description.trim();
+    let summary = cleanDescription || lead.title;
+    if (summary.length > 700) {
+      const clipped = summary.slice(0, 700);
+      const sentenceMatches = Array.from(clipped.matchAll(/[.!?](?:["”’])?(?=\s|$)/g));
+      const lastSentence = sentenceMatches.at(-1);
+      if (lastSentence?.index !== undefined && lastSentence.index > 180) {
+        summary = clipped.slice(0, lastSentence.index + lastSentence[0].length).trim();
+      } else {
+        summary = clipped.replace(/\s+\S*$/, "").trim() + "…";
+      }
+    }
 
     return {
       id: `live-${index}-${lead.id}`,
