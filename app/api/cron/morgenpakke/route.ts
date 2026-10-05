@@ -48,7 +48,7 @@ function html(text:string){return `<div style="font-family:Arial,sans-serif;line
 export async function GET(req:NextRequest){
   const secret=process.env.CRON_SECRET;
   const auth=req.headers.get("authorization");
-  if(secret && auth!==`Bearer ${secret}`) return NextResponse.json({error:"Unauthorized"},{status:401});
+  if(!secret || auth!==`Bearer ${secret}`) return NextResponse.json({error:"Unauthorized"},{status:401});
 
   const localHour = Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Copenhagen", hour: "2-digit", hour12: false }).format(new Date()));
   const manual = req.nextUrl.searchParams.get("manual") === "1";
