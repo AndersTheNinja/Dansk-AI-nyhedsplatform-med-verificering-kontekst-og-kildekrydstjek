@@ -1,3 +1,4 @@
+import { concertArtists } from "@/data/concert-artists";
 import { NextRequest, NextResponse } from "next/server";
 
 export const maxDuration = 300;
@@ -71,7 +72,7 @@ export async function GET(req:NextRequest){
     },
     {
       id:"concerts", subject:"Europa koncertalarm – næste 30 dage",
-      make:()=>ai(`Find offentligt annoncerede koncerter i Europa de næste 30 dage for kunstnere på MORGENPAKKE_CONCERT_ARTISTS-listen nedenfor. Brug officielle artist/tour-sider, venues/festivaler og primære billetudbydere; krydstjek når muligt; dedupliker. Formatér hver: ARTISTNAVN, BY / DATO, BILLET: direkte officielt billet/event-link, separator. Hvis ingen findes, sig det klart. Skriv på dansk. Liste: ${process.env.MORGENPAKKE_CONCERT_ARTISTS || "Ingen artistliste konfigureret endnu"}`)
+      make:()=>ai(`Find offentligt annoncerede koncerter i Europa de næste 30 dage for kunstnere på MORGENPAKKE_CONCERT_ARTISTS-listen nedenfor. Brug officielle artist/tour-sider, venues/festivaler og primære billetudbydere; krydstjek når muligt; dedupliker. Formatér hver: ARTISTNAVN, BY / DATO, BILLET: direkte officielt billet/event-link, separator. Hvis ingen findes, sig det klart. Skriv på dansk. Liste: ${concertArtists.join(", ")}`)
     },
     {
       id:"calendar", subject:`Kalender – ${date.display}`,
