@@ -1,5 +1,6 @@
 import { XMLParser } from "fast-xml-parser";
 import type { Story } from "@/lib/stories";
+import { persistStories } from "@/lib/news-store";
 
 type Category = Story["category"];
 
@@ -713,7 +714,7 @@ export async function getLiveStories(): Promise<Story[]> {
     })
   );
 
-  return enrichedSelected.map((entry, index) => {
+  const stories = enrichedSelected.map((entry, index) => {
     const { lead, sources } = entry;
     const hasCrossCheck = sources.length >= 2;
     const wordingNeutrality = scoreWordingNeutrality(`${lead.title} ${lead.description}`);
@@ -754,4 +755,12 @@ export async function getLiveStories(): Promise<Story[]> {
       }))
     } satisfies Story;
   });
+
+  try {
+    await persistStories(stories);
+  } catch (error) {
+    console.error("Supabase news persistence failed:", error);
+  }
+
+  return stories;
 }
