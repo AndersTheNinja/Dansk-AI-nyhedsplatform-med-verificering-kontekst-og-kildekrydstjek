@@ -262,7 +262,11 @@ function stripHtml(value = "") {
     .trim();
 }
 function cleanPreviewText(value = "", title = "") {
-  let text = stripHtml(value);
+  const unescaped = String(value)
+    .replace(/\\u([0-9a-f]{4})/gi, (_, hex: string) => String.fromCharCode(parseInt(hex, 16)))
+    .replace(/\\n|\\r|\\t/g, " ")
+    .replace(/\\\//g, "/");
+  let text = stripHtml(unescaped);
 
   const boilerplatePatterns = [
     /^(?:annonce|advertorial|sponsoreret indhold|sponsoreret)\b[:\s-]*/i,
@@ -673,6 +677,21 @@ function extractPublishedDateFromHtml(html: string) {
 
   return undefined;
 }
+function extractMetadataPreview(html: string) {
+  const meta = cleanPreviewText(
+    extractMetaContent(html, "description") ||
+    extractMetaContent(html, "og:description")
+  );
+
+  const jsonDescription =
+    html.match(/"description"\s*:\s*"((?:\\.|[^"\\])*)"/i)?.[1] || "";
+  const jsonText = cleanPreviewText(jsonDescription);
+
+  return [meta, jsonText]
+    .filter((text) => text.length >= 40)
+    .sort((a, b) => b.length - a.length)[0] || "";
+}
+
 function extractPublicPreview(html: string) {
   const meta = cleanPreviewText(
     extractMetaContent(html, "description") ||
@@ -716,7 +735,10 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
 
     if (!response.ok) return item;
     const html = await response.text();
-    const preview = extractPublicPreview(html);
+    const isJfmPublisher = /(?:stiften|fyens|jv|hsfo|frdb)\.dk$/i.test(new URL(item.link).hostname);
+    const preview = isJfmPublisher
+      ? extractMetadataPreview(html)
+      : extractPublicPreview(html);
 
     return {
       ...item,
