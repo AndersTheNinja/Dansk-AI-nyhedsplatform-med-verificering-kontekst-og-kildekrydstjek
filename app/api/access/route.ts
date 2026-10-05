@@ -18,7 +18,11 @@ function looksLikePaywall(html: string) {
     /kræver abonnement/,
     /log ind for at læse videre/,
     /bliv abonnent for at læse/,
-    /læs videre med abonnement/
+    /læs videre med abonnement/,
+    /abonnentindhold/,
+    /subscriber[-_ ]only/,
+    /premium[-_ ]content/,
+    /"paywall"\s*:\s*true/
   ].some((pattern) => pattern.test(sample));
 }
 
@@ -34,6 +38,11 @@ export async function POST(req: NextRequest) {
 
   if (parsed.protocol !== "https:" || !ALLOWED_HOSTS.has(parsed.hostname)) {
     return NextResponse.json({ requiresSubscription: null }, { status: 400 });
+  }
+
+  // Børsens almindelige artikelunivers kræver abonnement.
+  if (/^(www\.)?borsen\.dk$/i.test(parsed.hostname)) {
+    return NextResponse.json({ requiresSubscription: true, basis: "publisher-rule" });
   }
 
   try {
