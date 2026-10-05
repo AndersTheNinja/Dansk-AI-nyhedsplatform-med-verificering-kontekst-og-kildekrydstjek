@@ -329,13 +329,19 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
 
   const visible = useMemo(
     () =>
-      initialStories.filter((story) => {
-        const matchesCategory = category === "Alle emner" || story.category === category;
-        const matchesMedia =
-          media === "Alle medier" ||
-          story.sources.some((source) => mediaName(source.label) === media);
-        return matchesCategory && matchesMedia;
-      }),
+      initialStories
+        .filter((story) => {
+          const matchesCategory = category === "Alle emner" || story.category === category;
+          const matchesMedia =
+            media === "Alle medier" ||
+            story.sources.some((source) => mediaName(source.label) === media);
+          return matchesCategory && matchesMedia;
+        })
+        .sort((a, b) => {
+          const aTime = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
+          const bTime = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
+          return bTime - aTime;
+        }),
     [initialStories, category, media]
   );
 
