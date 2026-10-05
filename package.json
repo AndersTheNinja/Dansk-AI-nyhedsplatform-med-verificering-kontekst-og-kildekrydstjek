@@ -12,7 +12,8 @@
     "fast-xml-parser": "^5.2.5",
     "next": "^15.5.0",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "google-auth-library": "^10.3.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
