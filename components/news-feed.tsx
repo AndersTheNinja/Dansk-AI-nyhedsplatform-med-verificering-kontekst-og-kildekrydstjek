@@ -247,7 +247,7 @@ function StoryCard({ story }: { story: Story }) {
           </button>
           {story.sources[0] && subscriptionRequired !== null && (
             <a className="readMore" href={story.sources[0].url} target="_blank" rel="noreferrer">
-              <span className="readMoreText">Læs mere</span> <span className="readMoreAccess">({subscriptionRequired ? "abb" : "gratis"})</span> <span className="externalTextArrow" aria-hidden="true">→</span>
+              <span className="readMoreText">Læs mere</span> <span className="readMoreAccess">({subscriptionRequired ? "abb" : "gratis"})</span> <span className="externalTextArrow" aria-hidden="true">↗</span>
             </a>
           )}
         </div>
@@ -338,6 +338,7 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
 
   return (
     <section id="feed">
+      <div className="filterLabel">Pick ‘n mix</div>
       <div className="filterBar">
         {categories.map((item) => (
           <button
