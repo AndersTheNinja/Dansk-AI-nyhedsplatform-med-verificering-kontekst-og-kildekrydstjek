@@ -5,7 +5,8 @@ const ALLOWED_HOSTS = new Set([
   "ing.dk","www.ing.dk","computerworld.dk","www.computerworld.dk","techsavvy.media","www.techsavvy.media",
   "altinget.dk","www.altinget.dk","nordjyske.dk","www.nordjyske.dk","fyens.dk","www.fyens.dk",
   "jv.dk","www.jv.dk","hsfo.dk","www.hsfo.dk","frdb.dk","www.frdb.dk","journalisten.dk","www.journalisten.dk",
-  "berlingske.dk","www.berlingske.dk","borsen.dk","www.borsen.dk"
+  "berlingske.dk","www.berlingske.dk","borsen.dk","www.borsen.dk",
+  "stiften.dk","www.stiften.dk","migogaarhus.dk","www.migogaarhus.dk","tv2.dk","www.tv2.dk"
 ]);
 
 function decodeHtml(value: string) {
@@ -81,6 +82,44 @@ function extractArticleText(html: string) {
   return cleanText(description);
 }
 
+function normalizeSummaryText(value: string) {
+  let text = value
+    .replace(/^\s*(?:resumé|resume|summary)\s*:\s*/i, "")
+    .replace(/^\s*[-*•]\s*/gm, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  // Never cut the visible summary in the middle of a sentence.
+  if (text.length > 1800) {
+    const candidate = text.slice(0, 1800);
+    const matches = Array.from(candidate.matchAll(/[.!?](?:["”’])?(?=\s|$)/g));
+    const last = matches.at(-1);
+    if (last?.index !== undefined && last.index > 200) {
+      text = candidate.slice(0, last.index + last[0].length).trim();
+    } else {
+      text = candidate.trim();
+    }
+  }
+
+  // A model occasionally returns a perfectly readable final clause without
+  // punctuation. Add punctuation only when the text is otherwise intact.
+  if (text && !/[.!?]["”’]?$/.test(text) && !/[,:;–—-]$/.test(text)) {
+    text += ".";
+  }
+
+  return text;
+}
+
+function summaryLooksReadable(text: string) {
+  if (text.length < 90) return false;
+  if (/\b(?:undefined|null|NaN)\b/i.test(text)) return false;
+  if (/^[-*•]|\n[-*•]/m.test(text)) return false;
+  if (/[,:;–—-]$/.test(text)) return false;
+
+  const sentenceEnds = text.match(/[.!?](?:["”’])?(?=\s|$)/g) || [];
+  return sentenceEnds.length >= 2 && sentenceEnds.length <= 8;
+}
+
 function parseSummary(text: string) {
   const cleaned = text
     .trim()
@@ -95,10 +134,10 @@ function parseSummary(text: string) {
   if (cleaned.startsWith("{")) {
     try {
       const parsed = JSON.parse(cleaned);
-      const summary = String(parsed.summary ?? parsed.text ?? "").trim();
+      const summary = normalizeSummaryText(String(parsed.summary ?? parsed.text ?? ""));
       if (summary) {
         return {
-          summary: summary.slice(0, 1800),
+          summary,
           bullets: Array.isArray(parsed.bullets) ? parsed.bullets.slice(0, 4).map(String) : []
         };
       }
@@ -108,7 +147,7 @@ function parseSummary(text: string) {
   }
 
   return {
-    summary: cleaned.slice(0, 1800),
+    summary: normalizeSummaryText(cleaned),
     bullets: []
   };
 }
@@ -185,8 +224,12 @@ export async function POST(req: NextRequest) {
 
     const prompt = `Du laver et kort, neutralt dansk nyhedsresumé til ØL.dk.
 Brug kun oplysninger fra teksten nedenfor. Tilføj intet, som ikke fremgår af materialet.
-Skriv 4-6 korte, sammenhængende sætninger på dansk. Ingen markdown, ingen overskrift,
-ingen punktopstilling og ingen lange citater. Gengiv ikke artiklen; opsummer den selvstændigt.
+Skriv 3-5 korte, sammenhængende og grammatisk komplette sætninger på naturligt dansk.
+Hver sætning skal kunne læses og forstås selvstændigt. Undgå sætningsfragmenter, afbrudte
+sætninger, gentagelser, reklame-/abonnementstekst og formuleringer, der ender midt i en tanke.
+Afslut altid resuméet med en komplet sætning og korrekt tegnsætning.
+Ingen markdown, ingen overskrift, ingen punktopstilling og ingen lange citater.
+Gengiv ikke artiklen; opsummer den selvstændigt.
 
 Kilde: ${source}
 Overskrift: ${title}
@@ -278,8 +321,51 @@ ${articleText}`;
       }
 
       try {
+        let parsedSummary = parseSummary(output);
+
+        // If the first model response is fragmented or malformed, ask once for
+        // a grammatical rewrite instead of showing broken prose to the user.
+        if (!summaryLooksReadable(parsedSummary.summary)) {
+          const repairResponse = await fetch("https://api.openai.com/v1/responses", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+              model,
+              input: `Omskriv teksten nedenfor til 3-5 korte, neutrale, grammatisk komplette danske sætninger.
+Bevar kun oplysninger, der allerede står i teksten. Ingen overskrift, ingen punktopstilling,
+ingen forkortede eller afbrudte sætninger. Afslut med en komplet sætning.
+
+Tekst:
+${parsedSummary.summary}`,
+              max_output_tokens: 350
+            }),
+            signal: AbortSignal.timeout(15000)
+          });
+
+          if (repairResponse.ok) {
+            const repairData = await repairResponse.json();
+            const repairItems = Array.isArray(repairData.output)
+              ? repairData.output.flatMap((item: any) => Array.isArray(item?.content) ? item.content : [])
+              : [];
+            const repairedOutput = [
+              typeof repairData.output_text === "string" ? repairData.output_text : "",
+              ...repairItems
+                .filter((item: any) => item?.type === "output_text" || typeof item?.text === "string")
+                .map((item: any) => typeof item?.text === "string" ? item.text : "")
+            ].find((text) => typeof text === "string" && text.trim().length > 0) || "";
+
+            if (repairedOutput.trim()) {
+              const repaired = parseSummary(repairedOutput);
+              if (summaryLooksReadable(repaired.summary)) parsedSummary = repaired;
+            }
+          }
+        }
+
         return NextResponse.json({
-          ...parseSummary(output),
+          ...parsedSummary,
           basis,
           model: usedModel
         });
