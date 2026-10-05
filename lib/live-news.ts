@@ -365,10 +365,50 @@ function publishedValue(item: Record<string, unknown>): string | undefined {
   return value || undefined;
 }
 
+function parseNewsDate(value?: string) {
+  if (!value) return undefined;
+
+  // Several Danish publishers expose an ISO-like local timestamp without any
+  // timezone. Node otherwise interprets that as UTC, which shifts Danish news
+  // one or two hours into the future. Treat timezone-less timestamps as
+  // Europe/Copenhagen local time.
+  const naive = value.match(/^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?$/);
+  if (naive) {
+    const [, ys, mos, ds, hs, mis, ss = "0"] = naive;
+    const guess = Date.UTC(+ys, +mos - 1, +ds, +hs, +mis, +ss);
+    const formatter = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Europe/Copenhagen",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hourCycle: "h23"
+    });
+    const parts = Object.fromEntries(
+      formatter.formatToParts(new Date(guess)).map((part) => [part.type, part.value])
+    );
+    const represented = Date.UTC(
+      Number(parts.year),
+      Number(parts.month) - 1,
+      Number(parts.day),
+      Number(parts.hour),
+      Number(parts.minute),
+      Number(parts.second)
+    );
+    const offset = represented - guess;
+    return new Date(guess - offset);
+  }
+
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+}
+
 function formatPublishedDate(pubDate?: string) {
   if (!pubDate) return undefined;
-  const date = new Date(pubDate);
-  if (Number.isNaN(date.getTime())) return undefined;
+  const date = parseNewsDate(pubDate);
+  if (!date) return undefined;
 
   const datePart = new Intl.DateTimeFormat("da-DK", {
     day: "numeric",
@@ -397,8 +437,8 @@ function formatPublishedDate(pubDate?: string) {
 
 function timeAgo(pubDate?: string) {
   if (!pubDate) return "Senest";
-  const date = new Date(pubDate);
-  if (Number.isNaN(date.getTime())) return "Senest";
+  const date = parseNewsDate(pubDate);
+  if (!date) return "Senest";
   const minutes = Math.max(0, Math.floor((Date.now() - date.getTime()) / 60000));
   if (minutes < 60) return minutes <= 1 ? "Nu" : `${minutes} min. siden`;
   const hours = Math.floor(minutes / 60);
@@ -409,8 +449,9 @@ function timeAgo(pubDate?: string) {
 
 function isFresh(pubDate?: string) {
   if (!pubDate) return true;
-  const time = new Date(pubDate).getTime();
-  if (Number.isNaN(time)) return true;
+  const parsed = parseNewsDate(pubDate);
+  if (!parsed) return true;
+  const time = parsed.getTime();
   const ageHours = (Date.now() - time) / 3600000;
   const maxHours = 21 * 24;
   return ageHours >= -2 && ageHours <= maxHours;
@@ -440,8 +481,8 @@ function similarity(a: string, b: string) {
 }
 
 function sameStory(a: NewsItem, b: NewsItem) {
-  const aTime = a.pubDate ? new Date(a.pubDate).getTime() : 0;
-  const bTime = b.pubDate ? new Date(b.pubDate).getTime() : 0;
+  const aTime = a.pubDate ? parseNewsDate(a.pubDate)?.getTime() ?? 0 : 0;
+  const bTime = b.pubDate ? parseNewsDate(b.pubDate)?.getTime() ?? 0 : 0;
   if (aTime && bTime && Math.abs(aTime - bTime) > 72 * 3600000) return false;
 
   const titleScore = similarity(a.title, b.title);
@@ -625,10 +666,10 @@ function extractPublishedDateFromHtml(html: string) {
     extractMetaContent(html, "datePublished") ||
     extractMetaContent(html, "date");
 
-  if (meta && !Number.isNaN(new Date(meta).getTime())) return meta;
+  if (meta && parseNewsDate(meta)) return meta;
 
   const jsonLd = html.match(/"datePublished"\s*:\s*"([^"]+)"/i)?.[1];
-  if (jsonLd && !Number.isNaN(new Date(jsonLd).getTime())) return jsonLd;
+  if (jsonLd && parseNewsDate(jsonLd)) return jsonLd;
 
   return undefined;
 }
@@ -796,15 +837,15 @@ export async function getLiveStories(): Promise<Story[]> {
   const ranked = clusters
     .map((cluster) => {
       const orderedCluster = [...cluster].sort((a, b) => {
-        const aTime = a.pubDate ? new Date(a.pubDate).getTime() : 0;
-        const bTime = b.pubDate ? new Date(b.pubDate).getTime() : 0;
+        const aTime = a.pubDate ? parseNewsDate(a.pubDate)?.getTime() ?? 0 : 0;
+        const bTime = b.pubDate ? parseNewsDate(b.pubDate)?.getTime() ?? 0 : 0;
         return bTime - aTime;
       });
       const lead = orderedCluster[0];
       const sources = Array.from(
         new Map(orderedCluster.map((item) => [publisherName(item.source), item])).values()
       );
-      const age = lead?.pubDate ? new Date(lead.pubDate).getTime() : 0;
+      const age = lead?.pubDate ? parseNewsDate(lead.pubDate)?.getTime() ?? 0 : 0;
       return { lead, sources, age };
     })
     .filter((entry) => entry.lead)
@@ -877,8 +918,8 @@ export async function getLiveStories(): Promise<Story[]> {
   });
 
   const chronologicalStories = [...stories].sort((a, b) => {
-    const aTime = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
-    const bTime = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
+    const aTime = parseNewsDate(a.publishedAt)?.getTime() ?? 0;
+    const bTime = parseNewsDate(b.publishedAt)?.getTime() ?? 0;
     const safeA = Number.isFinite(aTime) ? aTime : 0;
     const safeB = Number.isFinite(bTime) ? bTime : 0;
     return safeB - safeA;
