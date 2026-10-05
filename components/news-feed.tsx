@@ -365,6 +365,7 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
       </div>
 
       <div className="sectionTitle">Seneste nyheder</div>
+      <div className="sectionSubtitle">Nyheder med resumé og faktatjek (baseret på dine valg).</div>
 
       <div className="storyList">
         {visible.map((story) => (
