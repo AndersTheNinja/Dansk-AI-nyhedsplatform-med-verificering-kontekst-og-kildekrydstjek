@@ -191,12 +191,30 @@ function formatPublishedDate(pubDate?: string) {
   if (!pubDate) return undefined;
   const date = new Date(pubDate);
   if (Number.isNaN(date.getTime())) return undefined;
-  return new Intl.DateTimeFormat("da-DK", {
+
+  const datePart = new Intl.DateTimeFormat("da-DK", {
     day: "numeric",
     month: "short",
     year: "numeric",
     timeZone: "Europe/Copenhagen"
   }).format(date);
+
+  const timePart = new Intl.DateTimeFormat("da-DK", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "Europe/Copenhagen"
+  }).format(date);
+
+  const keyFormatter = new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    timeZone: "Europe/Copenhagen"
+  });
+
+  const isToday = keyFormatter.format(date) === keyFormatter.format(new Date());
+  return `${isToday ? "I dag, " : ""}${datePart} · ${timePart}`;
 }
 
 function timeAgo(pubDate?: string) {
@@ -435,11 +453,10 @@ function extractPublishedDateFromHtml(html: string) {
   return undefined;
 }
 function extractPublicPreview(html: string) {
-  const meta =
+  const meta = stripHtml(
     extractMetaContent(html, "description") ||
-    extractMetaContent(html, "og:description");
-
-  if (meta && stripHtml(meta).length >= 80) return stripHtml(meta);
+    extractMetaContent(html, "og:description")
+  );
 
   const jsonDescription =
     html.match(/"description"\s*:\s*"((?:\\.|[^"\\])*)"/i)?.[1] || "";
@@ -449,20 +466,21 @@ function extractPublicPreview(html: string) {
       .replace(/\\t/g, " ")
       .replace(/\\"/g, '"')
   );
-  if (jsonText.length >= 80) return jsonText;
 
   const paragraphs = Array.from(html.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi))
     .map((match) => stripHtml(match[1] || ""))
     .filter((text) => text.length >= 55)
-    .slice(0, 3)
+    .slice(0, 5)
     .join(" ");
 
-  return paragraphs;
+  return [meta, jsonText, paragraphs]
+    .filter((text) => text.length >= 80)
+    .sort((a, b) => b.length - a.length)[0] || "";
 }
 
 async function enrichPreview(item: NewsItem): Promise<NewsItem> {
-  // Existing teaser is already long enough for roughly three mobile lines.
-  if (item.description.length >= 220) return item;
+  // Existing teaser should be long enough for roughly three lines on desktop too.
+  if (item.description.length >= 340) return item;
 
   try {
     const response = await fetch(item.link, {
@@ -504,8 +522,7 @@ async function enrichBorsenItem(item: NewsItem): Promise<NewsItem> {
     const html = await response.text();
 
     const description =
-      extractMetaContent(html, "description") ||
-      extractMetaContent(html, "og:description") ||
+      extractPublicPreview(html) ||
       item.description;
 
     const headline = extractMetaContent(html, "og:title") || item.title;
@@ -626,7 +643,7 @@ export async function getLiveStories(): Promise<Story[]> {
   // This also works for subscriber articles because we only use public metadata/teasers.
   const enrichedSelected = await Promise.all(
     selected.map(async (entry, index) => {
-      if (entry.lead.description.length >= 220 || index >= 120) return entry;
+      if (entry.lead.description.length >= 340 || index >= 180) return entry;
       return { ...entry, lead: await enrichPreview(entry.lead) };
     })
   );
@@ -638,7 +655,7 @@ export async function getLiveStories(): Promise<Story[]> {
     const originality = scoreOriginality(lead, sources);
     const summary =
       lead.description.length > 70
-        ? lead.description.slice(0, 520).replace(/\s+\S*$/, "") + (lead.description.length > 520 ? "…" : "")
+        ? lead.description.slice(0, 700).replace(/\s+\S*$/, "") + (lead.description.length > 700 ? "…" : "")
         : [lead.title, lead.description].filter(Boolean).join(". ");
 
     return {
