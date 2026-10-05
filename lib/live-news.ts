@@ -132,6 +132,71 @@ const feeds: FeedConfig[] = [
     url: "https://tv2.dk/rss/seneste.xml",
     category: "Danmark"
   }
+  {
+    name: "DR Udland",
+    url: "https://www.dr.dk/nyheder/service/feeds/udland",
+    category: "Danmark"
+  },
+  {
+    name: "DR Politik",
+    url: "https://www.dr.dk/nyheder/service/feeds/politik",
+    category: "Danmark"
+  },
+  {
+    name: "Fyens Stiftstidende",
+    url: "https://fyens.dk/feed/erhverv",
+    category: "Erhverv"
+  },
+  {
+    name: "Fyens Stiftstidende",
+    url: "https://fyens.dk/feed/sport",
+    category: "Danmark"
+  },
+  {
+    name: "JydskeVestkysten",
+    url: "https://jv.dk/feed/erhverv",
+    category: "Erhverv"
+  },
+  {
+    name: "JydskeVestkysten",
+    url: "https://jv.dk/feed/sport",
+    category: "Danmark"
+  },
+  {
+    name: "Horsens Folkeblad",
+    url: "https://hsfo.dk/feed/erhverv",
+    category: "Erhverv"
+  },
+  {
+    name: "Horsens Folkeblad",
+    url: "https://hsfo.dk/feed/sport",
+    category: "Danmark"
+  },
+  {
+    name: "Fredericia Dagblad",
+    url: "https://frdb.dk/feed/erhverv",
+    category: "Erhverv"
+  },
+  {
+    name: "Fredericia Dagblad",
+    url: "https://frdb.dk/feed/sport",
+    category: "Danmark"
+  },
+  {
+    name: "Stiften.dk",
+    url: "https://stiften.dk/feed/aarhus",
+    category: "Aarhus"
+  },
+  {
+    name: "Stiften.dk",
+    url: "https://stiften.dk/feed/sport",
+    category: "Aarhus"
+  },
+  {
+    name: "Nordjyske",
+    url: "https://nordjyske.dk/rss/erhverv",
+    category: "Erhverv"
+  }
 ];
 
 const parser = new XMLParser({
@@ -503,7 +568,7 @@ async function fetchFeed(feed: FeedConfig): Promise<NewsItem[]> {
   const rawItems = rssItems ?? atomItems ?? [];
   const items = Array.isArray(rawItems) ? rawItems : rawItems ? [rawItems] : [];
 
-  return items.slice(0, 300).map((raw: unknown, index: number) => {
+  return items.slice(0, 500).map((raw: unknown, index: number) => {
     const item = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
     const title = stripHtml(textValue(item.title) || "Ukendt historie");
     const link = linkValue(item.link) || feed.url;
@@ -732,10 +797,10 @@ export async function getLiveStories(): Promise<Story[]> {
     .sort((a, b) => b.age - a.age);
 
   const quotas: Record<Category, number> = {
-    Danmark: 450,
-    Erhverv: 250,
-    "AI/Tech": 180,
-    Aarhus: 120
+    Danmark: 700,
+    Erhverv: 400,
+    "AI/Tech": 250,
+    Aarhus: 250
   };
 
   const selected = ranked
@@ -744,7 +809,7 @@ export async function getLiveStories(): Promise<Story[]> {
       quotas[entry.lead.category]--;
       return true;
     })
-    .slice(0, 1000);
+    .slice(0, 1500);
 
   // Only fetch article pages for stories whose RSS/web teaser is too short.
   // This also works for subscriber articles because we only use public metadata/teasers.
