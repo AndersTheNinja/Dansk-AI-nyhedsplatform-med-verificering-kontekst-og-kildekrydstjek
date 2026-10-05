@@ -149,6 +149,39 @@ function stripHtml(value = "") {
     .replace(/\s+/g, " ")
     .trim();
 }
+function cleanPreviewText(value = "", title = "") {
+  let text = stripHtml(value);
+
+  const boilerplatePatterns = [
+    /^(?:annonce|advertorial|sponsoreret indhold|sponsoreret)\b[:\s-]*/i,
+    /^(?:læs også|se også|hør også|følg også)\b[:\s-]*/i,
+    /^(?:tilmeld dig|få vores nyhedsbrev|modtag nyhedsbrev|nyhedsbrev)\b[^.!?]*(?:[.!?]|$)\s*/i,
+    /^(?:du har nu adgang til|log ind for at læse|bliv abonnent|kun for abonnenter)\b[^.!?]*(?:[.!?]|$)\s*/i,
+    /^(?:artiklen fortsætter efter annoncen|fortsætter efter annoncen)\.?\s*/i,
+    /^(?:klik her|tryk her)\b[^.!?]*(?:[.!?]|$)\s*/i
+  ];
+
+  let changed = true;
+  while (changed && text) {
+    changed = false;
+    for (const pattern of boilerplatePatterns) {
+      const next = text.replace(pattern, "").trim();
+      if (next !== text) {
+        text = next;
+        changed = true;
+      }
+    }
+  }
+
+  if (title) {
+    const normalizedTitle = stripHtml(title).trim();
+    if (normalizedTitle && text.toLowerCase().startsWith(normalizedTitle.toLowerCase())) {
+      text = text.slice(normalizedTitle.length).replace(/^\s*[-–—:|]\s*/, "").trim();
+    }
+  }
+
+  return text.replace(/\s+/g, " ").trim();
+}
 
 function textValue(value: unknown): string {
   if (typeof value === "string" || typeof value === "number") return String(value);
@@ -401,7 +434,7 @@ async function fetchFeed(feed: FeedConfig): Promise<NewsItem[]> {
     const item = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
     const title = stripHtml(textValue(item.title) || "Ukendt historie");
     const link = linkValue(item.link) || feed.url;
-    const description = stripHtml(
+    const description = cleanPreviewText(
       textValue(
         item["content:encoded"] ??
         item.description ??
@@ -409,7 +442,8 @@ async function fetchFeed(feed: FeedConfig): Promise<NewsItem[]> {
         item.content ??
         item["media:description"] ??
         ""
-      )
+      ),
+      title
     );
     const pubDate = publishedValue(item);
 
@@ -453,14 +487,14 @@ function extractPublishedDateFromHtml(html: string) {
   return undefined;
 }
 function extractPublicPreview(html: string) {
-  const meta = stripHtml(
+  const meta = cleanPreviewText(
     extractMetaContent(html, "description") ||
     extractMetaContent(html, "og:description")
   );
 
   const jsonDescription =
     html.match(/"description"\s*:\s*"((?:\\.|[^"\\])*)"/i)?.[1] || "";
-  const jsonText = stripHtml(
+  const jsonText = cleanPreviewText(
     jsonDescription
       .replace(/\\n/g, " ")
       .replace(/\\t/g, " ")
@@ -468,7 +502,7 @@ function extractPublicPreview(html: string) {
   );
 
   const paragraphs = Array.from(html.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi))
-    .map((match) => stripHtml(match[1] || ""))
+    .map((match) => cleanPreviewText(match[1] || ""))
     .filter((text) => text.length >= 55)
     .slice(0, 5)
     .join(" ");
@@ -530,7 +564,7 @@ async function enrichBorsenItem(item: NewsItem): Promise<NewsItem> {
     return {
       ...item,
       title: stripHtml(headline) || item.title,
-      description: stripHtml(description),
+      description: cleanPreviewText(description, headline),
       pubDate: extractPublishedDateFromHtml(html) || item.pubDate
     };
   } catch {
