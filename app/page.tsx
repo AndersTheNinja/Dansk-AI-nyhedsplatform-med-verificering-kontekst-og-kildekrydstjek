@@ -1,4 +1,5 @@
 import { NewsFeed } from "@/components/news-feed";
+import { TextSizeControl } from "@/components/text-size-control";
 import { demoStories } from "@/lib/stories";
 import { getLiveStories } from "@/lib/live-news";
 
@@ -40,6 +41,7 @@ export default async function Home() {
         </section>
 
         <aside className="sidebar">
+          <TextSizeControl />
           <section className="sideBox">
             <h3>AI CHECK</h3>
             <div className="sideItem"><span className="dot ok">✓</span><div><strong>Bekræftet</strong><small>Understøttet af primærkilder og uafhængige kilder.</small></div></div>
