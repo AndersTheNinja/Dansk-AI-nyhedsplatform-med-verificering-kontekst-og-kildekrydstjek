@@ -218,8 +218,7 @@ function StoryCard({ story }: { story: Story }) {
           <span>{story.sourceLabel}</span>
           <span>•</span>
           <span>
-            {story.published}
-            {story.publishedDate ? ` · ${story.publishedDate}` : ""}
+            {story.publishedDate || "Dato ukendt"}
             {story.sourceMethod ? ` · ${story.sourceMethod}` : ""}
           </span>
         </div>
@@ -247,7 +246,7 @@ function StoryCard({ story }: { story: Story }) {
           </button>
           {story.sources[0] && subscriptionRequired !== null && (
             <a className="readMore" href={story.sources[0].url} target="_blank" rel="noreferrer">
-              <span className="readMoreText">Læs mere</span> <span className="readMoreAccess">({subscriptionRequired ? "kræver abb." : "gratis"})</span> <span className="externalTextArrow" aria-hidden="true">↗</span>
+              <span className="readMoreText">Læs mere</span><span className="externalTextArrow" aria-hidden="true">↗</span> <span className="readMoreAccess">({subscriptionRequired ? "kræver abb." : "gratis"})</span>
             </a>
           )}
         </div>
@@ -336,9 +335,22 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
     return () => window.clearInterval(interval);
   }, [router]);
 
+  function scrollToSection(id: string) {
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   return (
     <section id="feed">
-      <div className="filterLabel">Pick ’n’ mix</div>
+      <div className="sectionSwitcher" aria-label="Nyhedssektioner">
+        <button type="button" onClick={() => scrollToSection("pickmix")} className="sectionSwitchButton">
+          Pick ’n’ mix
+        </button>
+        <button type="button" onClick={() => scrollToSection("latest")} className="sectionSwitchButton">
+          Seneste nyheder
+        </button>
+      </div>
+
+      <div id="pickmix" className="filterArea">
       <div className="filterBar">
         {categories.map((item) => (
           <button
@@ -365,7 +377,9 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
         ))}
       </div>
 
-      <div className="sectionTitle">Seneste nyheder</div>
+      </div>
+
+      <div id="latest" className="sectionTitle">Seneste nyheder</div>
 
       <div className="storyList">
         {visible.map((story) => (
