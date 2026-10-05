@@ -258,7 +258,7 @@ function StoryCard({ story }: { story: Story }) {
           </button>
           {story.sources[0] && subscriptionRequired !== null && (
             <a className="readMore" href={story.sources[0].url} target="_blank" rel="noreferrer">
-              <span className="readMoreText">Læs mere</span> <span className="readMoreAccess">({subscriptionRequired ? "abb." : "gratis"})</span> ↗
+              <span className="readMoreText">Læs mere</span> <span className="readMoreAccess">({subscriptionRequired ? "abb." : "gratis"})</span> <span className="externalArrow" aria-hidden="true">{"\u2197\uFE0E"}</span>
             </a>
           )}
         </div>
