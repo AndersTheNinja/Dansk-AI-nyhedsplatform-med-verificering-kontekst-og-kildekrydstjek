@@ -384,7 +384,14 @@ async function fetchFeed(feed: FeedConfig): Promise<NewsItem[]> {
     const title = stripHtml(textValue(item.title) || "Ukendt historie");
     const link = linkValue(item.link) || feed.url;
     const description = stripHtml(
-      textValue(item.description ?? item.summary ?? item.content ?? "")
+      textValue(
+        item["content:encoded"] ??
+        item.description ??
+        item.summary ??
+        item.content ??
+        item["media:description"] ??
+        ""
+      )
     );
     const pubDate = publishedValue(item);
 
@@ -426,6 +433,60 @@ function extractPublishedDateFromHtml(html: string) {
   if (jsonLd && !Number.isNaN(new Date(jsonLd).getTime())) return jsonLd;
 
   return undefined;
+}
+function extractPublicPreview(html: string) {
+  const meta =
+    extractMetaContent(html, "description") ||
+    extractMetaContent(html, "og:description");
+
+  if (meta && stripHtml(meta).length >= 80) return stripHtml(meta);
+
+  const jsonDescription =
+    html.match(/"description"\s*:\s*"((?:\\.|[^"\\])*)"/i)?.[1] || "";
+  const jsonText = stripHtml(
+    jsonDescription
+      .replace(/\\n/g, " ")
+      .replace(/\\t/g, " ")
+      .replace(/\\"/g, '"')
+  );
+  if (jsonText.length >= 80) return jsonText;
+
+  const paragraphs = Array.from(html.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi))
+    .map((match) => stripHtml(match[1] || ""))
+    .filter((text) => text.length >= 55)
+    .slice(0, 3)
+    .join(" ");
+
+  return paragraphs;
+}
+
+async function enrichPreview(item: NewsItem): Promise<NewsItem> {
+  // Existing teaser is already long enough for roughly three mobile lines.
+  if (item.description.length >= 220) return item;
+
+  try {
+    const response = await fetch(item.link, {
+      next: { revalidate: 900 },
+      redirect: "follow",
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; OELdk/1.0; +https://vercel.app)",
+        Accept: "text/html,application/xhtml+xml"
+      },
+      signal: AbortSignal.timeout(3500)
+    });
+
+    if (!response.ok) return item;
+    const html = await response.text();
+    const preview = extractPublicPreview(html);
+
+    return {
+      ...item,
+      description: preview.length > item.description.length ? preview : item.description,
+      pubDate: extractPublishedDateFromHtml(html) || item.pubDate
+    };
+  } catch {
+    return item;
+  }
 }
 
 async function enrichBorsenItem(item: NewsItem): Promise<NewsItem> {
@@ -561,15 +622,24 @@ export async function getLiveStories(): Promise<Story[]> {
     })
     .slice(0, 1000);
 
-  return selected.map((entry, index) => {
+  // Only fetch article pages for stories whose RSS/web teaser is too short.
+  // This also works for subscriber articles because we only use public metadata/teasers.
+  const enrichedSelected = await Promise.all(
+    selected.map(async (entry) => {
+      if (entry.lead.description.length >= 220) return entry;
+      return { ...entry, lead: await enrichPreview(entry.lead) };
+    })
+  );
+
+  return enrichedSelected.map((entry, index) => {
     const { lead, sources } = entry;
     const hasCrossCheck = sources.length >= 2;
     const wordingNeutrality = scoreWordingNeutrality(`${lead.title} ${lead.description}`);
     const originality = scoreOriginality(lead, sources);
     const summary =
       lead.description.length > 70
-        ? lead.description.slice(0, 300).replace(/\s+\S*$/, "") + "…"
-        : `Historien er publiceret af ${lead.source}. Åbn originalkilden for detaljerne.`;
+        ? lead.description.slice(0, 520).replace(/\s+\S*$/, "") + (lead.description.length > 520 ? "…" : "")
+        : [lead.title, lead.description].filter(Boolean).join(". ");
 
     return {
       id: `live-${index}-${lead.id}`,
