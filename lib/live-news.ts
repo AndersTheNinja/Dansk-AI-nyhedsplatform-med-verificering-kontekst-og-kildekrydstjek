@@ -106,6 +106,31 @@ const feeds: FeedConfig[] = [
     name: "Berlingske",
     url: "https://www.berlingske.dk/content/rss",
     category: "Danmark"
+  },
+  {
+    name: "Stiften.dk",
+    url: "https://stiften.dk/feed/forside",
+    category: "Aarhus"
+  },
+  {
+    name: "Stiften.dk",
+    url: "https://stiften.dk/feed/erhverv",
+    category: "Erhverv"
+  },
+  {
+    name: "MigogAarhus",
+    url: "https://migogaarhus.dk/feed/",
+    category: "Aarhus"
+  },
+  {
+    name: "TV2",
+    url: "https://feeds.tv2.dk/nyhederne_seneste/rss",
+    category: "Danmark"
+  },
+  {
+    name: "TV2",
+    url: "https://tv2.dk/rss/seneste.xml",
+    category: "Danmark"
   }
 ];
 
@@ -460,9 +485,10 @@ async function fetchFeed(feed: FeedConfig): Promise<NewsItem[]> {
   const response = await fetch(feed.url, {
     next: { revalidate: 300 },
     headers: {
-      "User-Agent": "Mozilla/5.0 (compatible; KONTEKST/0.4; +https://vercel.app)",
+      "User-Agent": "Mozilla/5.0 (compatible; OELdk/1.0; +https://øl.dk)",
       Accept: "application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.8"
-    }
+    },
+    signal: AbortSignal.timeout(7000)
   });
 
   if (!response.ok) {
