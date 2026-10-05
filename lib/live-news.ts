@@ -122,13 +122,27 @@ function decodeHtmlEntities(value: string) {
     apos: "'",
     nbsp: " ",
     lt: "<",
-    gt: ">"
+    gt: ">",
+    aelig: "æ",
+    AElig: "Æ",
+    oslash: "ø",
+    Oslash: "Ø",
+    aring: "å",
+    Aring: "Å",
+    ndash: "–",
+    mdash: "—",
+    rsquo: "’",
+    lsquo: "‘",
+    rdquo: "”",
+    ldquo: "“"
   };
 
   let decoded = value;
 
-  // Some feeds contain double-escaped entities such as &amp;#248;.
-  for (let pass = 0; pass < 2; pass++) {
+  // Some WordPress feeds (notably Journalisten) contain entities escaped
+  // several times, e.g. &amp;amp;aelig;. Decode until stable, with a safe cap.
+  for (let pass = 0; pass < 5; pass++) {
+    const previous = decoded;
     decoded = decoded
       .replace(/&#x([0-9a-f]+);/gi, (_, hex: string) =>
         String.fromCodePoint(parseInt(hex, 16))
@@ -139,6 +153,7 @@ function decodeHtmlEntities(value: string) {
       .replace(/&([a-z]+);/gi, (match, name: string) =>
         named[name.toLowerCase()] ?? match
       );
+    if (decoded === previous) break;
   }
 
   return decoded;
