@@ -184,6 +184,26 @@ function cleanPreviewText(value = "", title = "") {
     .replace(/\s*bliv abonnent for at læse videre\.?\s*$/gi, "")
     .trim();
 
+  // Cut off subscription/marketing copy once the editorial teaser has ended.
+  const marketingStarts = [
+    /\s+opret et gratis prøveabonnement\b/i,
+    /\s+opret et prøveabonnement\b/i,
+    /\s+få adgang til alt premium[- ]indhold\b/i,
+    /\s+prøv premium gratis\b/i,
+    /\s+uden binding eller kreditkort\b/i,
+    /\s+det er gratis at oprette\b/i,
+    /\s+tilmeld dig gratis\b/i,
+    /\s+få fri adgang\b/i,
+    /\s+abonnér(?: nu)?\b/i
+  ];
+
+  let cutAt = text.length;
+  for (const pattern of marketingStarts) {
+    const match = pattern.exec(text);
+    if (match && match.index < cutAt) cutAt = match.index;
+  }
+  if (cutAt < text.length) text = text.slice(0, cutAt).trim();
+
   if (title) {
     const normalizedTitle = stripHtml(title).trim();
     if (normalizedTitle && text.toLowerCase().startsWith(normalizedTitle.toLowerCase())) {
