@@ -338,7 +338,7 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
 
   return (
     <section id="feed">
-      <div className="filterLabel">Pick ‘n mix</div>
+      <div className="filterLabel">Pick ’n’ mix</div>
       <div className="filterBar">
         {categories.map((item) => (
           <button
