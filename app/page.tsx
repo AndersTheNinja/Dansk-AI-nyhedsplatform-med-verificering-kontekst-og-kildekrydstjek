@@ -28,7 +28,6 @@ export default async function Home() {
           <div className="liveStatusLine"><span className="liveDot" /> LIVE</div>
           <div className="headerStats">
             <span>{stories24h} nyheder (24t.)</span>
-            <span>{stories.length} nyheder (i alt)</span>
           </div>
         </div>
       </header>
