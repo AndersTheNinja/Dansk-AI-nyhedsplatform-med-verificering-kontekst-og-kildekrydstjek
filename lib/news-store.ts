@@ -1,3 +1,4 @@
+// ØL.dk persistent news archive
 import type { Story } from "@/lib/stories";
 
 type StoredStory = {
