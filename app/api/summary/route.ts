@@ -82,11 +82,34 @@ function extractArticleText(html: string) {
 }
 
 function parseSummary(text: string) {
-  const cleaned = text.trim().replace(/^\`\`\`(?:json)?/i, "").replace(/\`\`\`$/i, "").trim();
-  const parsed = JSON.parse(cleaned);
+  const cleaned = text
+    .trim()
+    .replace(/^\`\`\`(?:json|text)?/i, "")
+    .replace(/\`\`\`$/i, "")
+    .trim();
+
+  if (!cleaned) throw new Error("Tomt AI-svar");
+
+  // Resumé-prompten beder om almindelig tekst. Hvis en model alligevel
+  // returnerer JSON, accepterer vi det også.
+  if (cleaned.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(cleaned);
+      const summary = String(parsed.summary ?? parsed.text ?? "").trim();
+      if (summary) {
+        return {
+          summary: summary.slice(0, 1800),
+          bullets: Array.isArray(parsed.bullets) ? parsed.bullets.slice(0, 4).map(String) : []
+        };
+      }
+    } catch {
+      // Fall through: malformed JSON-looking output is still useful as text.
+    }
+  }
+
   return {
-    summary: String(parsed.summary ?? "").slice(0, 1600),
-    bullets: Array.isArray(parsed.bullets) ? parsed.bullets.slice(0, 4).map(String) : []
+    summary: cleaned.slice(0, 1800),
+    bullets: []
   };
 }
 
