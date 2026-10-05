@@ -436,7 +436,7 @@ function formatPublishedDate(pubDate?: string) {
   });
 
   const isToday = keyFormatter.format(date) === keyFormatter.format(new Date());
-  return `${isToday ? "I dag, " : ""}${datePart} · ${timePart}`;
+  return `${timePart} · ${isToday ? "I dag, " : ""}${datePart}`;
 }
 
 function timeAgo(pubDate?: string) {
