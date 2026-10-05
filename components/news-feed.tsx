@@ -40,6 +40,7 @@ function StoryCard({ story }: { story: Story }) {
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [aiSummary, setAiSummary] = useState<{ summary: string; bullets: string[]; basis?: string } | null>(null);
   const [summaryError, setSummaryError] = useState<string | null>(null);
+  const [textOpen, setTextOpen] = useState(false);
   const [factOpen, setFactOpen] = useState(false);
   const [factLoading, setFactLoading] = useState(false);
   const [factCheck, setFactCheck] = useState<{ verdict: string; score: number; explanation: string; claims: string[] } | null>(null);
@@ -224,8 +225,18 @@ function StoryCard({ story }: { story: Story }) {
           </span>
         </div>
         <h2>{story.title}</h2>
-        <div className="summaryRow">
+        <div className={`summaryRow ${textOpen ? "expanded" : ""}`}>
           <p>{story.summary}</p>
+          <button
+            type="button"
+            className={`storyExpandButton ${textOpen ? "open" : ""}`}
+            onClick={() => setTextOpen((value) => !value)}
+            aria-expanded={textOpen}
+            aria-label={textOpen ? "Vis mindre" : "Vis hele nyhedsteksten"}
+            title={textOpen ? "Vis mindre" : "Vis mere"}
+          >
+            ▾
+          </button>
         </div>
 
         <div className="scoreLine">
@@ -247,7 +258,7 @@ function StoryCard({ story }: { story: Story }) {
           </button>
           {story.sources[0] && subscriptionRequired !== null && (
             <a className="readMore" href={story.sources[0].url} target="_blank" rel="noreferrer">
-              <span className="readMoreText">Læs mere</span><span className="externalTextArrow" aria-hidden="true">↗</span> <span className="readMoreAccess">({subscriptionRequired ? "kræver abb." : "gratis"})</span>
+              <span className="readMoreText">Læs mere</span><span className="externalTextArrow" aria-hidden="true">↗</span> <span className="readMoreAccess">({subscriptionRequired ? "abb." : "gratis"})</span>
             </a>
           )}
         </div>
