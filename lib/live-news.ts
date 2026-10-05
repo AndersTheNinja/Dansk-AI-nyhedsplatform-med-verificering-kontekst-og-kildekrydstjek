@@ -251,7 +251,13 @@ function decodeHtmlEntities(value: string) {
 
 function stripHtml(value = "") {
   return decodeHtmlEntities(String(value))
+    .replace(/<!--[\s\S]*?-->/g, " ")
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
+    .replace(/<noscript\b[^>]*>[\s\S]*?<\/noscript>/gi, " ")
     .replace(/<[^>]*>/g, " ")
+    .replace(/\[(?:caption|gallery|embed|video|audio|playlist)[^\]]*\]/gi, " ")
+    .replace(/\[\/(?:caption|gallery|embed|video|audio|playlist)\]/gi, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -288,6 +294,8 @@ function cleanPreviewText(value = "", title = "") {
     .replace(/klik her og få adgang\s*/gi, "")
     .replace(/\s*læs mere og bliv(?: abonnent)?\.?\s*$/gi, "")
     .replace(/\s*bliv abonnent for at læse videre\.?\s*$/gi, "")
+    .replace(/\s*the post\b[\s\S]*?appeared first on\b[\s\S]*$/i, "")
+    .replace(/\s*(?:læs|se) hele artiklen hos\b[\s\S]*$/i, "")
     .trim();
 
   // Cut off subscription/marketing copy once the editorial teaser has ended.
@@ -574,11 +582,11 @@ async function fetchFeed(feed: FeedConfig): Promise<NewsItem[]> {
     const link = linkValue(item.link) || feed.url;
     const description = cleanPreviewText(
       textValue(
-        item["content:encoded"] ??
         item.description ??
         item.summary ??
-        item.content ??
         item["media:description"] ??
+        item["content:encoded"] ??
+        item.content ??
         ""
       ),
       title
