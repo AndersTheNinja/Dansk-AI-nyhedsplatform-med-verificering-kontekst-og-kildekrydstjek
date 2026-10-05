@@ -24,9 +24,10 @@ type AiAnalysis = {
 };
 
 function mediaName(label: string) {
-  if (/^DR\b/i.test(label)) return "Danmarks Radio";
+  if (/^DR\b|Danmarks Radio/i.test(label)) return "DR";
   if (/TV\s?2/i.test(label)) return "TV2";
-  if (/Berlingske/i.test(label)) return "Berlingske Tidende";
+  if (/Berlingske/i.test(label)) return "Berlingske";
+  if (/Fyens Stiftstidende/i.test(label)) return "Fyens Stiftstids.";
   return label;
 }
 
@@ -364,8 +365,9 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
         ))}
       </div>
 
-      <div className="sectionTitle">Seneste nyheder</div>
-      <div className="sectionSubtitle">Nyheder med resumé og faktatjek (baseret på dine valg).</div>
+      <div className="sectionTitle">
+        Seneste nyheder <span className="sectionTitleNote">(baseret på dine valg).</span>
+      </div>
 
       <div className="storyList">
         {visible.map((story) => (
