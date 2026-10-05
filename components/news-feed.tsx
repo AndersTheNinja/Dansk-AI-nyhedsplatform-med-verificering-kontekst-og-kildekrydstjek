@@ -27,7 +27,7 @@ function mediaName(label: string) {
   if (/^DR\b|Danmarks Radio/i.test(label)) return "DR";
   if (/TV\s?2/i.test(label)) return "TV2";
   if (/Berlingske/i.test(label)) return "Berlingske";
-  if (/Fyens Stiftstidende/i.test(label)) return "Fyens Stiftstids.";
+  if (/Fyens Stiftstidende|Fyens Stiftstids?\.?/i.test(label)) return "Fyens.dk";
   return label;
 }
 
@@ -217,7 +217,7 @@ function StoryCard({ story }: { story: Story }) {
         <div className="storyMeta">
           <span>{categoryLabel[story.category] || story.category}</span>
           <span>•</span>
-          <span>{story.sourceLabel}</span>
+          <span>{mediaName(story.sourceLabel)}</span>
           <span>•</span>
           <span>
             {story.publishedDate || "Dato ukendt"}
@@ -246,7 +246,7 @@ function StoryCard({ story }: { story: Story }) {
             onClick={toggleSummary}
             aria-expanded={summaryOpen}
           >
-            <span className="actionLinkText">Resumé</span><span className={`summaryChevron ${summaryOpen ? "open" : ""}`}>⌄</span>
+            <span className="actionLinkText">Resumé</span><span className={`summaryChevron ${summaryOpen ? "open" : ""}`}>▾</span>
           </button>
           <button
             type="button"
@@ -254,11 +254,11 @@ function StoryCard({ story }: { story: Story }) {
             onClick={toggleFactCheck}
             aria-expanded={factOpen}
           >
-            <span className="actionLinkText">Faktatjek</span><span className={`summaryChevron ${factOpen ? "open" : ""}`}>⌄</span>
+            <span className="actionLinkText">Faktatjek</span><span className={`summaryChevron ${factOpen ? "open" : ""}`}>▾</span>
           </button>
           {story.sources[0] && subscriptionRequired !== null && (
             <a className="readMore" href={story.sources[0].url} target="_blank" rel="noreferrer">
-              <span className="readMoreText">Læs mere</span><span className="externalTextArrow" aria-hidden="true">↗</span> <span className="readMoreAccess">({subscriptionRequired ? "abb." : "gratis"})</span>
+              <span className="readMoreText">Læs mere</span> <span className="readMoreAccess">({subscriptionRequired ? "abb." : "gratis"})</span> <span className="externalTextArrow" aria-hidden="true">↗</span>
             </a>
           )}
         </div>
