@@ -231,23 +231,23 @@ function StoryCard({ story }: { story: Story }) {
         <div className="scoreLine">
           <button
             type="button"
-            className="aiCheckLink"
-            onClick={toggleFactCheck}
-            aria-expanded={factOpen}
-          >
-            <span className="actionLinkText">Faktatjek</span><span className={`summaryChevron ${factOpen ? "open" : ""}`}>⌄</span>
-          </button>
-          <button
-            type="button"
             className="aiSummaryButton"
             onClick={toggleSummary}
             aria-expanded={summaryOpen}
           >
             <span className="actionLinkText">Resumé</span><span className={`summaryChevron ${summaryOpen ? "open" : ""}`}>⌄</span>
           </button>
+          <button
+            type="button"
+            className="aiCheckLink"
+            onClick={toggleFactCheck}
+            aria-expanded={factOpen}
+          >
+            <span className="actionLinkText">Faktatjek</span><span className={`summaryChevron ${factOpen ? "open" : ""}`}>⌄</span>
+          </button>
           {story.sources[0] && subscriptionRequired !== null && (
             <a className="readMore" href={story.sources[0].url} target="_blank" rel="noreferrer">
-              <span className="readMoreText">Læs mere</span> <span className="readMoreAccess">({subscriptionRequired ? "abb" : "gratis"})</span> <span className="externalTextArrow" aria-hidden="true">↗</span>
+              <span className="readMoreText">Læs mere</span> <span className="readMoreAccess">({subscriptionRequired ? "kræver abb." : "gratis"})</span> <span className="externalTextArrow" aria-hidden="true">↗</span>
             </a>
           )}
         </div>
@@ -305,9 +305,9 @@ function StoryCard({ story }: { story: Story }) {
 
 export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
   const router = useRouter();
-  const [category, setCategory] = useState<string>("Alle");
+  const [category, setCategory] = useState<string>("Alle emner");
   const [media, setMedia] = useState<string>("Alle medier");
-  const categories = ["Alle", "AI/Tech", "Erhverv", "Danmark", "Aarhus"];
+  const categories = ["Alle emner", "AI/Tech", "Erhverv", "Danmark", "Aarhus"];
 
   const mediaOptions = useMemo(() => {
     const names = initialStories.flatMap((story) =>
@@ -319,7 +319,7 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
   const visible = useMemo(
     () =>
       initialStories.filter((story) => {
-        const matchesCategory = category === "Alle" || story.category === category;
+        const matchesCategory = category === "Alle emner" || story.category === category;
         const matchesMedia =
           media === "Alle medier" ||
           story.sources.some((source) => mediaName(source.label) === media);
