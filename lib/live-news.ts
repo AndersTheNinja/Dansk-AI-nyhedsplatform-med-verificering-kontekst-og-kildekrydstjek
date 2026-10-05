@@ -795,13 +795,19 @@ export async function getLiveStories(): Promise<Story[]> {
 
   const ranked = clusters
     .map((cluster) => {
-      const lead = cluster[0];
+      const orderedCluster = [...cluster].sort((a, b) => {
+        const aTime = a.pubDate ? new Date(a.pubDate).getTime() : 0;
+        const bTime = b.pubDate ? new Date(b.pubDate).getTime() : 0;
+        return bTime - aTime;
+      });
+      const lead = orderedCluster[0];
       const sources = Array.from(
-        new Map(cluster.map((item) => [publisherName(item.source), item])).values()
+        new Map(orderedCluster.map((item) => [publisherName(item.source), item])).values()
       );
-      const age = lead.pubDate ? new Date(lead.pubDate).getTime() : Date.now();
+      const age = lead?.pubDate ? new Date(lead.pubDate).getTime() : 0;
       return { lead, sources, age };
     })
+    .filter((entry) => entry.lead)
     .sort((a, b) => b.age - a.age);
 
   const quotas: Record<Category, number> = {
