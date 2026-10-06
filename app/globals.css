@@ -66,7 +66,7 @@ button{font:inherit}
 .storyContent h2{font:700 calc(17px * var(--reader-scale)) Arial,sans-serif;line-height:1.2;letter-spacing:0;margin:0 0 6px;color:#455158}
 .storyMeta{display:flex;gap:5px;flex-wrap:wrap;font:calc(10px * var(--reader-scale)) Arial,sans-serif;color:#9a6258;margin-bottom:3px}
 .storyMeta span:first-child{font-weight:700}
-.storyContent p{font-size:calc(12.5px * var(--reader-scale));line-height:1.45;color:#59656c;margin:0;font-weight:700}
+.storyContent p{font-family:Baskerville,"Iowan Old Style","Palatino Linotype","Book Antiqua",Palatino,Georgia,serif;font-size:calc(12.5px * var(--reader-scale));line-height:1.5;color:#59656c;margin:0;font-weight:600}
 .summaryRow{display:flex;align-items:flex-end;gap:6px;margin:0}
 .summaryRow p{flex:1;min-width:0;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
 .summaryRow.expanded p{display:block;overflow:visible}
@@ -95,7 +95,7 @@ button{font:inherit}
 .neutralityFill.unavailable{background:repeating-linear-gradient(90deg,#cfd5d8 0,#cfd5d8 8px,#e9edef 8px,#e9edef 16px)}
 .neutralityHint{font-size:10px;color:#8a949a;line-height:1.1}
 .storyBottom{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:1px;font-family:Arial,sans-serif}
-.readMore{appearance:none;background:transparent;color:#9a6258;text-decoration:none;padding:0;font:700 10px Arial,sans-serif;white-space:nowrap}
+.readMore{appearance:none;background:transparent;color:#9a6258;text-decoration:none;padding:0;font:700 11px Arial,sans-serif;white-space:nowrap}
 .readMore:hover{color:var(--teal-dark);text-decoration:none}
 .readMoreText{text-decoration:underline;text-underline-offset:2px}
 .readMoreAccess{text-decoration:none;font-weight:400}
@@ -120,13 +120,13 @@ button{font:inherit}
   .neutralityLabel{white-space:normal}
 }
 
-.scoreLine{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:2px 0 2px;font:calc(10px * var(--reader-scale)) Arial,sans-serif;color:#9a6258}
+.scoreLine{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:2px 0 2px;font:calc(11px * var(--reader-scale)) Arial,sans-serif;color:#9a6258}
 .scoreLine strong{font-weight:400}
 .scoreLine .scoreValue{font-weight:800;color:#9a3f36}
-.aiCheckLink{appearance:none;border:0;background:transparent;padding:0;color:#9a6258;text-decoration:none;font:700 10px Arial,sans-serif;cursor:pointer}
+.aiCheckLink{appearance:none;border:0;background:transparent;padding:0;color:#9a6258;text-decoration:none;font:700 11px Arial,sans-serif;cursor:pointer}
 .aiCheckLink:hover{color:var(--teal-dark)}
 
-.aiSummaryButton{appearance:none;border:0;background:transparent;padding:0;color:#9a6258;font:700 10px Arial,sans-serif;cursor:pointer;text-decoration:none}
+.aiSummaryButton{appearance:none;border:0;background:transparent;padding:0;color:#9a6258;font:700 11px Arial,sans-serif;cursor:pointer;text-decoration:none}
 .aiSummaryButton:hover{color:var(--teal-dark)}
 .actionLinkText{text-decoration:underline;text-underline-offset:2px}
 .summaryChevron{display:inline-block;margin-left:2px;font:700 12px/1 Arial,sans-serif;transition:transform .2s ease;text-decoration:none;vertical-align:-1px}
