@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import type { Story } from "@/lib/stories";
 
 const categoryLabel: Record<string,string> = {
@@ -9,18 +8,6 @@ const categoryLabel: Record<string,string> = {
   "Erhverv": "Erhverv",
   "Danmark": "DK",
   "Aarhus": "Aarhus"
-};
-
-function scoreClass(score: number) {
-  if (score >= 80) return "high";
-  if (score >= 60) return "medium";
-  return "low";
-}
-
-type AiAnalysis = {
-  wordingScore: number;
-  wordingNote: string;
-  wordingExamples: string[];
 };
 
 function mediaName(label: string) {
@@ -33,9 +20,7 @@ function mediaName(label: string) {
 
 function StoryCard({ story }: { story: Story }) {
   const ref = useRef<HTMLElement | null>(null);
-  const [analysis, setAnalysis] = useState<AiAnalysis | null>(null);
-  const [attempted, setAttempted] = useState(false);
-  const [subscriptionRequired, setSubscriptionRequired] = useState<boolean | null>(null);
+   const [subscriptionRequired, setSubscriptionRequired] = useState<boolean | null>(null);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [aiSummary, setAiSummary] = useState<{ summary: string; bullets: string[]; basis?: string } | null>(null);
@@ -48,7 +33,7 @@ function StoryCard({ story }: { story: Story }) {
 
   useEffect(() => {
     const node = ref.current;
-    if (!node || attempted) return;
+    if (!node || subscriptionRequired !== null) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -56,67 +41,27 @@ function StoryCard({ story }: { story: Story }) {
         observer.disconnect();
 
         const articleUrl = story.sources[0]?.url;
-        if (articleUrl) {
-          fetch("/api/access", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ url: articleUrl })
-          })
-            .then((response) => response.ok ? response.json() : null)
-            .then((result) => {
-              if (result && typeof result.requiresSubscription === "boolean") {
-                setSubscriptionRequired(result.requiresSubscription);
-              }
-            })
-            .catch(() => {});
-        }
+        if (!articleUrl) return;
 
-        const cacheKey = `kontekst-ai-v2:${story.id}`;
-        try {
-          const cached = sessionStorage.getItem(cacheKey);
-          if (cached) {
-            setAnalysis(JSON.parse(cached));
-            setAttempted(true);
-            return;
-          }
-        } catch {}
-
-        setAttempted(true);
-
-        fetch("/api/analyze", {
+        fetch("/api/access", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            title: story.title,
-            text: story.summary,
-            sources: story.sources
-          })
+          body: JSON.stringify({ url: articleUrl })
         })
-          .then(async (response) => {
-            if (!response.ok) throw new Error("AI unavailable");
-            return response.json();
-          })
-          .then((result: AiAnalysis) => {
-            setAnalysis(result);
-            try {
-              sessionStorage.setItem(cacheKey, JSON.stringify(result));
-            } catch {}
+          .then((response) => response.ok ? response.json() : null)
+          .then((result) => {
+            if (result && typeof result.requiresSubscription === "boolean") {
+              setSubscriptionRequired(result.requiresSubscription);
+            }
           })
           .catch(() => {});
       },
-      { rootMargin: "500px 0px" }
+      { rootMargin: "80px 0px" }
     );
 
     observer.observe(node);
     return () => observer.disconnect();
-  }, [story, attempted]);
-
-  const wordingScore = analysis?.wordingScore ?? story.neutrality.wording;
-  const wordingNote = analysis?.wordingNote ?? story.neutrality.wordingNote;
-  const wordingExamples = analysis?.wordingExamples ?? story.neutrality.wordingExamples;
-  const originalityScore = story.neutrality.sources;
-  const originalityNote = story.neutrality.sourcesNote;
-  const originalityExamples = story.neutrality.sourcesExamples;
+  }, [story, subscriptionRequired]);
 
   async function toggleSummary() {
     const nextOpen = !summaryOpen;
@@ -315,9 +260,10 @@ function StoryCard({ story }: { story: Story }) {
 }
 
 export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
-  const router = useRouter();
   const [category, setCategory] = useState<string>("Alle emner");
   const [media, setMedia] = useState<string>("Alle medier");
+  const [visibleCount, setVisibleCount] = useState(50);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const categories = ["Alle emner", "AI/Tech", "Erhverv", "Danmark", "Aarhus"];
 
   const mediaOptions = useMemo(() => {
@@ -352,12 +298,24 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
   );
 
   useEffect(() => {
-    const interval = window.setInterval(() => {
-      router.refresh();
-    }, 300000);
+    setVisibleCount(50);
+  }, [category, media]);
 
-    return () => window.clearInterval(interval);
-  }, [router]);
+  useEffect(() => {
+    const node = loadMoreRef.current;
+    if (!node || visibleCount >= visible.length) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        setVisibleCount((count) => Math.min(count + 50, visible.length));
+      },
+      { rootMargin: "500px 0px" }
+    );
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [visibleCount, visible.length]);
 
   return (
     <section id="feed">
@@ -392,10 +350,15 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
       </div>
 
       <div className="storyList">
-        {visible.map((story) => (
+        {visible.slice(0, visibleCount).map((story) => (
           <StoryCard key={story.id} story={story} />
         ))}
       </div>
+      {visibleCount < visible.length && (
+        <div ref={loadMoreRef} className="newsLoadMore" aria-hidden="true">
+          Indlæser flere nyheder…
+        </div>
+      )}
     </section>
   );
 }
