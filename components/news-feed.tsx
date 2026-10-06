@@ -307,7 +307,7 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
     const names = initialStories.flatMap((story) =>
       story.sources.map((source) => mediaName(source.label))
     );
-    const hiddenMedia = new Set(["Fredericia Dagblad", "JydskeVestkysten", "Horsens Folkeblad", "Nordjyske"]);
+    const hiddenMedia = new Set(["Fredericia Dagblad", "JydskeVestkysten", "Horsens Folkeblad", "Nordjyske", "Fyens.dk"]);
     return Array.from(new Set(names))
       .filter((name) => !hiddenMedia.has(name))
       .sort((a, b) => a.localeCompare(b, "da"));
