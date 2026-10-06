@@ -123,12 +123,12 @@ const feeds: FeedConfig[] = [
     category: "Aarhus"
   },
   {
-    name: "TV2",
+    name: "TV2.dk",
     url: "https://feeds.tv2.dk/nyhederne_seneste/rss",
     category: "Danmark"
   },
   {
-    name: "TV2",
+    name: "TV2.dk",
     url: "https://tv2.dk/rss/seneste.xml",
     category: "Danmark"
   },
@@ -202,7 +202,8 @@ const feeds: FeedConfig[] = [
 const hiddenPublishers = new Set([
   "JydskeVestkysten",
   "Horsens Folkeblad",
-  "Fredericia Dagblad"
+  "Fredericia Dagblad",
+  "Nordjyske"
 ]);
 
 function isVisiblePublisher(source: string) {
