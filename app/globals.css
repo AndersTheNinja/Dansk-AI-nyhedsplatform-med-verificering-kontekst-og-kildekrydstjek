@@ -66,7 +66,7 @@ button{font:inherit}
 .storyContent h2{font:700 calc(17px * var(--reader-scale)) Arial,sans-serif;line-height:1.2;letter-spacing:0;margin:0 0 6px;color:#455158}
 .storyMeta{display:flex;gap:5px;flex-wrap:wrap;font:calc(10px * var(--reader-scale)) Arial,sans-serif;color:#9a6258;margin-bottom:3px}
 .storyMeta span:first-child{font-weight:700}
-.storyContent p{font-family:Baskerville,"Iowan Old Style","Palatino Linotype","Book Antiqua",Palatino,Georgia,serif;font-size:calc(12.5px * var(--reader-scale));line-height:1.5;color:#59656c;margin:0;font-weight:600}
+.storyContent p{font-family:Arial,sans-serif;font-size:calc(12.5px * var(--reader-scale));line-height:1.5;color:#59656c;margin:0;font-weight:400}
 .summaryRow{display:flex;align-items:flex-end;gap:6px;margin:0}
 .summaryRow p{flex:1;min-width:0;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
 .summaryRow.expanded p{display:block;overflow:visible}
@@ -157,3 +157,11 @@ button{font:inherit}
 .textSizeValue{font:11px Arial,sans-serif;color:#77818a;min-width:42px;text-align:center}
 @media(max-width:780px){.textSizeBox{display:none}}
 
+
+.newsLoadingFilters{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:20px}
+.newsLoadingFilters span{display:block;width:82px;height:28px;border:1px solid #e0e4e6;background:#f4f6f7;border-radius:2px}
+.newsSkeleton{padding-top:8px}
+.newsSkeleton div{height:92px;border-bottom:1px dotted #cfd5d7;position:relative;overflow:hidden}
+.newsSkeleton div:before{content:"";position:absolute;left:0;right:20%;top:16px;height:12px;background:#eef1f2;box-shadow:0 22px 0 #f2f4f5,0 44px 0 #f2f4f5}
+.newsLoadMore{padding:18px 0;text-align:center;font:11px Arial,sans-serif;color:#8a949a}
+.newsLoadError{padding:18px 0;font:12px/1.5 Arial,sans-serif;color:#7f473f}
