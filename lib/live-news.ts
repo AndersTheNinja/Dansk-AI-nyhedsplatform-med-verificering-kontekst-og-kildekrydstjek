@@ -203,7 +203,8 @@ const hiddenPublishers = new Set([
   "JydskeVestkysten",
   "Horsens Folkeblad",
   "Fredericia Dagblad",
-  "Nordjyske"
+  "Nordjyske",
+  "Fyens Stiftstidende"
 ]);
 
 function isVisiblePublisher(source: string) {
