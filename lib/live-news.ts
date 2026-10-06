@@ -528,6 +528,22 @@ function isFresh(pubDate?: string) {
   return ageHours >= -2 && ageHours <= maxHours;
 }
 
+function isLiveCoverage(item: NewsItem) {
+  const haystack = `${item.title} ${item.description} ${item.link}`.toLowerCase();
+  return [
+    "livechat",
+    "live-chat",
+    "live chat",
+    "liveblog",
+    "live-blog",
+    "live blog",
+    "livedækning",
+    "live-dækning",
+    "liveopdatering",
+    "live-opdatering"
+  ].some((signal) => haystack.includes(signal));
+}
+
 function words(title: string) {
   const stop = new Set([
     "og","i","på","af","for","til","med","en","et","den","det","de","der","som","fra",
@@ -1063,7 +1079,8 @@ export async function getLiveStories(): Promise<Story[]> {
   const fetched = results
     .flatMap((result) => (result.status === "fulfilled" ? result.value : []))
     .filter((item) => isFresh(item.pubDate))
-    .filter((item) => isVisiblePublisher(item.source));
+    .filter((item) => isVisiblePublisher(item.source))
+    .filter((item) => !isLiveCoverage(item));
 
   if (!fetched.length) return [];
 
