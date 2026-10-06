@@ -165,3 +165,6 @@ button{font:inherit}
 .newsSkeleton div:before{content:"";position:absolute;left:0;right:20%;top:16px;height:12px;background:#eef1f2;box-shadow:0 22px 0 #f2f4f5,0 44px 0 #f2f4f5}
 .newsLoadMore{padding:18px 0;text-align:center;font:11px Arial,sans-serif;color:#8a949a}
 .newsLoadError{padding:18px 0;font:12px/1.5 Arial,sans-serif;color:#7f473f}
+
+/* AI summaries must always show the complete generated text, even on mobile. */
+.aiSummaryPanel .aiSummaryInner p{display:block;-webkit-line-clamp:unset;-webkit-box-orient:initial;overflow:visible}
