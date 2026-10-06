@@ -297,33 +297,31 @@ function StoryCard({ story }: { story: Story }) {
 }
 
 export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
-  const [category, setCategory] = useState<string>("Alle emner");
-  const [media, setMedia] = useState<string>("Alle medier");
+  const [categoriesSelected, setCategoriesSelected] = useState<string[]>([]);
+  const [mediaSelected, setMediaSelected] = useState<string[]>([]);
   const [visibleCount, setVisibleCount] = useState(50);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
-  const categories = ["Alle emner", "AI/Tech", "Erhverv", "Danmark", "Aarhus"];
+  const categories = ["AI/Tech", "Erhverv", "Danmark", "Aarhus"];
 
   const mediaOptions = useMemo(() => {
     const names = initialStories.flatMap((story) =>
       story.sources.map((source) => mediaName(source.label))
     );
     const hiddenMedia = new Set(["Fredericia Dagblad", "JydskeVestkysten", "Horsens Folkeblad"]);
-    return [
-      "Alle medier",
-      ...Array.from(new Set(names))
-        .filter((name) => !hiddenMedia.has(name))
-        .sort((a, b) => a.localeCompare(b, "da"))
-    ];
+    return Array.from(new Set(names))
+      .filter((name) => !hiddenMedia.has(name))
+      .sort((a, b) => a.localeCompare(b, "da"));
   }, [initialStories]);
 
   const visible = useMemo(
     () =>
       initialStories
         .filter((story) => {
-          const matchesCategory = category === "Alle emner" || story.category === category;
+          const matchesCategory =
+            categoriesSelected.length === 0 || categoriesSelected.includes(story.category);
           const matchesMedia =
-            media === "Alle medier" ||
-            story.sources.some((source) => mediaName(source.label) === media);
+            mediaSelected.length === 0 ||
+            story.sources.some((source) => mediaSelected.includes(mediaName(source.label)));
           return matchesCategory && matchesMedia;
         })
         .sort((a, b) => {
@@ -331,12 +329,28 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
           if (diff !== 0) return diff;
           return b.id.localeCompare(a.id);
         }),
-    [initialStories, category, media]
+    [initialStories, categoriesSelected, mediaSelected]
   );
+
+  function toggleCategory(item: string) {
+    setCategoriesSelected((current) =>
+      current.includes(item)
+        ? current.filter((value) => value !== item)
+        : [...current, item]
+    );
+  }
+
+  function toggleMedia(item: string) {
+    setMediaSelected((current) =>
+      current.includes(item)
+        ? current.filter((value) => value !== item)
+        : [...current, item]
+    );
+  }
 
   useEffect(() => {
     setVisibleCount(50);
-  }, [category, media]);
+  }, [categoriesSelected, mediaSelected]);
 
   useEffect(() => {
     const node = loadMoreRef.current;
@@ -357,11 +371,18 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
   return (
     <section id="feed">
       <div className="filterBar">
+        <button
+          className={`filterTab ${categoriesSelected.length === 0 ? "active" : ""}`}
+          onClick={() => setCategoriesSelected([])}
+        >
+          Alle emner
+        </button>
         {categories.map((item) => (
           <button
             key={item}
-            className={`filterTab ${category === item ? "active" : ""}`}
-            onClick={() => setCategory(item)}
+            className={`filterTab ${categoriesSelected.includes(item) ? "active" : ""}`}
+            onClick={() => toggleCategory(item)}
+            aria-pressed={categoriesSelected.includes(item)}
           >
             {item}
           </button>
@@ -369,12 +390,20 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
       </div>
 
       <div className="mediaFilter" aria-label="Filtrer efter medie">
-        {mediaOptions.map((item, index) => (
+        <span className="mediaFilterItem">
+          <button
+            className={`mediaLink ${mediaSelected.length === 0 ? "active" : ""}`}
+            onClick={() => setMediaSelected([])}
+          >
+            Alle medier
+          </button>
+        </span>
+        {mediaOptions.map((item) => (
           <span key={item} className="mediaFilterItem">
-            {index > 0 && <span className="mediaSeparator">•</span>}
             <button
-              className={`mediaLink ${media === item ? "active" : ""}`}
-              onClick={() => setMedia(item)}
+              className={`mediaLink ${mediaSelected.includes(item) ? "active" : ""}`}
+              onClick={() => toggleMedia(item)}
+              aria-pressed={mediaSelected.includes(item)}
             >
               {item}
             </button>
