@@ -54,10 +54,10 @@ button{font:inherit}
 .filterTab{appearance:none;border:1px solid #cfd4d6;background:#fff;padding:4px 7px;color:#287ea3;font:11px Arial,sans-serif;cursor:pointer;text-decoration:none;border-radius:2px}
 .filterTab:hover{border-color:var(--teal);color:var(--teal-dark)}
 .filterTab.active{background:var(--teal);border-color:var(--teal);color:#fff;font-weight:700;text-decoration:none}
-.mediaFilter{display:flex;width:100%;align-items:center;align-content:flex-start;justify-content:flex-start;flex-wrap:wrap;gap:5px;margin:-6px 0 10px;font:11px Arial,sans-serif;color:#6f797f;text-align:left}
+.mediaFilter{display:flex;width:100%;align-items:center;align-content:flex-start;justify-content:flex-start;flex-wrap:wrap;gap:4px;margin:-6px 0 10px;font:11px Arial,sans-serif;color:#6f797f;text-align:left}
 .mediaFilterItem{display:inline-flex;align-items:center;gap:5px}
 .mediaSeparator{display:none}
-.mediaLink{appearance:none;border:1px solid #d8dcde;background:#fff;padding:4px 7px;color:#7f473f;cursor:pointer;font:11px Arial,sans-serif;text-decoration:none;border-radius:2px}
+.mediaLink{appearance:none;border:1px solid #d8dcde;background:#fff;padding:3px 5px;color:#7f473f;cursor:pointer;font:10.5px Arial,sans-serif;line-height:1.15;text-decoration:none;border-radius:2px;min-height:24px}
 .mediaLink:hover{border-color:#9a6258}
 .mediaLink.active{font-weight:700;color:#fff;background:#9a6258;border-color:#9a6258;text-decoration:none}
 .sectionTitle{font:700 16px Arial,sans-serif;color:#455158;border-bottom:5px solid var(--teal);padding-bottom:5px;margin-bottom:0}
