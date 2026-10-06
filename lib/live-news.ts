@@ -287,6 +287,7 @@ function cleanPreviewText(value = "", title = "") {
     /^(?:du har nu adgang til|log ind for at læse|bliv abonnent|kun for abonnenter)\b[^.!?]*(?:[.!?]|$)\s*/i,
     /^(?:artiklen fortsætter efter annoncen|fortsætter efter annoncen)\.?\s*/i,
     /^(?:klik her|tryk her)\b[^.!?]*(?:[.!?]|$)\s*/i,
+    /^med ["”']?auto["”']? skiftes der automatisk mellem lys og mørk tilstand baseret på din enheds indstillinger\.?s*/i,
     /^pro indhold med dybdegående analyser og nyhedsbreve indenfor finans og iværksætteri\.?s*/i,
     /^klik her og få adgang\s*/i
   ];
@@ -310,6 +311,7 @@ function cleanPreviewText(value = "", title = "") {
     .replace(/klik her og få adgang\s*/gi, "")
     .replace(/\s*læs mere og bliv(?: abonnent)?\.?\s*$/gi, "")
     .replace(/\s*bliv abonnent for at læse videre\.?\s*$/gi, "")
+    .replace(/med ["”']?auto["”']? skiftes der automatisk mellem lys og mørk tilstand baseret på din enheds indstillinger\.?s*/gi, "")
     .replace(/\s*the post\b[\s\S]*?appeared first on\b[\s\S]*$/i, "")
     .replace(/\s*(?:læs|se) hele artiklen hos\b[\s\S]*$/i, "")
     .trim();
@@ -858,6 +860,46 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
   }
 }
 
+async function enrichTV2Item(item: NewsItem): Promise<NewsItem> {
+  try {
+    const response = await fetch(item.link, {
+      next: { revalidate: 300 },
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; OELdk/1.0; +https://øl.dk)",
+        Accept: "text/html,application/xhtml+xml"
+      },
+      signal: AbortSignal.timeout(7000)
+    });
+
+    if (!response.ok) return item;
+    const html = await response.text();
+
+    const jsonHeadline =
+      html.match(/"headline"\s*:\s*"((?:\\.|[^"\\])*)"/i)?.[1] || "";
+    const headline = cleanPreviewText(
+      jsonHeadline
+        .replace(/\\u([0-9a-f]{4})/gi, (_, hex: string) => String.fromCharCode(parseInt(hex, 16)))
+        .replace(/\\n|\\r|\\t/g, " ")
+        .replace(/\\"/g, '"')
+        .replace(/\\\//g, "/")
+    ) || extractMetaContent(html, "og:title") || item.title;
+
+    const description =
+      extractArticleBodyFromJson(html) ||
+      extractPublicPreview(html) ||
+      item.description;
+
+    return {
+      ...item,
+      title: stripHtml(headline).replace(/^TV 2[:\s|-]+/i, "").trim() || item.title,
+      description: cleanPreviewText(description, headline),
+      pubDate: extractPublishedDateFromHtml(html) || item.pubDate
+    };
+  } catch {
+    return item;
+  }
+}
+
 async function enrichBorsenItem(item: NewsItem): Promise<NewsItem> {
   try {
     const response = await fetch(item.link, {
@@ -954,7 +996,7 @@ async function fetchTV2Website(): Promise<NewsItem[]> {
     }
   }
 
-  return Promise.all(items.slice(0, 100).map(enrichBorsenItem));
+  return Promise.all(items.slice(0, 100).map(enrichTV2Item));
 }
 
 async function fetchBorsenWebsite(): Promise<NewsItem[]> {
