@@ -36,7 +36,7 @@ export function NewsLoader() {
 
   useEffect(() => {
     const start = window.setTimeout(loadNews, 40);
-    const interval = window.setInterval(loadNews, 300000);
+    const interval = window.setInterval(loadNews, 60000);
 
     return () => {
       window.clearTimeout(start);
