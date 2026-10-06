@@ -20,12 +20,14 @@ function mediaName(label: string) {
 
 function StoryCard({ story }: { story: Story }) {
   const ref = useRef<HTMLElement | null>(null);
+  const summaryTextRef = useRef<HTMLParagraphElement | null>(null);
    const [subscriptionRequired, setSubscriptionRequired] = useState<boolean | null>(null);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [aiSummary, setAiSummary] = useState<{ summary: string; bullets: string[]; basis?: string } | null>(null);
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [textOpen, setTextOpen] = useState(false);
+  const [summaryHasOverflow, setSummaryHasOverflow] = useState(false);
   const [factOpen, setFactOpen] = useState(false);
   const [factLoading, setFactLoading] = useState(false);
   const [factCheck, setFactCheck] = useState<{ verdict: string; score: number; explanation: string; claims: string[] } | null>(null);
@@ -62,6 +64,33 @@ function StoryCard({ story }: { story: Story }) {
     observer.observe(node);
     return () => observer.disconnect();
   }, [story, subscriptionRequired]);
+
+  useEffect(() => {
+    const node = summaryTextRef.current;
+    if (!node) return;
+
+    const measure = () => {
+      if (textOpen) {
+        setSummaryHasOverflow(true);
+        return;
+      }
+
+      // With the 3-line clamp active, scrollHeight is larger than clientHeight
+      // only when there is genuinely more text to reveal.
+      setSummaryHasOverflow(node.scrollHeight > node.clientHeight + 1);
+    };
+
+    measure();
+
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    window.addEventListener("resize", measure);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [story.summary, textOpen]);
 
   async function toggleSummary() {
     const nextOpen = !summaryOpen;
@@ -171,17 +200,19 @@ function StoryCard({ story }: { story: Story }) {
         </div>
         <h2>{story.title}</h2>
         <div className={`summaryRow ${textOpen ? "expanded" : ""}`}>
-          <p>{story.summary}</p>
-          <button
-            type="button"
-            className={`storyExpandButton ${textOpen ? "open" : ""}`}
-            onClick={() => setTextOpen((value) => !value)}
-            aria-expanded={textOpen}
-            aria-label={textOpen ? "Vis mindre" : "Vis hele nyhedsteksten"}
-            title={textOpen ? "Vis mindre" : "Vis mere"}
-          >
-            ▾
-          </button>
+          <p ref={summaryTextRef}>{story.summary}</p>
+          {(summaryHasOverflow || textOpen) && (
+            <button
+              type="button"
+              className={`storyExpandButton ${textOpen ? "open" : ""}`}
+              onClick={() => setTextOpen((value) => !value)}
+              aria-expanded={textOpen}
+              aria-label={textOpen ? "Vis mindre" : "Vis hele nyhedsteksten"}
+              title={textOpen ? "Vis mindre" : "Vis mere"}
+            >
+              ▾
+            </button>
+          )}
         </div>
 
         <div className="scoreLine">
