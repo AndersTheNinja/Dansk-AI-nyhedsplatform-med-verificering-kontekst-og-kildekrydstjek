@@ -33,20 +33,19 @@ export default function Home() {
           <TextSizeControl />
           <section className="sideBox">
             <h3>AI CHECK</h3>
-            <div className="sideItem"><span className="dot ok">✓</span><div><strong>Bekræftet</strong><small>Understøttet af primærkilder og uafhængige kilder.</small></div></div>
-            <div className="sideItem"><span className="dot warn">!</span><div><strong>Kildekrydstjek</strong><small>Flere medier omtaler samme historie.</small></div></div>
-            <div className="sideItem"><span className="dot neutral">?</span><div><strong>Én kilde</strong><small>Historien afventer mere dokumentation.</small></div></div>
+            <div className="sideItem"><div><strong>Resumé</strong><small>Få et kort resumé af artiklen</small></div></div>
+            <div className="sideItem"><div><strong>Faktatjek</strong><small>OpenAI vurderer troværdigheden af nyheden</small></div></div>
           </section>
 
           <section className="sideBox">
-            <h3>OM KONTEKST</h3>
-            <p>Vi samler historier, viser kilderne og markerer tydeligt, hvor stærkt en historie foreløbigt er dokumenteret.</p>
+            <h3>OM ØL.DK</h3>
+            <p>Redaktør og ai-geni: Anders Grønborg, info@agronborg.dk</p>
           </section>
         </aside>
       </div>
 
       <footer className="footer shell">
-        <span>© KONTEKST</span>
+        <span>© ØL.dk</span>
         <span>Nyhedslinks fører til originaludgiverne.</span>
       </footer>
     </main>
