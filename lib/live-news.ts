@@ -567,7 +567,7 @@ function sameStory(a: NewsItem, b: NewsItem) {
 
 function publisherName(source: string) {
   if (/^DR\b/i.test(source)) return "Danmarks Radio";
-  if (/TV\s?2/i.test(source)) return "TV2";
+  if (/TV\s?2/i.test(source)) return "TV2.dk";
   if (/Berlingske/i.test(source)) return "Berlingske Tidende";
   return source;
 }
@@ -888,6 +888,74 @@ async function enrichBorsenItem(item: NewsItem): Promise<NewsItem> {
   }
 }
 
+async function fetchTV2Website(): Promise<NewsItem[]> {
+  const pages = [
+    "https://nyheder.tv2.dk/",
+    "https://tv2.dk/"
+  ];
+
+  const responses = await Promise.allSettled(
+    pages.map((page) =>
+      fetch(page, {
+        next: { revalidate: 120 },
+        headers: {
+          "User-Agent": "Mozilla/5.0 (compatible; OELdk/1.0; +https://øl.dk)",
+          Accept: "text/html,application/xhtml+xml"
+        },
+        signal: AbortSignal.timeout(7000)
+      }).then(async (response) => ({
+        page,
+        ok: response.ok,
+        html: response.ok ? await response.text() : ""
+      }))
+    )
+  );
+
+  const items: NewsItem[] = [];
+  const seen = new Set<string>();
+  const anchorPattern = /<a\b([^>]*?)href=["']([^"']+)["']([^>]*)>([\s\S]*?)<\/a>/gi;
+
+  for (const result of responses) {
+    if (result.status !== "fulfilled" || !result.value.ok) continue;
+
+    const { page, html } = result.value;
+    let match: RegExpExecArray | null;
+
+    while ((match = anchorPattern.exec(html)) && items.length < 140) {
+      const href = decodeHtmlEntities(match[2] || "").trim();
+      const rawTitle = stripHtml(match[4] || "").replace(/\s+/g, " ").trim();
+
+      if (rawTitle.length < 24 || rawTitle.length > 220) continue;
+
+      let url: URL;
+      try {
+        url = new URL(href, page);
+      } catch {
+        continue;
+      }
+
+      if (!/(^|\.)tv2\.dk$/i.test(url.hostname)) continue;
+      if (!/(?:^\/nyheder\/|^\/politik\/|^\/samfund\/|^\/udland\/|^\/krimi\/)/i.test(url.pathname)) continue;
+
+      const canonical = `${url.origin}${url.pathname}`;
+      if (seen.has(canonical)) continue;
+      seen.add(canonical);
+
+      items.push({
+        category: "Danmark",
+        title: rawTitle,
+        link: canonical,
+        description: "",
+        source: "TV2.dk",
+        method: "WEB",
+        id: `TV2-web-${items.length}-${canonical}`
+      });
+    }
+  }
+
+  return Promise.all(items.slice(0, 100).map(enrichBorsenItem));
+}
+
 async function fetchBorsenWebsite(): Promise<NewsItem[]> {
   const response = await fetch("https://borsen.dk/", {
     next: { revalidate: 300 },
@@ -945,7 +1013,8 @@ async function fetchBorsenWebsite(): Promise<NewsItem[]> {
 export async function getLiveStories(): Promise<Story[]> {
   const results = await Promise.allSettled([
     ...feeds.map(fetchFeed),
-    fetchBorsenWebsite()
+    fetchBorsenWebsite(),
+    fetchTV2Website()
   ]);
 
   const fetched = results
