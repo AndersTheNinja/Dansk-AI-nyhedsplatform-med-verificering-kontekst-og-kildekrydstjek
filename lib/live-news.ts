@@ -325,7 +325,11 @@ function cleanPreviewText(value = "", title = "") {
     /(?:^|\s+)vi har opdateret vore vilkår\b/i,
     /(?:^|\s+)det er gratis at oprette et intro-abonnement\b/i,
     /(?:^|\s+)ubegrænset adgang til alt premium-indhold\b/i,
-    /(?:^|\s+)vi sender et link til dig\b/i
+    /(?:^|\s+)vi sender et link til dig\b/i,
+    /(?:^|\s+)mit navn er\b/i,
+    /(?:^|\s+)jeg er \d{1,3} år gammel\b/i,
+    /(?:^|\s+)siden \d{4} har jeg været en del af redaktionen hos migogaarhus\b/i,
+    /(?:^|\s+)har du et godt tip til noget, vi skal smage, opleve eller fortælle om\b/i
   ];
 
   let cutAt = text.length;
@@ -362,7 +366,10 @@ function isBoilerplatePreview(value: string) {
     "ubegrænset adgang til alt premium-indhold",
     "vi sender et link til dig",
     "bliv abonnent",
-    "tilmeld dig vores nyhedsbrev"
+    "tilmeld dig vores nyhedsbrev",
+    "mit navn er freja dumont",
+    "en del af redaktionen hos migogaarhus",
+    "har du et godt tip til noget, vi skal smage, opleve eller fortælle om"
   ];
 
   return junkSignals.some((signal) => text.includes(signal));
@@ -682,7 +689,14 @@ async function fetchFeed(feed: FeedConfig): Promise<NewsItem[]> {
       ),
       title
     );
-    const description = isBoilerplatePreview(rawDescription) ? "" : rawDescription;
+    const isMigogAarhusAuthorBio =
+      /^mit navn er\b/i.test(rawDescription) ||
+      /en del af redaktionen hos migogaarhus/i.test(rawDescription) ||
+      /har du et godt tip til noget, vi skal smage, opleve eller fortælle om/i.test(rawDescription);
+    const description =
+      isBoilerplatePreview(rawDescription) || isMigogAarhusAuthorBio
+        ? ""
+        : rawDescription;
     const pubDate = publishedValue(item);
 
     return {
