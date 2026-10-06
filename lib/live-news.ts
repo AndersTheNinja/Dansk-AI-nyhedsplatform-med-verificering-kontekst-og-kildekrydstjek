@@ -738,6 +738,19 @@ function extractPublishedDateFromHtml(html: string) {
 
   return undefined;
 }
+function extractArticleBodyFromJson(html: string) {
+  const match = html.match(/"articleBody"\s*:\s*"((?:\\.|[^"\\])*)"/i);
+  if (!match?.[1]) return "";
+
+  const decoded = match[1]
+    .replace(/\\u([0-9a-f]{4})/gi, (_, hex: string) => String.fromCharCode(parseInt(hex, 16)))
+    .replace(/\\n|\\r|\\t/g, " ")
+    .replace(/\\"/g, '"')
+    .replace(/\\\//g, "/");
+
+  return cleanPreviewText(decoded);
+}
+
 function extractMetadataPreview(html: string) {
   const meta = cleanPreviewText(
     extractMetaContent(html, "description") ||
@@ -809,10 +822,13 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
 
     // These publishers have lots of account/navigation paragraphs in the DOM.
     // Only use explicit metadata for them, never arbitrary <p> elements.
-    const metadataOnly = /(?:^|\.)(?:ing|version2|computerworld|politiken|nordjyske)\.dk$/i.test(hostname);
-    const preview = metadataOnly
-      ? extractMetadataPreview(html)
-      : extractPublicPreview(html);
+    const isPolitiken = /(?:^|\.)politiken\.dk$/i.test(hostname);
+    const metadataOnly = /(?:^|\.)(?:ing|version2|computerworld|nordjyske)\.dk$/i.test(hostname);
+    const preview = isPolitiken
+      ? (extractArticleBodyFromJson(html) || extractMetadataPreview(html))
+      : metadataOnly
+        ? extractMetadataPreview(html)
+        : extractPublicPreview(html);
 
     const cleanedPreview = isBoilerplatePreview(preview) ? "" : preview;
     const bestDescription =
@@ -1005,7 +1021,7 @@ export async function getLiveStories(): Promise<Story[]> {
       id: `live-${index}-${lead.id}`,
       category: lead.category,
       title: lead.title,
-      sourceLabel: hasCrossCheck ? `${sources.length} kilder` : lead.source,
+      sourceLabel: hasCrossCheck ? `${publisherName(lead.source)} · ${sources.length} kilder` : lead.source,
       published: timeAgo(lead.pubDate),
       publishedAt: lead.pubDate,
       publishedDate: formatPublishedDate(lead.pubDate),
