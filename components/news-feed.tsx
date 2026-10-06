@@ -405,7 +405,10 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
               onClick={() => toggleMedia(item)}
               aria-pressed={mediaSelected.includes(item)}
             >
-              {item}
+              <span className="mediaLabelDesktop">{item}</span>
+              <span className="mediaLabelMobile">
+                {item === "Stiften.dk" ? "Stiften" : item === "TV2.dk" ? "TV2" : item}
+              </span>
             </button>
           </span>
         ))}
