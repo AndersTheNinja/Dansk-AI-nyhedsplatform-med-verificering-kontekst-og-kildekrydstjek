@@ -29,7 +29,7 @@ export function TextSizeControl() {
       <div className="textSizeControls">
         <button className="textSizeButton" type="button" onClick={decrease} aria-label="Mindre tekst">−</button>
         <span className="textSizeValue">{Math.round(scale * 100)}%</span>
-        <button className="textSizeButton" type="button" onClick={increase} aria-label="Større tekst">+10%</button>
+        <button className="textSizeButton" type="button" onClick={increase} aria-label="Større tekst">+</button>
       </div>
     </section>
   );
