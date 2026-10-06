@@ -20,14 +20,7 @@ export function NewsLoader() {
       setStories(nextStories);
       setError(false);
 
-      const cutoff24h = Date.now() - 24 * 60 * 60 * 1000;
-      const stories24h = nextStories.filter((story) => {
-        if (!story.publishedAt) return false;
-        const time = new Date(story.publishedAt).getTime();
-        return Number.isFinite(time) && time >= cutoff24h;
-      }).length;
-
-      setNewsCount(stories24h);
+      setNewsCount(nextStories.length);
     } catch {
       setError(true);
       setNewsCount(null);
