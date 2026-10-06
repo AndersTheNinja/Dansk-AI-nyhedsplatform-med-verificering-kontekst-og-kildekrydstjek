@@ -199,6 +199,16 @@ const feeds: FeedConfig[] = [
   }
 ];
 
+const hiddenPublishers = new Set([
+  "JydskeVestkysten",
+  "Horsens Folkeblad",
+  "Fredericia Dagblad"
+]);
+
+function isVisiblePublisher(source: string) {
+  return !hiddenPublishers.has(source);
+}
+
 const parser = new XMLParser({
   ignoreAttributes: false,
   processEntities: true,
@@ -939,7 +949,8 @@ export async function getLiveStories(): Promise<Story[]> {
 
   const fetched = results
     .flatMap((result) => (result.status === "fulfilled" ? result.value : []))
-    .filter((item) => isFresh(item.pubDate));
+    .filter((item) => isFresh(item.pubDate))
+    .filter((item) => isVisiblePublisher(item.source));
 
   if (!fetched.length) return [];
 
