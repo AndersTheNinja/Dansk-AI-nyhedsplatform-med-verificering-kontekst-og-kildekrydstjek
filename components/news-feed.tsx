@@ -10,6 +10,12 @@ const categoryLabel: Record<string,string> = {
   "Aarhus": "Aarhus"
 };
 
+function storyTime(value?: string) {
+  if (!value) return 0;
+  const time = new Date(value).getTime();
+  return Number.isFinite(time) ? time : 0;
+}
+
 function mediaName(label: string) {
   if (/^DR\b|Danmarks Radio/i.test(label)) return "DR";
   if (/TV\s?2/i.test(label)) return "TV2";
@@ -321,9 +327,9 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
           return matchesCategory && matchesMedia;
         })
         .sort((a, b) => {
-          const aTime = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
-          const bTime = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
-          return bTime - aTime;
+          const diff = storyTime(b.publishedAt) - storyTime(a.publishedAt);
+          if (diff !== 0) return diff;
+          return b.id.localeCompare(a.id);
         }),
     [initialStories, category, media]
   );
