@@ -1,20 +1,9 @@
-import { NewsFeed } from "@/components/news-feed";
+import { NewsLoader } from "@/components/news-loader";
 import { TextSizeControl } from "@/components/text-size-control";
-import { demoStories } from "@/lib/stories";
-import { getLiveStories } from "@/lib/live-news";
 
 export const revalidate = 300;
 
-export default async function Home() {
-  const liveStories = await getLiveStories().catch(() => []);
-  const stories = liveStories.length ? liveStories : demoStories;
-  const cutoff24h = Date.now() - 24 * 60 * 60 * 1000;
-  const stories24h = stories.filter((story) => {
-    if (!story.publishedAt) return false;
-    const time = new Date(story.publishedAt).getTime();
-    return Number.isFinite(time) && time >= cutoff24h;
-  }).length;
-
+export default function Home() {
   return (
     <main className="site">
       <header className="masthead shell">
@@ -28,7 +17,7 @@ export default async function Home() {
         <div className="headerStatus">
           <div className="liveStatusLine"><span className="liveDot" /> LIVE</div>
           <div className="headerStats">
-            <span>{stories24h} nyheder (24t.)</span>
+            <span id="news-count">Indlæser nyheder…</span>
           </div>
         </div>
       </header>
@@ -37,7 +26,7 @@ export default async function Home() {
 
       <div className="contentShell shell">
         <section className="mainColumn">
-          <NewsFeed initialStories={stories} />
+          <NewsLoader />
         </section>
 
         <aside className="sidebar">
