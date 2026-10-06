@@ -18,7 +18,7 @@ function storyTime(value?: string) {
 
 function mediaName(label: string) {
   if (/^DR\b|Danmarks Radio/i.test(label)) return "DR";
-  if (/TV\s?2/i.test(label)) return "TV2";
+  if (/TV\s?2/i.test(label)) return "TV2.dk";
   if (/Berlingske/i.test(label)) return "Berlingske";
   if (/Fyens Stiftstidende|Fyens Stiftstids?\.?/i.test(label)) return "Fyens.dk";
   return label;
@@ -307,7 +307,7 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
     const names = initialStories.flatMap((story) =>
       story.sources.map((source) => mediaName(source.label))
     );
-    const hiddenMedia = new Set(["Fredericia Dagblad", "JydskeVestkysten", "Horsens Folkeblad"]);
+    const hiddenMedia = new Set(["Fredericia Dagblad", "JydskeVestkysten", "Horsens Folkeblad", "Nordjyske"]);
     return Array.from(new Set(names))
       .filter((name) => !hiddenMedia.has(name))
       .sort((a, b) => a.localeCompare(b, "da"));
