@@ -168,3 +168,9 @@ button{font:inherit}
 
 /* AI summaries must always show the complete generated text, even on mobile. */
 .aiSummaryPanel .aiSummaryInner p{display:block;-webkit-line-clamp:unset;-webkit-box-orient:initial;overflow:visible}
+
+.mediaLabelMobile{display:none}
+@media (max-width: 700px){
+  .mediaLabelDesktop{display:none}
+  .mediaLabelMobile{display:inline}
+}
