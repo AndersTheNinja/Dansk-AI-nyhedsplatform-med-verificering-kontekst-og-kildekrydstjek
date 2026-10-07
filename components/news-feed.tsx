@@ -24,6 +24,12 @@ function mediaName(label: string) {
   return label;
 }
 
+function splitPublishedDate(value?: string) {
+  if (!value) return { time: "", rest: "Dato ukendt" };
+  const [time, ...rest] = value.split(" · ");
+  return { time, rest: rest.join(" · ") };
+}
+
 function StoryCard({ story }: { story: Story }) {
   const ref = useRef<HTMLElement | null>(null);
   const summaryTextRef = useRef<HTMLParagraphElement | null>(null);
@@ -199,9 +205,17 @@ function StoryCard({ story }: { story: Story }) {
           <span>•</span>
           <span>{mediaName(story.sourceLabel)}</span>
           <span>•</span>
-          <span>
-            {story.publishedDate || "Dato ukendt"}
-            {story.sourceMethod ? ` · ${story.sourceMethod}` : ""}
+          <span className="storyDateMeta">
+            {(() => {
+              const published = splitPublishedDate(story.publishedDate);
+              return (
+                <>
+                  {published.time && <strong className="storyTime">Kl. {published.time}</strong>}
+                  {published.rest && <span>{published.time ? " · " : ""}{published.rest}</span>}
+                  {story.sourceMethod ? ` · ${story.sourceMethod}` : ""}
+                </>
+              );
+            })()}
           </span>
         </div>
         <h2>{story.title}</h2>
@@ -392,7 +406,7 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
       <div className="mediaFilter" aria-label="Filtrer efter medie">
         <span className="mediaFilterItem">
           <button
-            className={`mediaLink ${mediaSelected.length === 0 ? "active" : ""}`}
+            className={`mediaLink mediaAllLink ${mediaSelected.length === 0 ? "active" : ""}`}
             onClick={() => setMediaSelected([])}
           >
             Alle medier
@@ -407,7 +421,7 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
             >
               <span className="mediaLabelDesktop">{item}</span>
               <span className="mediaLabelMobile">
-                {item === "Stiften.dk" ? "Stiften" : item === "TV2.dk" ? "TV2" : item}
+                {item === "TV2.dk" ? "TV2" : item}
               </span>
             </button>
           </span>
@@ -415,7 +429,7 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
       </div>
 
       <div className="sectionTitle">
-        Seneste nyheder <span className="sectionTitleNote">baseret på dine valg</span>
+        Seneste nyheder<span className="sectionTitleNote">baseret på dine valg</span>
       </div>
 
       <div className="storyList">
