@@ -12,7 +12,7 @@ export default function Home() {
             <div className="logoBlock">ØL</div>
             <div className="siteName"><span className="siteNameAccent">.dk</span></div>
           </div>
-          <div className="siteTagline"><strong>ØL.dk — Øjeblikkelig &amp; Live</strong><br />Dit nyhedsoverblik</div>
+          <div className="siteTagline"><strong>ØL.dk — Øjeblikkelig &amp; Live</strong><br />Nyheder. Nu.</div>
         </div>
         <div className="headerStatus">
           <div className="liveStatusLine"><span className="liveDot" /> LIVE</div>
