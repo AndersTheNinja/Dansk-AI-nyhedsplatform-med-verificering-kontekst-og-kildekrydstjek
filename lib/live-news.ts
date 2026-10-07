@@ -828,13 +828,15 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
     hostname = new URL(item.link).hostname.toLowerCase();
   } catch {}
 
-  // JFM pages can expose unrelated article metadata in the HTML. Their RSS
-  // teaser is safer than page scraping, even when it is short.
-  const isJfmPublisher = /(?:^|\.)(?:stiften|fyens|jv|hsfo|frdb)\.dk$/i.test(hostname);
-  if (isJfmPublisher) return item;
+  // JFM pages can expose unrelated article metadata in the HTML. For Stiften
+  // we now allow only structured articleBody/metadata extraction, never arbitrary
+  // page paragraphs. Other JFM publishers keep the RSS teaser only.
+  const isStiften = /(?:^|\.)stiften\.dk$/i.test(hostname);
+  const isOtherJfmPublisher = /(?:^|\.)(?:fyens|jv|hsfo|frdb)\.dk$/i.test(hostname);
+  if (isOtherJfmPublisher) return item;
 
   // A long teaser is only trusted if it is actually editorial text.
-  if (item.description.length >= 340 && !isBoilerplatePreview(item.description)) return item;
+  if (!isStiften && item.description.length >= 340 && !isBoilerplatePreview(item.description)) return item;
 
   try {
     const response = await fetch(item.link, {
@@ -854,11 +856,13 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
     // Only use explicit metadata for them, never arbitrary <p> elements.
     const isPolitiken = /(?:^|\.)politiken\.dk$/i.test(hostname);
     const metadataOnly = /(?:^|\.)(?:ing|version2|computerworld|nordjyske)\.dk$/i.test(hostname);
-    const preview = isPolitiken
+    const preview = isStiften
       ? (extractArticleBodyFromJson(html) || extractMetadataPreview(html))
-      : metadataOnly
-        ? extractMetadataPreview(html)
-        : extractPublicPreview(html);
+      : isPolitiken
+        ? (extractArticleBodyFromJson(html) || extractMetadataPreview(html))
+        : metadataOnly
+          ? extractMetadataPreview(html)
+          : extractPublicPreview(html);
 
     const cleanedPreview = isBoilerplatePreview(preview) ? "" : preview;
     const bestDescription =
