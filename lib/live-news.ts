@@ -883,7 +883,7 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
     // meaningfully with the current article title; otherwise keep the RSS teaser.
     const stiftenPreviewMatchesTitle = !isStiften || (
       similarity(item.title, cleanedPreview) >= 0.2 ||
-      similarity(item.title, `${item.title} ${cleanedPreview}`) >= 0.35
+      similarity(item.description, cleanedPreview) >= 0.3
     );
 
     const bestDescription =
