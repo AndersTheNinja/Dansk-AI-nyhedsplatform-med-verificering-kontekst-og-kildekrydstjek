@@ -859,7 +859,13 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
     const preview = isStiften
       ? (extractArticleBodyFromJson(html) || extractMetadataPreview(html))
       : isPolitiken
-        ? (extractArticleBodyFromJson(html) || extractMetadataPreview(html))
+        ? [
+            extractArticleBodyFromJson(html),
+            extractMetadataPreview(html),
+            extractPublicPreview(html)
+          ]
+            .filter((text) => text && !isBoilerplatePreview(text))
+            .sort((a, b) => previewQuality(b) - previewQuality(a))[0] || ""
         : metadataOnly
           ? extractMetadataPreview(html)
           : extractPublicPreview(html);
