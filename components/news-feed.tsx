@@ -454,7 +454,7 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
       </div>
 
       <div className="sectionTitle">
-        Seneste nyheder<span className="sectionTitleNote">baseret på dine valg</span>
+        Seneste nyheder <span className="sectionTitleNote">baseret på dine valg</span>
       </div>
 
       <div className="storyList">
