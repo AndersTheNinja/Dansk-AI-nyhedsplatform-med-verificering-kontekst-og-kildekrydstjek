@@ -287,6 +287,7 @@ function cleanPreviewText(value = "", title = "") {
     /^(?:du har nu adgang til|log ind for at læse|bliv abonnent|kun for abonnenter)\b[^.!?]*(?:[.!?]|$)\s*/i,
     /^(?:artiklen fortsætter efter annoncen|fortsætter efter annoncen)\.?\s*/i,
     /^(?:klik her|tryk her)\b[^.!?]*(?:[.!?]|$)\s*/i,
+    /^dette er et debatindlæg skrevet af en eller flere eksterne skribenter\.\s*indlægget afspejler en personlig holdning\.\s*forslag til debatindlæg kan sendes til børsen opinion:\s*opinion@borsen\.dk\s*/i,
     /^med ["”']?auto["”']? skiftes der automatisk mellem lys og mørk tilstand baseret på din enheds indstillinger\.?s*/i,
     /^pro indhold med dybdegående analyser og nyhedsbreve indenfor finans og iværksætteri\.?s*/i,
     /^klik her og få adgang\s*/i
