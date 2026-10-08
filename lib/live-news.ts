@@ -877,8 +877,17 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
       ? cleanPreviewText(preview, item.title)
       : preview;
     const cleanedPreview = isBoilerplatePreview(normalizedPreview) ? "" : normalizedPreview;
+
+    // Stiften/JFM pages occasionally expose structured text from a neighbouring
+    // article. Only accept an enriched Stiften preview when it actually overlaps
+    // meaningfully with the current article title; otherwise keep the RSS teaser.
+    const stiftenPreviewMatchesTitle = !isStiften || (
+      similarity(item.title, cleanedPreview) >= 0.2 ||
+      similarity(item.title, `${item.title} ${cleanedPreview}`) >= 0.35
+    );
+
     const bestDescription =
-      previewQuality(cleanedPreview) > previewQuality(item.description)
+      stiftenPreviewMatchesTitle && previewQuality(cleanedPreview) > previewQuality(item.description)
         ? cleanedPreview
         : item.description;
 
