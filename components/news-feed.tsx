@@ -273,7 +273,13 @@ function StoryCard({ story }: { story: Story }) {
           </button>
           {story.sources[0] && subscriptionRequired !== null && (
             <a className="readMore" href={story.sources[0].url} target="_blank" rel="noreferrer">
-              <span className="readMoreText">Læs mere</span> <span className="readMoreAccess">({subscriptionRequired ? "abb." : "gratis"})</span> <span className="externalArrow" aria-hidden="true">{"\u2197\uFE0E"}</span>
+              <span className="readMoreText">Læs mere</span> <span className="readMoreAccess">({subscriptionRequired ? "abb." : "gratis"})</span> <span className="externalArrow" aria-hidden="true">
+                <svg viewBox="0 0 16 16" focusable="false">
+                  <path d="M6 3H3.75A1.75 1.75 0 0 0 2 4.75v7.5A1.75 1.75 0 0 0 3.75 14h7.5A1.75 1.75 0 0 0 13 12.25V10" />
+                  <path d="M9 2h5v5" />
+                  <path d="M14 2 7.5 8.5" />
+                </svg>
+              </span>
             </a>
           )}
         </div>
