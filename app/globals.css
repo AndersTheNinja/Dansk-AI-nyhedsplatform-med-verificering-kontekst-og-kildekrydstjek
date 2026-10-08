@@ -181,3 +181,6 @@ button{font:inherit}
 @media (max-width:700px){
   .mediaAllLink{min-width:72px}
 }
+
+.externalArrow{display:inline-flex;align-items:center;vertical-align:-1px;margin-left:1px}
+.externalArrow svg{width:11px;height:11px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
