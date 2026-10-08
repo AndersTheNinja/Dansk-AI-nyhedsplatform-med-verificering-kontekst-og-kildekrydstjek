@@ -54,6 +54,7 @@ button{font:inherit}
 .filterTab{appearance:none;border:1px solid #cfd4d6;background:#fff;padding:4px 7px;color:#287ea3;font:11px Arial,sans-serif;cursor:pointer;text-decoration:none;border-radius:2px}
 .filterTab:hover{border-color:var(--teal);color:var(--teal-dark)}
 .filterTab.active{background:var(--teal);border-color:var(--teal);color:#fff;font-weight:700;text-decoration:none}
+.filterBar .filterTab:first-child,.mediaAllLink{width:72px;justify-content:center;text-align:center}
 .mediaFilter{display:flex;width:100%;align-items:center;align-content:flex-start;justify-content:flex-start;flex-wrap:wrap;gap:4px;margin:-6px 0 10px;font:11px Arial,sans-serif;color:#6f797f;text-align:left}
 .mediaFilterItem{display:inline-flex;align-items:center;gap:5px}
 .mediaSeparator{display:none}
@@ -178,9 +179,6 @@ button{font:inherit}
   .mediaLabelMobile{display:inline}
 }
 
-@media (max-width:700px){
-  .mediaAllLink{min-width:72px}
-}
 
 .externalArrow{display:inline-flex;align-items:center;vertical-align:-1px;margin-left:1px}
 .externalArrow svg{width:11px;height:11px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
