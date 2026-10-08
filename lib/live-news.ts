@@ -343,7 +343,9 @@ function cleanPreviewText(value = "", title = "") {
     /(?:^|\s+)mit navn er\b/i,
     /(?:^|\s+)jeg er \d{1,3} år gammel\b/i,
     /(?:^|\s+)siden \d{4} har jeg været en del af redaktionen hos migogaarhus\b/i,
-    /(?:^|\s+)har du et godt tip til noget, vi skal smage, opleve eller fortælle om\b/i
+    /(?:^|\s+)har du et godt tip til noget, vi skal smage, opleve eller fortælle om\b/i,
+    /(?:^|\s+)mister trump grebet om usa\?/i,
+    /(?:^|\s+)kom med til valgfest\b/i
   ];
 
   let cutAt = text.length;
@@ -870,7 +872,10 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
           ? extractMetadataPreview(html)
           : extractPublicPreview(html);
 
-    const cleanedPreview = isBoilerplatePreview(preview) ? "" : preview;
+    const normalizedPreview = isPolitiken
+      ? cleanPreviewText(preview, item.title)
+      : preview;
+    const cleanedPreview = isBoilerplatePreview(normalizedPreview) ? "" : normalizedPreview;
     const bestDescription =
       previewQuality(cleanedPreview) > previewQuality(item.description)
         ? cleanedPreview
