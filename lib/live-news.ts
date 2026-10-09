@@ -863,7 +863,13 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
     const isPolitiken = /(?:^|\.)politiken\.dk$/i.test(hostname);
     const metadataOnly = /(?:^|\.)(?:ing|version2|computerworld|nordjyske)\.dk$/i.test(hostname);
     const preview = isStiften
-      ? (extractArticleBodyFromJson(html) || extractMetadataPreview(html))
+      ? [
+          extractArticleBodyFromJson(html),
+          extractMetadataPreview(html),
+          extractPublicPreview(html)
+        ]
+          .filter((text) => text && !isBoilerplatePreview(text))
+          .sort((a, b) => previewQuality(b) - previewQuality(a))[0] || ""
       : isPolitiken
         ? [
             extractArticleBodyFromJson(html),
