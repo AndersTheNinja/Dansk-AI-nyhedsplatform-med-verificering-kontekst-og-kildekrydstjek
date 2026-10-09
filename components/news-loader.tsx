@@ -20,7 +20,7 @@ export function NewsLoader() {
       setStories(nextStories);
       setError(false);
 
-      setNewsCount(nextStories.length);
+      setNewsCount(typeof data.totalCount === "number" ? data.totalCount : nextStories.length);
     } catch {
       setError(true);
       setNewsCount(null);
