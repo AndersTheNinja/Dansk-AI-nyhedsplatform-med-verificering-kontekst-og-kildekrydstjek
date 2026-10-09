@@ -8,10 +8,10 @@ export default function Home() {
     <main className="site">
       <header className="masthead shell">
         <div className="brandArea">
-          <div className="logoRow">
+          <a className="logoRow logoHomeLink" href="/" aria-label="Genindlæs ØL.dk">
             <div className="logoBlock">ØL</div>
             <div className="siteName"><span className="siteNameAccent">.dk</span></div>
-          </div>
+          </a>
           <div className="siteTagline"><strong>ØL.dk — Øjeblikkelig &amp; Live</strong><br />Nyheder. Nu.</div>
         </div>
         <div className="headerStatus">
