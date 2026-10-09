@@ -20,7 +20,16 @@ export function NewsLoader() {
       setStories(nextStories);
       setError(false);
 
-      setNewsCount(typeof data.totalCount === "number" ? data.totalCount : nextStories.length);
+      const reportedCount = typeof data.totalCount === "number" ? data.totalCount : nextStories.length;
+      let storedMax = 0;
+      try {
+        storedMax = Number(localStorage.getItem("oel-max-news-count")) || 0;
+      } catch {}
+      const nextCount = Math.max(reportedCount, storedMax);
+      setNewsCount(nextCount);
+      try {
+        localStorage.setItem("oel-max-news-count", String(nextCount));
+      } catch {}
     } catch {
       setError(true);
       setNewsCount(null);
