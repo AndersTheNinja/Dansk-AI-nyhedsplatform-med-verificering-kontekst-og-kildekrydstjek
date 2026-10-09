@@ -289,6 +289,7 @@ function cleanPreviewText(value = "", title = "") {
     /^(?:artiklen fortsætter efter annoncen|fortsætter efter annoncen)\.?\s*/i,
     /^(?:klik her|tryk her)\b[^.!?]*(?:[.!?]|$)\s*/i,
     /^dette er et debatindlæg skrevet af en eller flere eksterne skribenter\.\s*indlægget afspejler en personlig holdning\.\s*forslag til debatindlæg kan sendes til børsen opinion:\s*opinion@borsen\.dk\s*/i,
+    /^tak fordi du læser med\s+danske bank og rambøll er partnere på børsen bæredygtig\.\s*derfor er alle artikler frit tilgængelige for alle læsere\.\s*danske bank og rambøll har ingen indflydelse på indhold eller redaktionelle valg på børsen bæredygtig\.\s*læs mere om partnerskab\.?\s*/i,
     /^med ["”']?auto["”']? skiftes der automatisk mellem lys og mørk tilstand baseret på din enheds indstillinger\.?s*/i,
     /^pro indhold med dybdegående analyser og nyhedsbreve indenfor finans og iværksætteri\.?s*/i,
     /^klik her og få adgang\s*/i
