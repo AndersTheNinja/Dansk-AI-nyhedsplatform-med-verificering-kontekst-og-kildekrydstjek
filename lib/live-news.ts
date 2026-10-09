@@ -285,6 +285,7 @@ function cleanPreviewText(value = "", title = "") {
     /^(?:læs også|se også|hør også|følg også)\b[:\s-]*/i,
     /^(?:tilmeld dig|få vores nyhedsbrev|modtag nyhedsbrev|nyhedsbrev)\b[^.!?]*(?:[.!?]|$)\s*/i,
     /^(?:du har nu adgang til|log ind for at læse|bliv abonnent|kun for abonnenter)\b[^.!?]*(?:[.!?]|$)\s*/i,
+    /^du skal være abonnent for at lytte til denne automatiske oplæsning\.?\s*/i,
     /^(?:artiklen fortsætter efter annoncen|fortsætter efter annoncen)\.?\s*/i,
     /^(?:klik her|tryk her)\b[^.!?]*(?:[.!?]|$)\s*/i,
     /^dette er et debatindlæg skrevet af en eller flere eksterne skribenter\.\s*indlægget afspejler en personlig holdning\.\s*forslag til debatindlæg kan sendes til børsen opinion:\s*opinion@borsen\.dk\s*/i,
@@ -310,6 +311,8 @@ function cleanPreviewText(value = "", title = "") {
   text = text
     .replace(/pro indhold med dybdegående analyser og nyhedsbreve indenfor finans og iværksætteri\.?\s*/gi, "")
     .replace(/klik her og få adgang\s*/gi, "")
+    .replace(/du skal være abonnent for at lytte til denne automatiske oplæsning\.?\s*/gi, "")
+    .replace(/som abonnent kan du ubegrænset dele artikler med dine venner og familie\.\s*læs mere om fordelene ved et abonnement her\s*\.?\s*/gi, "")
     .replace(/\s*læs mere og bliv(?: abonnent)?\.?\s*$/gi, "")
     .replace(/\s*bliv abonnent for at læse videre\.?\s*$/gi, "")
     .replace(/med ["”']?auto["”']? skiftes der automatisk mellem lys og mørk tilstand baseret på din enheds indstillinger\.?s*/gi, "")
