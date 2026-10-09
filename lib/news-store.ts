@@ -60,3 +60,29 @@ export async function persistStories(stories: Story[]) {
     throw new Error(`Supabase ingest failed (${response.status}): ${message.slice(0, 250)}`);
   }
 }
+
+
+export async function getVisibleArchiveCount() {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY;
+  if (!url || !key) return 0;
+
+  try {
+    const response = await fetch(`${url}/rest/v1/rpc/visible_news_archive_count`, {
+      method: "POST",
+      headers: {
+        apikey: key,
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json"
+      },
+      body: "{}",
+      cache: "no-store",
+      signal: AbortSignal.timeout(5000)
+    });
+    if (!response.ok) return 0;
+    const value = await response.json();
+    return typeof value === "number" ? value : Number(value) || 0;
+  } catch {
+    return 0;
+  }
+}
