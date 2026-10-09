@@ -314,6 +314,7 @@ function cleanPreviewText(value = "", title = "") {
     .replace(/klik her og få adgang\s*/gi, "")
     .replace(/du skal være abonnent for at lytte til denne automatiske oplæsning\.?\s*/gi, "")
     .replace(/som abonnent kan du ubegrænset dele artikler med dine venner og familie\.\s*læs mere om fordelene ved et abonnement her\s*\.?\s*/gi, "")
+    .replace(/tak fordi du læser med\s+danske bank og rambøll er partnere på børsen bæredygtig\.\s*derfor er alle artikler frit tilgængelige for alle læsere\.\s*danske bank og rambøll har ingen indflydelse på indhold eller redaktionelle valg på børsen bæredygtig\.\s*læs mere om partnerskab\.?\s*/gi, "")
     .replace(/\s*læs mere og bliv(?: abonnent)?\.?\s*$/gi, "")
     .replace(/\s*bliv abonnent for at læse videre\.?\s*$/gi, "")
     .replace(/med ["”']?auto["”']? skiftes der automatisk mellem lys og mørk tilstand baseret på din enheds indstillinger\.?s*/gi, "")
