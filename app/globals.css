@@ -19,6 +19,7 @@ button{font:inherit}
 .masthead{height:92px;display:flex;align-items:flex-end;justify-content:space-between;background:#fff;padding-bottom:18px}
 .brandArea{display:flex;align-items:center;gap:16px;min-width:0}
 .logoRow{display:flex;align-items:center;gap:4px;flex:0 0 auto}
+.logoHomeLink{text-decoration:none;color:inherit}
 .logoBlock{width:58px;height:54px;display:grid;place-items:center;background:var(--teal);color:#fff;font:700 24px/1 Arial,sans-serif;border-radius:7px;letter-spacing:-.03em}
 .siteName{display:flex;align-items:baseline;font-family:Arial,sans-serif;line-height:1;white-space:nowrap}
 .siteNameMain{font-size:34px;font-weight:700;color:#314047;letter-spacing:-.035em}
