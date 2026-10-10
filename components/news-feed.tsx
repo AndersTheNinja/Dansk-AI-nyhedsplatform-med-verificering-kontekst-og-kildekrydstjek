@@ -254,6 +254,18 @@ function StoryCard({ story }: { story: Story }) {
           )}
         </div>
 
+        {textOpen && story.imageUrl && (
+          <div className="storyArticleImageWrap">
+            <img
+              className="storyArticleImage"
+              src={story.imageUrl}
+              alt=""
+              loading="lazy"
+              referrerPolicy="no-referrer"
+            />
+          </div>
+        )}
+
         <div className="scoreLine">
           <button
             type="button"
