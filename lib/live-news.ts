@@ -16,6 +16,7 @@ type NewsItem = {
   link: string;
   pubDate?: string;
   description: string;
+  imageUrl?: string;
   source: string;
   method: "RSS" | "WEB";
   id: string;
@@ -314,6 +315,8 @@ function cleanPreviewText(value = "", title = "") {
     .replace(/klik her og få adgang\s*/gi, "")
     .replace(/du skal være abonnent for at lytte til denne automatiske oplæsning\.?\s*/gi, "")
     .replace(/som abonnent kan du ubegrænset dele artikler med dine venner og familie\.\s*læs mere om fordelene ved et abonnement her\s*\.?\s*/gi, "")
+    .replace(/\((?:foto|fotograf|photo|billede)\s*:\s*[^)]{1,140}\)/gi, "")
+    .replace(/\b(?:foto|fotograf|photo|billede)\s*:\s*\/?\s*[^.!?]{0,100}?(?:scanpix(?: denmark)?|ritzau(?: scanpix)?|reuters|getty images?|afp|associated press|\bap\b|tv\s?2|dr)\b/gi, "")
     .replace(/tak fordi du læser med\s+danske bank og rambøll er partnere på børsen bæredygtig\.\s*derfor er alle artikler frit tilgængelige for alle læsere\.\s*danske bank og rambøll har ingen indflydelse på indhold eller redaktionelle valg på børsen bæredygtig\.\s*læs mere om partnerskab\.?\s*/gi, "")
     .replace(/\s*læs mere og bliv(?: abonnent)?\.?\s*$/gi, "")
     .replace(/\s*bliv abonnent for at læse videre\.?\s*$/gi, "")
@@ -365,6 +368,11 @@ function cleanPreviewText(value = "", title = "") {
     const normalizedTitle = stripHtml(title).trim();
     if (normalizedTitle && text.toLowerCase().startsWith(normalizedTitle.toLowerCase())) {
       text = text.slice(normalizedTitle.length).replace(/^\s*[-–—:|]\s*/, "").trim();
+    } else if (normalizedTitle && text) {
+      const opening = text.split(/(?<=[.!?])\s+/)[0]?.trim() || "";
+      if (opening && opening.length <= Math.max(220, normalizedTitle.length * 2) && similarity(normalizedTitle, opening) >= 0.8) {
+        text = text.slice(opening.length).replace(/^\s*[-–—:|]\s*/, "").trim();
+      }
     }
   }
 
@@ -736,6 +744,10 @@ async function fetchFeed(feed: FeedConfig): Promise<NewsItem[]> {
         ? ""
         : rawDescription;
     const pubDate = publishedValue(item);
+    const imageUrl =
+      imageUrlFromFeedValue(item["media:content"]) ||
+      imageUrlFromFeedValue(item["media:thumbnail"]) ||
+      imageUrlFromFeedValue(item.enclosure);
 
     return {
       category: feed.category,
@@ -743,6 +755,7 @@ async function fetchFeed(feed: FeedConfig): Promise<NewsItem[]> {
       link,
       pubDate,
       description,
+      imageUrl,
       source: feed.name,
       method: "RSS" as const,
       id: `${feed.name}-${index}-${link || title}`
@@ -761,6 +774,53 @@ function extractMetaContent(html: string, key: string) {
     if (match?.[1]) return decodeHtmlEntities(match[1]).trim();
   }
   return "";
+}
+
+function extractImageUrlFromHtml(html: string) {
+  const candidate =
+    extractMetaContent(html, "og:image") ||
+    extractMetaContent(html, "twitter:image") ||
+    html.match(/"image"\s*:\s*"([^"]+)"/i)?.[1] ||
+    "";
+  if (!candidate) return undefined;
+  try {
+    const decoded = decodeHtmlEntities(candidate).replace(/\\\//g, "/").trim();
+    const url = new URL(decoded);
+    return /^https?:$/.test(url.protocol) ? url.toString() : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function imageUrlFromFeedValue(value: unknown): string | undefined {
+  if (!value) return undefined;
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = imageUrlFromFeedValue(item);
+      if (found) return found;
+    }
+    return undefined;
+  }
+  if (typeof value === "string") {
+    try {
+      const url = new URL(value);
+      return /^https?:$/.test(url.protocol) ? url.toString() : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+  if (typeof value === "object") {
+    const obj = value as Record<string, unknown>;
+    const type = String(obj["@_type"] ?? obj["type"] ?? "");
+    const url = String(obj["@_url"] ?? obj["url"] ?? obj["@_href"] ?? obj["href"] ?? "");
+    if (url && (!type || /^image\//i.test(type))) {
+      try {
+        const parsed = new URL(url);
+        if (/^https?:$/.test(parsed.protocol)) return parsed.toString();
+      } catch {}
+    }
+  }
+  return undefined;
 }
 
 function extractPublishedDateFromHtml(html: string) {
@@ -844,7 +904,7 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
   if (isOtherJfmPublisher) return item;
 
   // A long teaser is only trusted if it is actually editorial text.
-  if (!isStiften && item.description.length >= 340 && !isBoilerplatePreview(item.description)) return item;
+  if (!isStiften && item.description.length >= 340 && !isBoilerplatePreview(item.description) && item.imageUrl) return item;
 
   try {
     const response = await fetch(item.link, {
@@ -859,6 +919,7 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
 
     if (!response.ok) return item;
     const html = await response.text();
+    const pageImageUrl = extractImageUrlFromHtml(html);
 
     // These publishers have lots of account/navigation paragraphs in the DOM.
     // Only use explicit metadata for them, never arbitrary <p> elements.
@@ -905,6 +966,7 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
     return {
       ...item,
       description: bestDescription,
+      imageUrl: isStiften && !stiftenPreviewMatchesTitle ? item.imageUrl : (pageImageUrl || item.imageUrl),
       pubDate: extractPublishedDateFromHtml(html) || item.pubDate
     };
   } catch {
@@ -925,6 +987,7 @@ async function enrichTV2Item(item: NewsItem): Promise<NewsItem> {
 
     if (!response.ok) return item;
     const html = await response.text();
+    const pageImageUrl = extractImageUrlFromHtml(html);
 
     const jsonHeadline =
       html.match(/"headline"\s*:\s*"((?:\\.|[^"\\])*)"/i)?.[1] || "";
@@ -945,6 +1008,7 @@ async function enrichTV2Item(item: NewsItem): Promise<NewsItem> {
       ...item,
       title: stripHtml(headline).replace(/^TV 2[:\s|-]+/i, "").trim() || item.title,
       description: cleanPreviewText(description, headline),
+      imageUrl: pageImageUrl || item.imageUrl,
       pubDate: extractPublishedDateFromHtml(html) || item.pubDate
     };
   } catch {
@@ -965,6 +1029,7 @@ async function enrichBorsenItem(item: NewsItem): Promise<NewsItem> {
 
     if (!response.ok) return item;
     const html = await response.text();
+    const pageImageUrl = extractImageUrlFromHtml(html);
 
     const description =
       extractPublicPreview(html) ||
@@ -976,6 +1041,7 @@ async function enrichBorsenItem(item: NewsItem): Promise<NewsItem> {
       ...item,
       title: stripHtml(headline) || item.title,
       description: cleanPreviewText(description, headline),
+      imageUrl: pageImageUrl || item.imageUrl,
       pubDate: extractPublishedDateFromHtml(html) || item.pubDate
     };
   } catch {
@@ -1171,7 +1237,7 @@ export async function getLiveStories(): Promise<Story[]> {
   // This also works for subscriber articles because we only use public metadata/teasers.
   const enrichedSelected = await Promise.all(
     selected.map(async (entry, index) => {
-      if ((entry.lead.description.length >= 340 && !isBoilerplatePreview(entry.lead.description)) || index >= 220) return entry;
+      if ((entry.lead.description.length >= 340 && !isBoilerplatePreview(entry.lead.description) && entry.lead.imageUrl) || index >= 220) return entry;
       return { ...entry, lead: await enrichPreview(entry.lead) };
     })
   );
@@ -1204,6 +1270,7 @@ export async function getLiveStories(): Promise<Story[]> {
       publishedDate: formatPublishedDate(lead.pubDate),
       sourceMethod: lead.method,
       summary,
+      imageUrl: lead.imageUrl,
       why: categoryWhy(lead.category),
       verification: hasCrossCheck ? "nuance" : "unverified",
       verificationText: hasCrossCheck
