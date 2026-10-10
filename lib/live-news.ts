@@ -788,7 +788,7 @@ async function fetchFeed(feed: FeedConfig): Promise<NewsItem[]> {
       imageUrl,
       source: feed.name,
       method: "RSS" as const,
-      id: `${feed.name}-${index}-${link || title}`
+      id: `${feed.name}:${link || title}`
     };
   }).filter((item: NewsItem) => item.title && item.link);
 }
@@ -967,6 +967,18 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
 
     if (!response.ok) return item;
     const html = await response.text();
+
+    // Never enrich an RSS item from a page whose own article title points to a
+    // different story. Publisher pages can contain metadata/paragraphs from
+    // neighbouring or recommended stories; accepting those is what creates
+    // mismatched intros on ØL.dk.
+    const explicitPageTitle =
+      extractMetaContent(html, "og:title") ||
+      extractMetaContent(html, "twitter:title");
+    if (explicitPageTitle && !articleTitleMatchesPage(item.title, html)) {
+      return item;
+    }
+
     const pageImageUrl = extractArticleImageUrl(html, item.title);
 
     // These publishers have lots of account/navigation paragraphs in the DOM.
@@ -1158,7 +1170,7 @@ async function fetchTV2Website(): Promise<NewsItem[]> {
         description: "",
         source: "TV2.dk",
         method: "WEB",
-        id: `TV2-web-${items.length}-${canonical}`
+        id: `TV2-web:${canonical}`
       });
     }
   }
@@ -1213,7 +1225,7 @@ async function fetchBorsenWebsite(): Promise<NewsItem[]> {
       description: "",
       source: "Børsen",
       method: "WEB",
-      id: `Børsen-web-${items.length}-${canonical}`
+      id: `Børsen-web:${canonical}`
     });
   }
 
@@ -1314,7 +1326,7 @@ export async function getLiveStories(): Promise<Story[]> {
     }
 
     return {
-      id: `live-${index}-${lead.id}`,
+      id: `live:${lead.id}`,
       category: lead.category,
       title: lead.title,
       sourceLabel: hasCrossCheck ? `${publisherName(lead.source)} · ${sources.length} kilder` : lead.source,
