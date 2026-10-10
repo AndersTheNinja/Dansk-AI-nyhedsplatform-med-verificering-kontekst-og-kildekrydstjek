@@ -315,7 +315,9 @@ function cleanPreviewText(value = "", title = "") {
     .replace(/klik her og få adgang\s*/gi, "")
     .replace(/du skal være abonnent for at lytte til denne automatiske oplæsning\.?\s*/gi, "")
     .replace(/som abonnent kan du ubegrænset dele artikler med dine venner og familie\.\s*læs mere om fordelene ved et abonnement her\s*\.?\s*/gi, "")
-    .replace(/\((?:foto|fotograf|photo|billede)\s*:\s*[^)]{1,140}\)/gi, "")
+    .replace(/\((?:foto|fotograf|photo|billede|fotocredit)\s*:\s*[^)]{1,140}\)/gi, "")
+    .replace(/(?:^|\s)(?:foto|fotograf|photo|billede|fotocredit)\s*:\s*(?:\/\s*)?(?:ritzau(?:\s+scanpix)?|scanpix(?:\s+denmark)?|reuters|getty images?|afp|associated press|ap|tv\s?2|dr)(?=\s|[.,;]|$)[.,;]?\s*/gi, " ")
+    .replace(/(?:^|\s)(?:foto|fotograf|photo|billede|fotocredit)\s*:\s*(?:\/\s*)?[^.!?]{1,80}?\s*\/\s*(?:ritzau|scanpix|reuters|getty images?|afp|ap|tv\s?2|dr)(?=\s|[.,;]|$)[.,;]?\s*/gi, " ")
     .replace(/\b(?:foto|fotograf|photo|billede)\s*:\s*\/?\s*[^.!?]{0,100}?(?:scanpix(?: denmark)?|ritzau(?: scanpix)?|reuters|getty images?|afp|associated press|\bap\b|tv\s?2|dr)\b/gi, "")
     .replace(/tak fordi du læser med\s+danske bank og rambøll er partnere på børsen bæredygtig\.\s*derfor er alle artikler frit tilgængelige for alle læsere\.\s*danske bank og rambøll har ingen indflydelse på indhold eller redaktionelle valg på børsen bæredygtig\.\s*læs mere om partnerskab\.?\s*/gi, "")
     .replace(/\s*læs mere og bliv(?: abonnent)?\.?\s*$/gi, "")
@@ -776,6 +778,24 @@ function extractMetaContent(html: string, key: string) {
   return "";
 }
 
+function articleTitleMatchesPage(expectedTitle: string, html: string) {
+  const pageTitle =
+    extractMetaContent(html, "og:title") ||
+    extractMetaContent(html, "twitter:title");
+  if (!pageTitle) return false;
+
+  const expected = words(expectedTitle);
+  const found = words(pageTitle);
+  const overlap = [...expected].filter((word) => found.has(word)).length;
+  return overlap >= Math.min(2, expected.size) &&
+    overlap / Math.max(1, Math.min(expected.size, found.size)) >= 0.6;
+}
+
+function extractArticleImageUrl(html: string, expectedTitle: string) {
+  if (!articleTitleMatchesPage(expectedTitle, html)) return undefined;
+  return extractImageUrlFromHtml(html);
+}
+
 function extractImageUrlFromHtml(html: string) {
   const candidate =
     extractMetaContent(html, "og:image") ||
@@ -919,7 +939,7 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
 
     if (!response.ok) return item;
     const html = await response.text();
-    const pageImageUrl = extractImageUrlFromHtml(html);
+    const pageImageUrl = extractArticleImageUrl(html, item.title);
 
     // These publishers have lots of account/navigation paragraphs in the DOM.
     // Only use explicit metadata for them, never arbitrary <p> elements.
@@ -945,9 +965,7 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
           ? extractMetadataPreview(html)
           : extractPublicPreview(html);
 
-    const normalizedPreview = isPolitiken
-      ? cleanPreviewText(preview, item.title)
-      : preview;
+    const normalizedPreview = cleanPreviewText(preview, item.title);
     const cleanedPreview = isBoilerplatePreview(normalizedPreview) ? "" : normalizedPreview;
 
     // Stiften/JFM pages occasionally expose structured text from a neighbouring
@@ -987,7 +1005,7 @@ async function enrichTV2Item(item: NewsItem): Promise<NewsItem> {
 
     if (!response.ok) return item;
     const html = await response.text();
-    const pageImageUrl = extractImageUrlFromHtml(html);
+    const pageImageUrl = extractArticleImageUrl(html, item.title);
 
     const jsonHeadline =
       html.match(/"headline"\s*:\s*"((?:\\.|[^"\\])*)"/i)?.[1] || "";
@@ -1029,13 +1047,16 @@ async function enrichBorsenItem(item: NewsItem): Promise<NewsItem> {
 
     if (!response.ok) return item;
     const html = await response.text();
-    const pageImageUrl = extractImageUrlFromHtml(html);
+    const pageImageUrl = extractArticleImageUrl(html, item.title);
 
     const description =
       extractPublicPreview(html) ||
       item.description;
 
-    const headline = extractMetaContent(html, "og:title") || item.title;
+    const pageHeadline = extractMetaContent(html, "og:title");
+    const headline = pageHeadline && articleTitleMatchesPage(item.title, html)
+      ? pageHeadline
+      : item.title;
 
     return {
       ...item,
@@ -1247,8 +1268,12 @@ export async function getLiveStories(): Promise<Story[]> {
     const hasCrossCheck = sources.length >= 2;
     const wordingNeutrality = scoreWordingNeutrality(`${lead.title} ${lead.description}`);
     const originality = scoreOriginality(lead, sources);
-    const cleanDescription = isBoilerplatePreview(lead.description) ? "" : lead.description.trim();
-    let summary = cleanDescription || lead.title;
+    // Apply the same final safeguards to every source, including RSS-only items:
+    // photo credits are not article text, and the headline must not repeat at
+    // the beginning of the teaser.
+    const cleanDescription = cleanPreviewText(lead.description, lead.title);
+    let summary = isBoilerplatePreview(cleanDescription) ? "" : cleanDescription;
+    if (!summary) summary = "Der er endnu ingen selvstændig artikeltekst tilgængelig.";
     if (summary.length > 700) {
       const clipped = summary.slice(0, 700);
       const sentenceMatches = Array.from(clipped.matchAll(/[.!?](?:["”’])?(?=\s|$)/g));
