@@ -961,6 +961,35 @@ function extractPublicPreview(html: string) {
     .sort((a, b) => b.length - a.length)[0] || "";
 }
 
+function extractScopedArticlePreview(html: string, title: string, seed: string) {
+  const articleBlocks = Array.from(html.matchAll(/<article\b[^>]*>([\s\S]*?)<\/article>/gi))
+    .map((match) => match[1] || "");
+
+  const candidates = articleBlocks.length ? articleBlocks : [html];
+
+  const ranked = candidates
+    .map((block) => {
+      const paragraphs = Array.from(block.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi))
+        .map((match) => cleanPreviewText(match[1] || ""))
+        .filter((text) => text.length >= 35 && !isBoilerplatePreview(text));
+
+      const joined = paragraphs.slice(0, 6).join(" ");
+      const score = Math.max(
+        similarity(title, joined),
+        seed ? similarity(seed, joined) : 0
+      );
+
+      return { joined, score };
+    })
+    .filter((candidate) => candidate.joined.length >= 80)
+    .sort((a, b) => b.score - a.score);
+
+  const best = ranked[0];
+  if (!best || best.score < 0.12) return "";
+
+  return cleanPreviewText(best.joined, title);
+}
+
 async function enrichPreview(item: NewsItem): Promise<NewsItem> {
   let hostname = "";
   try {
@@ -1028,6 +1057,7 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
         : isDr
           ? [
               extractArticleBodyFromJson(html),
+              extractScopedArticlePreview(html, item.title, item.description),
               extractMetadataPreview(html)
             ]
               .filter((text) => text && !isBoilerplatePreview(text))
