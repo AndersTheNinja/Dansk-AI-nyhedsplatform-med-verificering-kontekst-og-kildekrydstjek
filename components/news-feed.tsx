@@ -39,6 +39,7 @@ function StoryCard({ story }: { story: Story }) {
   const [aiSummary, setAiSummary] = useState<{ summary: string; bullets: string[]; basis?: string } | null>(null);
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [textOpen, setTextOpen] = useState(false);
+  const [articleImageFailed, setArticleImageFailed] = useState(false);
   const [summaryHasOverflow, setSummaryHasOverflow] = useState(false);
   const [factOpen, setFactOpen] = useState(false);
   const [factLoading, setFactLoading] = useState(false);
@@ -254,14 +255,15 @@ function StoryCard({ story }: { story: Story }) {
           )}
         </div>
 
-        {textOpen && story.imageUrl && (
+        {textOpen && story.imageUrl && !articleImageFailed && (
           <div className="storyArticleImageWrap">
             <img
               className="storyArticleImage"
               src={story.imageUrl}
-              alt=""
+              alt={`Billede til artiklen: ${story.title}`}
               loading="lazy"
               referrerPolicy="no-referrer"
+              onError={() => setArticleImageFailed(true)}
             />
           </div>
         )}
