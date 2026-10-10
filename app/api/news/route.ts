@@ -7,7 +7,7 @@ export const revalidate = 60;
 
 const getCachedStories = unstable_cache(
   async () => getLiveStories(),
-  ["oel-live-news-v3"],
+  ["oel-live-news-v4"],
   { revalidate: 60 }
 );
 
