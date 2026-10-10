@@ -274,12 +274,40 @@ function stripHtml(value = "") {
     .replace(/\s+/g, " ")
     .trim();
 }
+// Remove image credits embedded between the photo caption and article text.
+// They are metadata, not part of the editorial article body.
+function removeInlinePhotoCredits(value: string) {
+  const creditStart = /(?:foto|fotograf|fotocredit|photo|billedkredit)\s*:\s*(?:\/\s*)?/gi;
+  const editorialStart = /\s+(?:En|Et|Den|Det|Der|For|Fra|Efter|Mens|Men|Ifølge|Han|Hun|De|På|Til|I|Samtidig|Alligevel|Olfi)\s+(?=[A-Za-zÆØÅæøå0-9»"'(])/g;
+  let result = "";
+  let from = 0;
+  for (const match of value.matchAll(creditStart)) {
+    const start = match.index;
+    if (start < from) continue;
+    const contentStart = start + match[0].length;
+    const after = value.slice(contentStart, contentStart + 145);
+    let end = value.length;
+    for (const boundary of after.matchAll(editorialStart)) {
+      if (boundary.index < 5) continue;
+      end = contentStart + boundary.index + 1;
+      break;
+    }
+    if (end === value.length) {
+      const nextPeriod = after.match(/\.\s+(?=[A-ZÆØÅ])/);
+      if (nextPeriod?.index !== undefined) end = contentStart + nextPeriod.index + 2;
+    }
+    result += value.slice(from, start);
+    from = end;
+  }
+  return (result + value.slice(from)).replace(/\s+/g, " ").trim();
+}
+
 function cleanPreviewText(value = "", title = "") {
   const unescaped = String(value)
     .replace(/\\u([0-9a-f]{4})/gi, (_, hex: string) => String.fromCharCode(parseInt(hex, 16)))
     .replace(/\\n|\\r|\\t/g, " ")
     .replace(/\\\//g, "/");
-  let text = stripHtml(unescaped);
+  let text = removeInlinePhotoCredits(stripHtml(unescaped));
 
   const boilerplatePatterns = [
     /^(?:annonce|advertorial|sponsoreret indhold|sponsoreret)\b[:\s-]*/i,
