@@ -20,16 +20,12 @@ export function NewsLoader() {
       setStories(nextStories);
       setError(false);
 
-      const reportedCount = typeof data.totalCount === "number" ? data.totalCount : nextStories.length;
-      let storedMax = 0;
-      try {
-        storedMax = Number(localStorage.getItem("oel-max-news-count")) || 0;
-      } catch {}
-      const nextCount = Math.max(reportedCount, storedMax);
-      setNewsCount(nextCount);
-      try {
-        localStorage.setItem("oel-max-news-count", String(nextCount));
-      } catch {}
+      // The cumulative archive count comes from the database rather than
+      // the moving RSS feed or a browser-specific high-water mark.
+      const archiveTotal = Number(data.totalCount);
+      setNewsCount(Number.isFinite(archiveTotal) && archiveTotal >= nextStories.length
+        ? archiveTotal
+        : nextStories.length);
     } catch {
       setError(true);
       setNewsCount(null);
