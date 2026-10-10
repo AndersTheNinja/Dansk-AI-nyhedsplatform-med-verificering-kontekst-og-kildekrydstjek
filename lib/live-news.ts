@@ -278,7 +278,7 @@ function stripHtml(value = "") {
 // They are metadata, not part of the editorial article body.
 function removeInlinePhotoCredits(value: string) {
   const creditStart = /(?:foto|fotograf|fotocredit|photo|billedkredit)\s*:\s*(?:\/\s*)?/gi;
-  const editorialStart = /\s+(?:En|Et|Den|Det|Der|For|Fra|Efter|Mens|Men|Ifølge|Han|Hun|De|På|Til|I|Samtidig|Alligevel|Olfi)\s+(?=[A-Za-zÆØÅæøå0-9»"'(])/g;
+  const editorialStart = /\s+(?:(?:En|Et|Den|Det|Der|For|Fra|Efter|Mens|Men|Ifølge|Han|Hun|De|På|Til|I|Samtidig|Alligevel)\s+|Olfi,\s+)(?=[A-Za-zÆØÅæøå0-9»"'(])/g;
   let result = "";
   let from = 0;
   for (const match of value.matchAll(creditStart)) {
