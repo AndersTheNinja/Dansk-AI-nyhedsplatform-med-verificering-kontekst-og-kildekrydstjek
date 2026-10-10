@@ -39,6 +39,8 @@ function StoryCard({ story }: { story: Story }) {
   const [aiSummary, setAiSummary] = useState<{ summary: string; bullets: string[]; basis?: string } | null>(null);
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [textOpen, setTextOpen] = useState(false);
+  const [resolvedImageUrl, setResolvedImageUrl] = useState<string | null>(story.imageUrl || null);
+  const [imageLookupAttempted, setImageLookupAttempted] = useState(false);
   const [articleImageFailed, setArticleImageFailed] = useState(false);
   const [summaryHasOverflow, setSummaryHasOverflow] = useState(false);
   const [factOpen, setFactOpen] = useState(false);
@@ -90,7 +92,7 @@ function StoryCard({ story }: { story: Story }) {
 
       // The same expand control also reveals a relevant article image,
       // even when the available editorial teaser fits within three lines.
-      setSummaryHasOverflow(node.scrollHeight > node.clientHeight + 1 || Boolean(story.imageUrl) && !articleImageFailed);
+      setSummaryHasOverflow(node.scrollHeight > node.clientHeight + 1 || Boolean(resolvedImageUrl) && !articleImageFailed);
     };
 
     measure();
@@ -103,7 +105,33 @@ function StoryCard({ story }: { story: Story }) {
       observer.disconnect();
       window.removeEventListener("resize", measure);
     };
-  }, [story.summary, story.imageUrl, articleImageFailed, textOpen]);
+  }, [story.summary, resolvedImageUrl, articleImageFailed, textOpen]);
+
+  // Fetch a publisher-provided preview image only if the story is opened and
+  // the news feed did not already supply one. Do not guess an image by keyword.
+  useEffect(() => {
+    if (!textOpen || resolvedImageUrl || imageLookupAttempted) return;
+    const articleUrl = story.sources[0]?.url;
+    if (!articleUrl) return;
+    setImageLookupAttempted(true);
+    let cancelled = false;
+
+    fetch("/api/article-image", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: articleUrl, title: story.title })
+    })
+      .then((response) => response.ok ? response.json() : null)
+      .then((data) => {
+        if (!cancelled && typeof data?.imageUrl === "string") {
+          setResolvedImageUrl(data.imageUrl);
+          setArticleImageFailed(false);
+        }
+      })
+      .catch(() => {});
+
+    return () => { cancelled = true; };
+  }, [textOpen, resolvedImageUrl, imageLookupAttempted, story.sources, story.title]);
 
   async function toggleSummary() {
     const nextOpen = !summaryOpen;
@@ -255,11 +283,11 @@ function StoryCard({ story }: { story: Story }) {
           )}
         </div>
 
-        {textOpen && story.imageUrl && !articleImageFailed && (
+        {textOpen && resolvedImageUrl && !articleImageFailed && (
           <div className="storyArticleImageWrap">
             <img
               className="storyArticleImage"
-              src={story.imageUrl}
+              src={resolvedImageUrl || ""}
               alt={`Billede til artiklen: ${story.title}`}
               loading="lazy"
               referrerPolicy="no-referrer"
