@@ -88,9 +88,9 @@ function StoryCard({ story }: { story: Story }) {
         return;
       }
 
-      // With the 3-line clamp active, scrollHeight is larger than clientHeight
-      // only when there is genuinely more text to reveal.
-      setSummaryHasOverflow(node.scrollHeight > node.clientHeight + 1);
+      // The same expand control also reveals a relevant article image,
+      // even when the available editorial teaser fits within three lines.
+      setSummaryHasOverflow(node.scrollHeight > node.clientHeight + 1 || Boolean(story.imageUrl) && !articleImageFailed);
     };
 
     measure();
@@ -103,7 +103,7 @@ function StoryCard({ story }: { story: Story }) {
       observer.disconnect();
       window.removeEventListener("resize", measure);
     };
-  }, [story.summary, textOpen]);
+  }, [story.summary, story.imageUrl, articleImageFailed, textOpen]);
 
   async function toggleSummary() {
     const nextOpen = !summaryOpen;
