@@ -114,7 +114,6 @@ function StoryCard({ story }: { story: Story }) {
     const articleUrl = story.sources[0]?.url;
     if (!articleUrl) return;
     setImageLookupAttempted(true);
-    let cancelled = false;
 
     fetch("/api/article-image", {
       method: "POST",
@@ -123,14 +122,12 @@ function StoryCard({ story }: { story: Story }) {
     })
       .then((response) => response.ok ? response.json() : null)
       .then((data) => {
-        if (!cancelled && typeof data?.imageUrl === "string") {
+        if (typeof data?.imageUrl === "string") {
           setResolvedImageUrl(data.imageUrl);
           setArticleImageFailed(false);
         }
       })
       .catch(() => {});
-
-    return () => { cancelled = true; };
   }, [textOpen, resolvedImageUrl, imageLookupAttempted, story.sources, story.title]);
 
   async function toggleSummary() {
