@@ -183,3 +183,9 @@ button{font:inherit}
 
 .externalArrow{display:inline-flex;align-items:center;vertical-align:-1px;margin-left:1px}
 .externalArrow svg{width:11px;height:11px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+
+.storyArticleImageWrap{margin:7px 0 5px;overflow:hidden;border-radius:3px;background:#f1f2f2}
+.storyArticleImage{display:block;width:100%;max-height:420px;object-fit:cover}
+@media (max-width:700px){
+  .storyArticleImage{max-height:300px}
+}
