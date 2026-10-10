@@ -302,6 +302,25 @@ function removeInlinePhotoCredits(value: string) {
   return (result + value.slice(from)).replace(/\s+/g, " ").trim();
 }
 
+function collapseRepeatedOpening(value: string) {
+  const text = value.replace(/\s+/g, " ").trim();
+  if (text.length < 120) return text;
+
+  const openingWords = text.split(/\s+/).slice(0, 9).join(" ");
+  if (openingWords.length < 35) return text;
+  const normalized = text.toLocaleLowerCase("da-DK");
+  const second = normalized.indexOf(
+    openingWords.toLocaleLowerCase("da-DK"),
+    Math.max(45, openingWords.length + 5)
+  );
+  if (second < 0 || second > 420) return text;
+
+  const firstBlock = text.slice(0, second).trim();
+  const secondBlock = text.slice(second, second + Math.min(firstBlock.length, 260)).trim();
+  if (similarity(firstBlock, secondBlock) < 0.72) return text;
+  return text.slice(second).trim();
+}
+
 function cleanPreviewText(value = "", title = "") {
   const unescaped = String(value)
     .replace(/\\u([0-9a-f]{4})/gi, (_, hex: string) => String.fromCharCode(parseInt(hex, 16)))
@@ -384,7 +403,10 @@ function cleanPreviewText(value = "", title = "") {
     /(?:^|\s+)siden \d{4} har jeg været en del af redaktionen hos migogaarhus\b/i,
     /(?:^|\s+)har du et godt tip til noget, vi skal smage, opleve eller fortælle om\b/i,
     /(?:^|\s+)mister trump grebet om usa\?/i,
-    /(?:^|\s+)kom med til valgfest\b/i
+    /(?:^|\s+)kom med til valgfest\b/i,
+    /(?:^|\s+)som abonnent får du\b/i,
+    /(?:^|\s+)se billedet af\b/i,
+    /(?:^|\s+)s\s*e billedet af\b/i
   ];
 
   let cutAt = text.length;
@@ -406,6 +428,7 @@ function cleanPreviewText(value = "", title = "") {
     }
   }
 
+  text = collapseRepeatedOpening(text);
   return text.replace(/\s+/g, " ").trim();
 }
 
@@ -984,6 +1007,7 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
     // These publishers have lots of account/navigation paragraphs in the DOM.
     // Only use explicit metadata for them, never arbitrary <p> elements.
     const isPolitiken = /(?:^|\.)politiken\.dk$/i.test(hostname);
+    const isDr = /(?:^|\.)dr\.dk$/i.test(hostname);
     const metadataOnly = /(?:^|\.)(?:ing|version2|computerworld|nordjyske)\.dk$/i.test(hostname);
     const preview = isStiften
       ? [
@@ -1001,6 +1025,13 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
           ]
             .filter((text) => text && !isBoilerplatePreview(text))
             .sort((a, b) => previewQuality(b) - previewQuality(a))[0] || ""
+        : isDr
+          ? [
+              extractArticleBodyFromJson(html),
+              extractMetadataPreview(html)
+            ]
+              .filter((text) => text && !isBoilerplatePreview(text))
+              .sort((a, b) => previewQuality(b) - previewQuality(a))[0] || ""
         : metadataOnly
           ? extractMetadataPreview(html)
           : extractPublicPreview(html);
