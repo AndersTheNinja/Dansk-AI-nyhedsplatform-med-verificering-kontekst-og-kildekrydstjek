@@ -189,3 +189,22 @@ button{font:inherit}
 @media (max-width:700px){
   .storyArticleImage{max-height:300px}
 }
+
+
+/* Faktatjek v2 */
+.factSection{padding:9px 0;border-top:1px solid #e1e5e6;font-family:Arial,Helvetica,sans-serif}
+.factSection:first-of-type{border-top:0;padding-top:1px}
+.factSectionHeading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:6px;font:700 12px/1.25 Arial,sans-serif;color:#37464d}
+.factSectionHeading strong{font-size:12px;color:var(--teal-dark)}
+.factSection p{font:12px/1.5 Arial,sans-serif;color:#4f5c63;margin:3px 0}
+.factSourceChips{display:flex;flex-wrap:wrap;gap:5px;margin:5px 0 7px}
+.factSourceChips span{display:inline-block;padding:3px 6px;border:1px solid #d8dcde;background:#fff;border-radius:10px;font:10px Arial,sans-serif;color:#59656c}
+.factEvidenceList{list-style:none!important;padding-left:0!important;margin:5px 0 4px!important}
+.factEvidenceList li{margin:4px 0;color:#3f5d50}
+.factWarnings li{color:#81561d}
+.truthHeading strong{font-size:14px;color:#9a3f36}
+.factConclusion{margin:9px 0 10px;padding:10px;background:#fff;border:1px solid #dce2e4;border-left:3px solid var(--teal);font-family:Arial,Helvetica,sans-serif}
+.factConclusionLabel{font:700 10px/1.2 Arial,sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--teal-dark);margin-bottom:5px}
+.factConclusion p{margin:0 0 8px!important}
+.chatGptDiscuss{display:inline-flex;align-items:center;gap:4px;margin:2px 0 5px;padding:7px 9px;border:1px solid #cfd7da;background:#fff;color:var(--teal-dark);font:700 11px Arial,sans-serif;text-decoration:none;border-radius:3px}
+.chatGptDiscuss:hover{border-color:var(--teal);background:#f4f8f8;text-decoration:none}
