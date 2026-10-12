@@ -1038,7 +1038,16 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
   if (!isStiften && item.description.length >= 340 && !isBoilerplatePreview(item.description) && item.imageUrl) return item;
 
   try {
-    const response = await fetch(item.link, {
+    let articleFetchUrl = item.link;
+    if (isStiften) {
+      try {
+        const parsed = new URL(item.link);
+        parsed.searchParams.delete("rss");
+        articleFetchUrl = parsed.toString();
+      } catch {}
+    }
+
+    const response = await fetch(articleFetchUrl, {
       next: { revalidate: 900 },
       redirect: "follow",
       headers: {
