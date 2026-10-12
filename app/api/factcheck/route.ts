@@ -89,9 +89,11 @@ export async function POST(req: NextRequest) {
       }))
     : [];
 
+  const primarySource = String(body.primarySource ?? "").trim();
   const distinctMedia = Array.from(
     new Set(sources.map((source: { label: string }) => source.label).filter(Boolean))
   );
+  const otherMedia = distinctMedia.filter((name) => name !== primarySource);
 
   const prompt = `Du laver et forsigtigt og transparent faktatjek af en dansk nyhed til ØL.dk.
 
@@ -135,7 +137,7 @@ Overskrift: ${title}
 Tekst: ${text}
 Eksisterende neutralitetsdata: ${JSON.stringify(suppliedNeutrality)}
 Fundne mediekilder: ${JSON.stringify(sources)}
-Antal forskellige medier i materialet: ${distinctMedia.length}`;
+Andre medier ud over hovedkilden: ${JSON.stringify(otherMedia)}`;
 
   const response = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
@@ -163,8 +165,8 @@ Antal forskellige medier i materialet: ${distinctMedia.length}`;
   try {
     const result = parseResult(output);
     // Keep the displayed media count grounded in the supplied source list.
-    result.otherMedia.count = distinctMedia.length;
-    if (result.otherMedia.names.length === 0) result.otherMedia.names = distinctMedia.slice(0, 8);
+    result.otherMedia.count = otherMedia.length;
+    result.otherMedia.names = otherMedia.slice(0, 8);
     return NextResponse.json(result);
   } catch {
     return NextResponse.json({ error: "Faktatjekket kunne ikke fortolkes." }, { status: 502 });
