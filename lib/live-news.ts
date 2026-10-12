@@ -1034,6 +1034,19 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
 
     const pageImageUrl = extractArticleImageUrl(html, item.title);
 
+    if (isStiften && item.title === "Nu kommer regningen til børn og unge") {
+      const diagnostic = {
+        htmlLength: html.length,
+        articleCount: Array.from(html.matchAll(/<article\\b/gi)).length,
+        paragraphCount: Array.from(html.matchAll(/<p\\b/gi)).length,
+        articleBody: extractArticleBodyFromJson(html).slice(0, 500),
+        metadata: extractMetadataPreview(html).slice(0, 500),
+        scoped: extractScopedArticlePreview(html, item.title, item.description).slice(0, 500),
+        publicPreview: extractPublicPreview(html).slice(0, 500)
+      };
+      console.log("[stiften-debug]", JSON.stringify(diagnostic));
+    }
+
     // These publishers have lots of account/navigation paragraphs in the DOM.
     // Only use explicit metadata for them, never arbitrary <p> elements.
     const isPolitiken = /(?:^|\.)politiken\.dk$/i.test(hostname);
