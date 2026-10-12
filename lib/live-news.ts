@@ -1071,7 +1071,33 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
       return item;
     }
 
-    const pageImageUrl = extractArticleImageUrl(html, item.title);
+    // JFM/Stiften renders the actual article body from a separate async endpoint.
+    // The RSS description can be empty even for a freely available article, so
+    // follow the page's own data-load-async-url and merge that HTML into the
+    // extraction scope. This avoids scraping unrelated teaser blocks.
+    let articleHtml = html;
+    if (isStiften) {
+      const asyncPath = html.match(/data-load-async-url=["']([^"']+)["']/i)?.[1];
+      if (asyncPath) {
+        try {
+          const asyncUrl = new URL(asyncPath, articleFetchUrl).toString();
+          const asyncResponse = await fetch(asyncUrl, {
+            next: { revalidate: 900 },
+            redirect: "follow",
+            headers: {
+              "User-Agent": "Mozilla/5.0 (compatible; OELdk/1.0; +https://øl.dk)",
+              Accept: "text/html,application/xhtml+xml,*/*"
+            },
+            signal: AbortSignal.timeout(3500)
+          });
+          if (asyncResponse.ok) {
+            articleHtml = `${html}\n${await asyncResponse.text()}`;
+          }
+        } catch {}
+      }
+    }
+
+    const pageImageUrl = extractArticleImageUrl(articleHtml, item.title);
 
     // These publishers have lots of account/navigation paragraphs in the DOM.
     // Only use explicit metadata for them, never arbitrary <p> elements.
@@ -1080,10 +1106,10 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
     const metadataOnly = /(?:^|\.)(?:ing|version2|computerworld|nordjyske)\.dk$/i.test(hostname);
     const preview = isStiften
       ? [
-          extractArticleBodyFromJson(html),
-          extractScopedArticlePreview(html, item.title, item.description),
-          extractEmbeddedArticlePreview(html, item.title, item.description),
-          extractMetadataPreview(html)
+          extractArticleBodyFromJson(articleHtml),
+          extractScopedArticlePreview(articleHtml, item.title, item.description),
+          extractEmbeddedArticlePreview(articleHtml, item.title, item.description),
+          extractMetadataPreview(articleHtml)
         ]
           .filter((text) => text && !isBoilerplatePreview(text))
           .sort((a, b) => previewQuality(b) - previewQuality(a))[0] || ""
