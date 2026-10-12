@@ -405,6 +405,7 @@ function cleanPreviewText(value = "", title = "") {
     /(?:^|\s+)mister trump grebet om usa\?/i,
     /(?:^|\s+)kom med til valgfest\b/i,
     /(?:^|\s+)som abonnent får du\b/i,
+    /(?:^|\s+)lyd kan du få alt det\b/i,
     /(?:^|\s+)se billedet af\b/i,
     /(?:^|\s+)s\s*e billedet af\b/i
   ];
@@ -1049,8 +1050,8 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
       : isPolitiken
         ? [
             extractArticleBodyFromJson(html),
-            extractMetadataPreview(html),
-            extractPublicPreview(html)
+            extractScopedArticlePreview(html, item.title, item.description),
+            extractMetadataPreview(html)
           ]
             .filter((text) => text && !isBoilerplatePreview(text))
             .sort((a, b) => previewQuality(b) - previewQuality(a))[0] || ""
