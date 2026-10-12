@@ -1042,8 +1042,8 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
     const preview = isStiften
       ? [
           extractArticleBodyFromJson(html),
-          extractMetadataPreview(html),
-          extractPublicPreview(html)
+          extractScopedArticlePreview(html, item.title, item.description),
+          extractMetadataPreview(html)
         ]
           .filter((text) => text && !isBoilerplatePreview(text))
           .sort((a, b) => previewQuality(b) - previewQuality(a))[0] || ""
@@ -1073,9 +1073,13 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
     // Stiften/JFM pages occasionally expose structured text from a neighbouring
     // article. Only accept an enriched Stiften preview when it actually overlaps
     // meaningfully with the current article title; otherwise keep the RSS teaser.
+    const stiftenSeedIsEmpty =
+      !item.description.trim() ||
+      /ingen selvstændig artikeltekst tilgængelig/i.test(item.description);
+
     const stiftenPreviewMatchesTitle = !isStiften || (
-      similarity(item.title, cleanedPreview) >= 0.2 ||
-      similarity(item.description, cleanedPreview) >= 0.3
+      similarity(item.title, cleanedPreview) >= (stiftenSeedIsEmpty ? 0.12 : 0.2) ||
+      (!stiftenSeedIsEmpty && similarity(item.description, cleanedPreview) >= 0.3)
     );
 
     const bestDescription =
