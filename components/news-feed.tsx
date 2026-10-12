@@ -45,7 +45,15 @@ function StoryCard({ story }: { story: Story }) {
   const [summaryHasOverflow, setSummaryHasOverflow] = useState(false);
   const [factOpen, setFactOpen] = useState(false);
   const [factLoading, setFactLoading] = useState(false);
-  const [factCheck, setFactCheck] = useState<{ verdict: string; score: number; explanation: string; claims: string[] } | null>(null);
+  const [factCheck, setFactCheck] = useState<{
+    verdict: string;
+    score: number;
+    neutrality: { score: number; balance: string; language: string; explanation: string };
+    otherMedia: { count: number; names: string[]; agreement: string };
+    truth: { score: number; support: string[]; discrepancies: string[] };
+    conclusion: string;
+    claims: string[];
+  } | null>(null);
   const [factError, setFactError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -188,7 +196,7 @@ function StoryCard({ story }: { story: Story }) {
     setFactOpen(nextOpen);
     if (!nextOpen || factCheck || factLoading) return;
 
-    const cacheKey = `kontekst-fact-v1:${story.id}`;
+    const cacheKey = `oel-fact-v2:${story.id}`;
     try {
       const cached = sessionStorage.getItem(cacheKey);
       if (cached) {
@@ -207,7 +215,9 @@ function StoryCard({ story }: { story: Story }) {
         body: JSON.stringify({
           title: story.title,
           text: aiSummary?.summary || story.summary,
-          sources: story.sources
+          sources: story.sources,
+          neutrality: story.neutrality,
+          primarySource: story.sources[0]?.label ?? story.sourceLabel
         })
       });
       const result = await response.json();
@@ -351,18 +361,68 @@ function StoryCard({ story }: { story: Story }) {
             {factError && <p className="aiSummaryError">{factError}</p>}
             {factCheck && (
               <>
-                <div className="factVerdict">
-                  <span className={`factBadge ${factCheck.verdict}`}>{factCheck.verdict}</span>
-                  <strong>{factCheck.score}%</strong>
-                </div>
-                <p>{factCheck.explanation}</p>
-                {factCheck.claims.length > 0 && (
-                  <ul>
-                    {factCheck.claims.map((item) => <li key={item}>{item}</li>)}
-                  </ul>
-                )}
+                <section className="factSection">
+                  <div className="factSectionHeading">
+                    <span>Neutralitet</span>
+                    <strong>{factCheck.neutrality.score}/100</strong>
+                  </div>
+                  <p><strong>Balance:</strong> {factCheck.neutrality.balance}</p>
+                  <p><strong>Sprogbrug:</strong> {factCheck.neutrality.language}</p>
+                  {factCheck.neutrality.explanation && <p>{factCheck.neutrality.explanation}</p>}
+                </section>
+
+                <section className="factSection">
+                  <div className="factSectionHeading">
+                    <span>Andre medier</span>
+                    <strong>{factCheck.otherMedia.count}</strong>
+                  </div>
+                  {factCheck.otherMedia.names.length > 0 && (
+                    <div className="factSourceChips">
+                      {factCheck.otherMedia.names.map((name) => <span key={name}>{name}</span>)}
+                    </div>
+                  )}
+                  <p>{factCheck.otherMedia.agreement}</p>
+                </section>
+
+                <section className="factSection">
+                  <div className="factSectionHeading truthHeading">
+                    <span>Truth-score</span>
+                    <strong>{factCheck.truth.score}/100</strong>
+                  </div>
+                  {factCheck.truth.support.length > 0 && (
+                    <ul className="factEvidenceList">
+                      {factCheck.truth.support.map((item) => <li key={item}>✓ {item}</li>)}
+                    </ul>
+                  )}
+                  {factCheck.truth.discrepancies.length > 0 && (
+                    <ul className="factEvidenceList factWarnings">
+                      {factCheck.truth.discrepancies.map((item) => <li key={item}>⚠ {item}</li>)}
+                    </ul>
+                  )}
+                </section>
+
+                <section className="factConclusion">
+                  <div className="factConclusionLabel">AI-konklusion</div>
+                  <p>{factCheck.conclusion}</p>
+                  <div className="factVerdict">
+                    <span className={`factBadge ${factCheck.verdict}`}>{factCheck.verdict}</span>
+                    <span>Dokumentationsstyrke: <strong>{factCheck.score}/100</strong></span>
+                  </div>
+                </section>
+
+                <a
+                  className="chatGptDiscuss"
+                  href={`https://chatgpt.com/?q=${encodeURIComponent(
+                    `Jeg vil gerne diskutere denne nyhed, jeg har fundet på ØL.dk:\n\n${story.title}\n\nØL.dk / originalkilde: ${story.sources[0]?.url || ""}\n\nNyhedstekst/resumé: ${aiSummary?.summary || story.summary}\n\nHjælp mig med at forstå sagen, argumenterne fra de forskellige sider og hvor stærkt dokumentationen står.`
+                  )}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Diskutér nyheden med ChatGPT <span aria-hidden="true">↗</span>
+                </a>
+
                 <div className="aiSummaryFoot">
-                  AI-vurdering af det tilgængelige materiale — ikke en endelig sandhedsdom.
+                  Truth-score måler dokumentationsstyrken i det tilgængelige materiale — ikke sandsynligheden for, at en nyhed er sand.
                 </div>
               </>
             )}
