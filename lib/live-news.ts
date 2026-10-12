@@ -1021,6 +1021,19 @@ function extractEmbeddedArticlePreview(html: string, title: string, seed: string
   return ranked[0]?.text || "";
 }
 
+function extractJfmAsyncArticleText(html: string, title: string) {
+  if (!html) return "";
+
+  const paragraphs = Array.from(
+    html.matchAll(/<div\b[^>]*class=["'][^"']*\barticle__text\b[^"']*["'][^>]*>\s*<p\b[^>]*>([\s\S]*?)<\/p>\s*<\/div>/gi)
+  )
+    .map((match) => cleanPreviewText(match[1] || "", title))
+    .filter((text) => text.length >= 25 && !isBoilerplatePreview(text));
+
+  if (!paragraphs.length) return "";
+  return cleanPreviewText(paragraphs.slice(0, 8).join(" "), title);
+}
+
 async function enrichPreview(item: NewsItem): Promise<NewsItem> {
   let hostname = "";
   try {
@@ -1076,6 +1089,7 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
     // follow the page's own data-load-async-url and merge that HTML into the
     // extraction scope. This avoids scraping unrelated teaser blocks.
     let articleHtml = html;
+    let stiftenAsyncHtml = "";
     if (isStiften) {
       const asyncPath = html.match(/data-load-async-url=["']([^"']+)["']/i)?.[1];
       if (asyncPath) {
@@ -1091,7 +1105,8 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
             signal: AbortSignal.timeout(3500)
           });
           if (asyncResponse.ok) {
-            articleHtml = `${html}\n${await asyncResponse.text()}`;
+            stiftenAsyncHtml = await asyncResponse.text();
+            articleHtml = `${html}\n${stiftenAsyncHtml}`;
           }
         } catch {}
       }
@@ -1106,6 +1121,7 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
     const metadataOnly = /(?:^|\.)(?:ing|version2|computerworld|nordjyske)\.dk$/i.test(hostname);
     const preview = isStiften
       ? [
+          extractJfmAsyncArticleText(stiftenAsyncHtml, item.title),
           extractArticleBodyFromJson(articleHtml),
           extractScopedArticlePreview(articleHtml, item.title, item.description),
           extractEmbeddedArticlePreview(articleHtml, item.title, item.description),
