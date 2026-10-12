@@ -90,10 +90,14 @@ export async function POST(req: NextRequest) {
     : [];
 
   const primarySource = String(body.primarySource ?? "").trim();
-  const distinctMedia = Array.from(
-    new Set(sources.map((source: { label: string }) => source.label).filter(Boolean))
+  const distinctMedia: string[] = Array.from(
+    new Set<string>(
+      sources
+        .map((source: { label: string }) => String(source.label || ""))
+        .filter((name: string) => Boolean(name))
+    )
   );
-  const otherMedia = distinctMedia.filter((name) => name !== primarySource);
+  const otherMedia: string[] = distinctMedia.filter((name) => name !== primarySource);
 
   const prompt = `Du laver et forsigtigt og transparent faktatjek af en dansk nyhed til ØL.dk.
 
