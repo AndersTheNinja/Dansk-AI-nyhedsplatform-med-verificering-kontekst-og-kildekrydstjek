@@ -991,6 +991,36 @@ function extractScopedArticlePreview(html: string, title: string, seed: string) 
   return cleanPreviewText(best.joined, title);
 }
 
+function decodeJsonString(value: string) {
+  return value
+    .replace(/\\u([0-9a-f]{4})/gi, (_, hex: string) => String.fromCharCode(parseInt(hex, 16)))
+    .replace(/\\n|\\r|\\t/g, " ")
+    .replace(/\\"/g, '"')
+    .replace(/\\\//g, "/");
+}
+
+function extractEmbeddedArticlePreview(html: string, title: string, seed: string) {
+  const candidates: string[] = [];
+  const pattern = /"(?:articleBody|body|content|text|intro|lead|teaser|description)"\s*:\s*"((?:\\.|[^"\\])*)"/gi;
+
+  for (const match of html.matchAll(pattern)) {
+    const cleaned = cleanPreviewText(decodeJsonString(match[1] || ""), title);
+    if (cleaned.length >= 80 && !isBoilerplatePreview(cleaned)) candidates.push(cleaned);
+  }
+
+  const ranked = candidates
+    .map((text) => {
+      const titleScore = similarity(title, text);
+      const seedScore = seed ? similarity(seed, text) : 0;
+      const score = Math.max(titleScore, seedScore) * 4 + Math.min(text.length, 900) / 900;
+      return { text, titleScore, seedScore, score };
+    })
+    .filter((candidate) => candidate.titleScore >= 0.12 || candidate.seedScore >= 0.25)
+    .sort((a, b) => b.score - a.score);
+
+  return ranked[0]?.text || "";
+}
+
 async function enrichPreview(item: NewsItem): Promise<NewsItem> {
   let hostname = "";
   try {
@@ -1034,19 +1064,6 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
 
     const pageImageUrl = extractArticleImageUrl(html, item.title);
 
-    if (isStiften && item.title === "Nu kommer regningen til børn og unge") {
-      const diagnostic = {
-        htmlLength: html.length,
-        articleCount: Array.from(html.matchAll(/<article\\b/gi)).length,
-        paragraphCount: Array.from(html.matchAll(/<p\\b/gi)).length,
-        articleBody: extractArticleBodyFromJson(html).slice(0, 500),
-        metadata: extractMetadataPreview(html).slice(0, 500),
-        scoped: extractScopedArticlePreview(html, item.title, item.description).slice(0, 500),
-        publicPreview: extractPublicPreview(html).slice(0, 500)
-      };
-      console.log("[stiften-debug]", JSON.stringify(diagnostic));
-    }
-
     // These publishers have lots of account/navigation paragraphs in the DOM.
     // Only use explicit metadata for them, never arbitrary <p> elements.
     const isPolitiken = /(?:^|\.)politiken\.dk$/i.test(hostname);
@@ -1056,6 +1073,7 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
       ? [
           extractArticleBodyFromJson(html),
           extractScopedArticlePreview(html, item.title, item.description),
+          extractEmbeddedArticlePreview(html, item.title, item.description),
           extractMetadataPreview(html)
         ]
           .filter((text) => text && !isBoilerplatePreview(text))
