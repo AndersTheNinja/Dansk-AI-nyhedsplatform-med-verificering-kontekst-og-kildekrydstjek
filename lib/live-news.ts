@@ -1024,14 +1024,19 @@ function extractEmbeddedArticlePreview(html: string, title: string, seed: string
 function extractJfmAsyncArticleText(html: string, title: string) {
   if (!html) return "";
 
-  const paragraphs = Array.from(
-    html.matchAll(/<div\b[^>]*class=["'][^"']*\barticle__text\b[^"']*["'][^>]*>\s*<p\b[^>]*>([\s\S]*?)<\/p>\s*<\/div>/gi)
-  )
+  // The async JFM endpoint is already scoped to the current article body, so it
+  // is safer to collect its paragraph tags broadly than to depend on one CSS
+  // class name that changes between templates (news, debate, sport, etc.).
+  const paragraphs = Array.from(html.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi))
     .map((match) => cleanPreviewText(match[1] || "", title))
-    .filter((text) => text.length >= 25 && !isBoilerplatePreview(text));
+    .filter((text) =>
+      text.length >= 25 &&
+      !isBoilerplatePreview(text) &&
+      !/^(?:læs også|se også|relateret|annonce|bliv abonnent|log ind)\b/i.test(text)
+    );
 
   if (!paragraphs.length) return "";
-  return cleanPreviewText(paragraphs.slice(0, 8).join(" "), title);
+  return cleanPreviewText(paragraphs.slice(0, 10).join(" "), title);
 }
 
 async function enrichPreview(item: NewsItem): Promise<NewsItem> {
@@ -1461,7 +1466,9 @@ export async function getLiveStories(): Promise<Story[]> {
     // the beginning of the teaser.
     const cleanDescription = cleanPreviewText(lead.description, lead.title);
     let summary = isBoilerplatePreview(cleanDescription) ? "" : cleanDescription;
-    if (!summary) summary = "Der er endnu ingen selvstændig artikeltekst tilgængelig.";
+    if (!summary) {
+      summary = `${publisherName(lead.source)} har publiceret historien “${lead.title}”. ØL.dk har endnu ikke kunnet hente et sikkert tekstuddrag fra selve artiklen.`;
+    }
     if (summary.length > 700) {
       const clipped = summary.slice(0, 700);
       const sentenceMatches = Array.from(clipped.matchAll(/[.!?](?:["”’])?(?=\s|$)/g));
