@@ -408,6 +408,8 @@ function cleanPreviewText(value = "", title = "") {
     /(?:^|\s+)lyd kan du få alt det\b/i,
     /(?:^|\s+)for at støtte den demokratiske samtale\b/i,
     /(?:^|\s+)vi vil gerne spørge om din tilladelse til at vise dig politiske reklamer\b/i,
+    /(?:^|\s+)du vil altid kunne se, hvem der er afsender af reklamen\b/i,
+    /(?:^|\s+)vi anvender aldrig følsomme oplysninger\b/i,
     /(?:^|\s+)se billedet af\b/i,
     /(?:^|\s+)s\s*e billedet af\b/i
   ];
@@ -1126,9 +1128,13 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
     const isPolitiken = /(?:^|\.)politiken\.dk$/i.test(hostname);
     const isDr = /(?:^|\.)dr\.dk$/i.test(hostname);
     const metadataOnly = /(?:^|\.)(?:ing|version2|computerworld|nordjyske)\.dk$/i.test(hostname);
+    const trustedStiftenAsyncPreview = isStiften
+      ? extractJfmAsyncArticleText(stiftenAsyncHtml, item.title)
+      : "";
+
     const preview = isStiften
       ? [
-          extractJfmAsyncArticleText(stiftenAsyncHtml, item.title),
+          trustedStiftenAsyncPreview,
           extractArticleBodyFromJson(articleHtml),
           extractScopedArticlePreview(articleHtml, item.title, item.description),
           extractEmbeddedArticlePreview(articleHtml, item.title, item.description),
@@ -1167,6 +1173,10 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
       /ingen selvstændig artikeltekst tilgængelig/i.test(item.description);
 
     const stiftenPreviewMatchesTitle = !isStiften || (
+      // Text returned by Stiften/JFM's own async article endpoint is already
+      // scoped to this article, so do not reject it just because the body uses
+      // different wording than the headline.
+      trustedStiftenAsyncPreview.length >= 80 ||
       similarity(item.title, cleanedPreview) >= (stiftenSeedIsEmpty ? 0.12 : 0.2) ||
       (!stiftenSeedIsEmpty && similarity(item.description, cleanedPreview) >= 0.3)
     );
