@@ -406,6 +406,8 @@ function cleanPreviewText(value = "", title = "") {
     /(?:^|\s+)kom med til valgfest\b/i,
     /(?:^|\s+)som abonnent får du\b/i,
     /(?:^|\s+)lyd kan du få alt det\b/i,
+    /(?:^|\s+)for at støtte den demokratiske samtale\b/i,
+    /(?:^|\s+)vi vil gerne spørge om din tilladelse til at vise dig politiske reklamer\b/i,
     /(?:^|\s+)se billedet af\b/i,
     /(?:^|\s+)s\s*e billedet af\b/i
   ];
@@ -1451,7 +1453,21 @@ export async function getLiveStories(): Promise<Story[]> {
   // This also works for subscriber articles because we only use public metadata/teasers.
   const enrichedSelected = await Promise.all(
     selected.map(async (entry, index) => {
-      if ((entry.lead.description.length >= 340 && !isBoilerplatePreview(entry.lead.description) && entry.lead.imageUrl) || index >= 220) return entry;
+      let leadHost = "";
+      try {
+        leadHost = new URL(entry.lead.link).hostname.toLowerCase();
+      } catch {}
+      const alwaysEnrichStiften = /(?:^|\.)stiften\.dk$/i.test(leadHost);
+
+      // Stiften frequently publishes very short RSS teasers while the actual
+      // article body is available from its page/async endpoint. Always attempt
+      // enrichment for Stiften, even when the story is outside the general
+      // enrichment budget. Other publishers keep the normal request cap.
+      if (!alwaysEnrichStiften && (
+        (entry.lead.description.length >= 340 && !isBoilerplatePreview(entry.lead.description) && entry.lead.imageUrl) ||
+        index >= 220
+      )) return entry;
+
       return { ...entry, lead: await enrichPreview(entry.lead) };
     })
   );
