@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { unstable_cache } from "next/cache";
 import { getLiveStories } from "@/lib/live-news";
 import { getVisibleArchiveCount } from "@/lib/news-store";
@@ -11,12 +11,16 @@ const getCachedStories = unstable_cache(
   { revalidate: 60 }
 );
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const stories = await getCachedStories();
     const totalCount = await getVisibleArchiveCount();
+    const requestedLimit = Number(req.nextUrl.searchParams.get("limit"));
+    const limit = Number.isFinite(requestedLimit) && requestedLimit > 0
+      ? Math.min(Math.floor(requestedLimit), stories.length)
+      : stories.length;
     return NextResponse.json(
-      { stories, totalCount: Math.max(totalCount, stories.length), generatedAt: new Date().toISOString() },
+      { stories: stories.slice(0, limit), totalCount: Math.max(totalCount, stories.length), generatedAt: new Date().toISOString(), availableStories: stories.length },
       { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=120" } }
     );
   } catch (error) {
