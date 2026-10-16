@@ -10,9 +10,9 @@ export function NewsLoader() {
   const [newsCount, setNewsCount] = useState<number | null>(null);
   const [visitorCount, setVisitorCount] = useState<number | null>(null);
 
-  async function loadNews() {
+  async function loadNews(limit?: number) {
     try {
-      const response = await fetch("/api/news");
+      const response = await fetch(limit ? `/api/news?limit=${limit}` : "/api/news");
       if (!response.ok) throw new Error("News request failed");
       const data = await response.json();
       const nextStories: Story[] = Array.isArray(data.stories) ? data.stories : [];
@@ -33,8 +33,10 @@ export function NewsLoader() {
   }
 
   useEffect(() => {
-    const start = window.setTimeout(loadNews, 40);
-    const interval = window.setInterval(loadNews, 60000);
+    // Paint the first 20 stories quickly, then hydrate the full feed just after.
+    const start = window.setTimeout(() => loadNews(20), 20);
+    const fullLoad = window.setTimeout(() => loadNews(), 350);
+    const interval = window.setInterval(() => loadNews(), 60000);
 
     let visitorId = sessionStorage.getItem("oel-presence-id");
     if (!visitorId) {
@@ -65,6 +67,7 @@ export function NewsLoader() {
 
     return () => {
       window.clearTimeout(start);
+      window.clearTimeout(fullLoad);
       window.clearInterval(interval);
       window.clearTimeout(presenceStart);
       window.clearInterval(presenceInterval);
@@ -75,8 +78,9 @@ export function NewsLoader() {
   useEffect(() => {
     const countNode = document.getElementById("news-count");
     if (!countNode) return;
-    const newsText = newsCount === null ? "Indlæser…" : `${newsCount} nyheder`;
-    const peopleText = visitorCount === null ? "– pers." : `${visitorCount} pers.`;
+    const numberFormat = new Intl.NumberFormat("da-DK");
+    const newsText = newsCount === null ? "Indlæser…" : `${numberFormat.format(newsCount)} nyheder`;
+    const peopleText = visitorCount === null ? "– pers." : `${numberFormat.format(visitorCount)} pers.`;
     countNode.textContent = `${newsText} / ${peopleText}`;
   }, [newsCount, visitorCount]);
 
