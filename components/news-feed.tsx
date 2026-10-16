@@ -578,7 +578,7 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
       <div className="sectionTitle sectionTitleRow">
         <span>Seneste nyheder <span className="sectionTitleNote">baseret på dine valg</span></span>
         <label className="jokeToggle" title="Indsæt en vittighed som hver tiende post">
-          <span>Vittigheder</span>
+          <span>Jokes</span>
           <input
             type="checkbox"
             checked={jokeMode}
