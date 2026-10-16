@@ -1010,6 +1010,17 @@ function extractMetadataPreview(html: string) {
     .sort((a, b) => b.length - a.length)[0] || "";
 }
 
+function joinEditorialParagraphs(paragraphs: string[]) {
+  return paragraphs
+    .map((paragraph) => {
+      const text = paragraph.trim();
+      if (!text) return "";
+      return /[.!?…]["”’']?$/.test(text) ? text : `${text}.`;
+    })
+    .filter(Boolean)
+    .join(" ");
+}
+
 function extractPublicPreview(html: string) {
   const meta = cleanPreviewText(
     extractMetaContent(html, "description") ||
@@ -1025,11 +1036,12 @@ function extractPublicPreview(html: string) {
       .replace(/\\"/g, '"')
   );
 
-  const paragraphs = Array.from(html.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi))
-    .map((match) => cleanPreviewText(match[1] || ""))
-    .filter((text) => text.length >= 55)
-    .slice(0, 5)
-    .join(" ");
+  const paragraphs = joinEditorialParagraphs(
+    Array.from(html.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi))
+      .map((match) => cleanPreviewText(match[1] || ""))
+      .filter((text) => text.length >= 55)
+      .slice(0, 5)
+  );
 
   return [meta, jsonText, paragraphs]
     .filter((text) => text.length >= 80)
@@ -1048,7 +1060,7 @@ function extractScopedArticlePreview(html: string, title: string, seed: string) 
         .map((match) => cleanPreviewText(match[1] || ""))
         .filter((text) => text.length >= 35 && !isBoilerplatePreview(text));
 
-      const joined = paragraphs.slice(0, 6).join(" ");
+      const joined = joinEditorialParagraphs(paragraphs.slice(0, 6));
       const score = Math.max(
         similarity(title, joined),
         seed ? similarity(seed, joined) : 0
@@ -1110,7 +1122,7 @@ function extractJfmAsyncArticleText(html: string, title: string) {
     );
 
   if (!paragraphs.length) return "";
-  return cleanPreviewText(paragraphs.slice(0, 10).join(" "), title);
+  return cleanPreviewText(joinEditorialParagraphs(paragraphs.slice(0, 10)), title);
 }
 
 async function enrichPreview(item: NewsItem): Promise<NewsItem> {
