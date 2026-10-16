@@ -781,14 +781,14 @@ function categoryWhy(category: Category) {
   }
 }
 
-async function fetchFeed(feed: FeedConfig): Promise<NewsItem[]> {
+async function fetchFeed(feed: FeedConfig, timeoutMs = 7000): Promise<NewsItem[]> {
   const response = await fetch(feed.url, {
     next: { revalidate: 300 },
     headers: {
       "User-Agent": "Mozilla/5.0 (compatible; OELdk/1.0; +https://øl.dk)",
       Accept: "application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.8"
     },
-    signal: AbortSignal.timeout(7000)
+    signal: AbortSignal.timeout(timeoutMs)
   });
 
   if (!response.ok) {
@@ -1467,13 +1467,23 @@ async function fetchBorsenWebsite(): Promise<NewsItem[]> {
   return Promise.all(items.map(enrichBorsenItem));
 }
 
-export async function getLiveStories(): Promise<Story[]> {
-  const results = await Promise.allSettled([
-    ...feeds.map(fetchFeed),
-    fetchMigogAarhusApi(),
-    fetchBorsenWebsite(),
-    fetchTV2Website()
-  ]);
+export async function getLiveStories(options?: { fast?: boolean; limit?: number }): Promise<Story[]> {
+  const fast = Boolean(options?.fast);
+  const fastFeeds = feeds.filter((feed) =>
+    isVisiblePublisher(feed.name) &&
+    !/[?&]paged=\d+/i.test(feed.url)
+  );
+
+  const results = await Promise.allSettled(
+    fast
+      ? fastFeeds.map((feed) => fetchFeed(feed, 2200))
+      : [
+          ...feeds.map((feed) => fetchFeed(feed)),
+          fetchMigogAarhusApi(),
+          fetchBorsenWebsite(),
+          fetchTV2Website()
+        ]
+  );
 
   const fetched = results
     .flatMap((result) => (result.status === "fulfilled" ? result.value : []))
@@ -1528,11 +1538,13 @@ export async function getLiveStories(): Promise<Story[]> {
       quotas[entry.lead.category]--;
       return true;
     })
-    .slice(0, 1500);
+    .slice(0, fast ? Math.max(20, options?.limit || 20) : 1500);
 
   // Only fetch article pages for stories whose RSS/web teaser is too short.
   // This also works for subscriber articles because we only use public metadata/teasers.
-  const enrichedSelected = await Promise.all(
+  const enrichedSelected = fast
+    ? selected
+    : await Promise.all(
     selected.map(async (entry, index) => {
       let leadHost = "";
       try {
@@ -1618,11 +1630,13 @@ export async function getLiveStories(): Promise<Story[]> {
     return safeB - safeA;
   });
 
-  try {
-    await persistStories(chronologicalStories);
-  } catch (error) {
-    console.error("Supabase news persistence failed:", error);
+  if (!fast) {
+    try {
+      await persistStories(chronologicalStories);
+    } catch (error) {
+      console.error("Supabase news persistence failed:", error);
+    }
   }
 
-  return chronologicalStories;
+  return options?.limit ? chronologicalStories.slice(0, options.limit) : chronologicalStories;
 }
