@@ -124,6 +124,31 @@ const feeds: FeedConfig[] = [
     category: "Aarhus"
   },
   {
+    name: "MigogAarhus",
+    url: "https://migogaarhus.dk/feed/?paged=2",
+    category: "Aarhus"
+  },
+  {
+    name: "MigogAarhus",
+    url: "https://migogaarhus.dk/feed/?paged=3",
+    category: "Aarhus"
+  },
+  {
+    name: "MigogAarhus",
+    url: "https://migogaarhus.dk/feed/?paged=4",
+    category: "Aarhus"
+  },
+  {
+    name: "MigogAarhus",
+    url: "https://migogaarhus.dk/feed/?paged=5",
+    category: "Aarhus"
+  },
+  {
+    name: "MigogAarhus",
+    url: "https://migogaarhus.dk/feed/?paged=6",
+    category: "Aarhus"
+  },
+  {
     name: "TV2.dk",
     url: "https://feeds.tv2.dk/nyhederne_seneste/rss",
     category: "Danmark"
