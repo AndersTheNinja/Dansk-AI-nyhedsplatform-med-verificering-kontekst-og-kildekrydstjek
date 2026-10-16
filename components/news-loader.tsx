@@ -12,7 +12,7 @@ export function NewsLoader() {
 
   async function loadNews(limit?: number) {
     try {
-      const response = await fetch(limit ? `/api/news?limit=${limit}` : "/api/news");
+      const response = await fetch(limit ? `/api/news?fast=1&limit=${limit}` : "/api/news");
       if (!response.ok) throw new Error("News request failed");
       const data = await response.json();
       const nextStories: Story[] = Array.isArray(data.stories) ? data.stories : [];
