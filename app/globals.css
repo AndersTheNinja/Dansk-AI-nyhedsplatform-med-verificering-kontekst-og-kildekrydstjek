@@ -213,7 +213,7 @@ button{font:inherit}
 /* ØL brand initials */
 .brandInitial{
   color:var(--teal);
-  font-weight:400;
+  font:inherit;
   text-decoration:underline;
   text-decoration-thickness:2px;
   text-underline-offset:2px;
@@ -231,6 +231,3 @@ button{font:inherit}
 .jokeRow{background:#faf8f2;padding-left:8px;padding-right:8px;border-left:3px solid #d0a857}
 .jokeRow .storyMeta{color:#98723c}
 .jokeRow h2{font-size:calc(15px * var(--reader-scale))}
-@media(max-width:560px){
-  .jokeToggle>span:first-child{display:none}
-}
