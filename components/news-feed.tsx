@@ -30,6 +30,28 @@ function splitPublishedDate(value?: string) {
   return { time, rest: rest.join(" · ") };
 }
 
+const feedJokes = [
+  "Hvorfor tog journalisten en stige med på arbejde? Fordi historien skulle løftes til et højere niveau.",
+  "Jeg bad min computer om en god nyhed. Den svarede: Du har ingen ulæste mails.",
+  "Hvorfor er aviser dårlige til gemmeleg? Fordi de altid ender på forsiden.",
+  "En optimist læser nyhederne og tænker: Det skal nok gå. En pessimist læser kommentarsporet.",
+  "Hvad kalder man breaking news uden internet? Gammelt nyt.",
+  "Hvorfor kom AI'en for sent til redaktionsmødet? Den sad fast i en lang prompt."
+];
+
+function JokeCard({ index }: { index: number }) {
+  const joke = feedJokes[index % feedJokes.length];
+  return (
+    <article className="storyRow jokeRow">
+      <div className="storyContent">
+        <div className="storyMeta"><span>PAUSE</span><span>•</span><span>ØL.dk</span><span>•</span><span>Vittighed</span></div>
+        <h2>Et lille nyhedsbreak</h2>
+        <p>{joke}</p>
+      </div>
+    </article>
+  );
+}
+
 function StoryCard({ story }: { story: Story }) {
   const ref = useRef<HTMLElement | null>(null);
   const summaryTextRef = useRef<HTMLParagraphElement | null>(null);
@@ -437,7 +459,8 @@ function StoryCard({ story }: { story: Story }) {
 export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
   const [categoriesSelected, setCategoriesSelected] = useState<string[]>([]);
   const [mediaSelected, setMediaSelected] = useState<string[]>([]);
-  const [visibleCount, setVisibleCount] = useState(50);
+  const [visibleCount, setVisibleCount] = useState(20);
+  const [jokeMode, setJokeMode] = useState(false);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const categories = ["AI/Tech", "Erhverv", "Danmark", "Aarhus"];
 
@@ -487,7 +510,7 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
   }
 
   useEffect(() => {
-    setVisibleCount(50);
+    setVisibleCount(20);
   }, [categoriesSelected, mediaSelected]);
 
   useEffect(() => {
@@ -497,7 +520,7 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
     const observer = new IntersectionObserver(
       (entries) => {
         if (!entries.some((entry) => entry.isIntersecting)) return;
-        setVisibleCount((count) => Math.min(count + 50, visible.length));
+        setVisibleCount((count) => Math.min(count + 40, visible.length));
       },
       { rootMargin: "500px 0px" }
     );
@@ -552,14 +575,31 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
         ))}
       </div>
 
-      <div className="sectionTitle">
-        Seneste nyheder <span className="sectionTitleNote">baseret på dine valg</span>
+      <div className="sectionTitle sectionTitleRow">
+        <span>Seneste nyheder <span className="sectionTitleNote">baseret på dine valg</span></span>
+        <label className="jokeToggle" title="Indsæt en vittighed som hver tiende post">
+          <span>Vittigheder</span>
+          <input
+            type="checkbox"
+            checked={jokeMode}
+            onChange={(event) => setJokeMode(event.target.checked)}
+            aria-label="Vis en vittighed som hver tiende post"
+          />
+          <span className="jokeSlider" aria-hidden="true" />
+        </label>
       </div>
 
       <div className="storyList">
-        {visible.slice(0, visibleCount).map((story) => (
-          <StoryCard key={story.id} story={story} />
-        ))}
+        {(() => {
+          const items: React.ReactNode[] = [];
+          visible.slice(0, visibleCount).forEach((story, index) => {
+            items.push(<StoryCard key={story.id} story={story} />);
+            if (jokeMode && (index + 1) % 9 === 0) {
+              items.push(<JokeCard key={`joke-${index}`} index={Math.floor(index / 9)} />);
+            }
+          });
+          return items;
+        })()}
       </div>
       {visibleCount < visible.length && (
         <div ref={loadMoreRef} className="newsLoadMore" aria-hidden="true">
