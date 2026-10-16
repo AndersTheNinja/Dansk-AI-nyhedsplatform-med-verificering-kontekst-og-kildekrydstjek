@@ -822,6 +822,51 @@ async function fetchFeed(feed: FeedConfig): Promise<NewsItem[]> {
 }
 
 
+async function fetchMigogAarhusApi(): Promise<NewsItem[]> {
+  const response = await fetch("https://migogaarhus.dk/wp-json/wp/v2/posts?per_page=100&_embed=1", {
+    next: { revalidate: 300 },
+    headers: {
+      "User-Agent": "Mozilla/5.0 (compatible; OELdk/1.0; +https://øl.dk)",
+      Accept: "application/json"
+    },
+    signal: AbortSignal.timeout(7000)
+  });
+
+  if (!response.ok) {
+    throw new Error(`MigogAarhus API returned ${response.status}`);
+  }
+
+  const posts = await response.json();
+  if (!Array.isArray(posts)) return [];
+
+  return posts.map((post: any) => {
+    const title = stripHtml(String(post?.title?.rendered ?? ""));
+    const link = String(post?.link ?? "").trim();
+    const rawText = String(
+      post?.excerpt?.rendered ||
+      post?.content?.rendered ||
+      ""
+    );
+    const description = cleanPreviewText(rawText, title);
+    const imageUrl = String(
+      post?._embedded?.["wp:featuredmedia"]?.[0]?.source_url ||
+      ""
+    ).trim() || undefined;
+
+    return {
+      category: "Aarhus" as const,
+      title,
+      link,
+      pubDate: String(post?.date ?? post?.date_gmt ?? "") || undefined,
+      description: isBoilerplatePreview(description) ? "" : description,
+      imageUrl,
+      source: "MigogAarhus",
+      method: "WEB" as const,
+      id: `MigogAarhus-wp:${link || post?.id || title}`
+    };
+  }).filter((item: NewsItem) => item.title && item.link);
+}
+
 function extractMetaContent(html: string, key: string) {
   const patterns = [
     new RegExp(`<meta[^>]+(?:property|name)=["']${key}["'][^>]+content=["']([^"']+)["']`, "i"),
@@ -1400,6 +1445,7 @@ async function fetchBorsenWebsite(): Promise<NewsItem[]> {
 export async function getLiveStories(): Promise<Story[]> {
   const results = await Promise.allSettled([
     ...feeds.map(fetchFeed),
+    fetchMigogAarhusApi(),
     fetchBorsenWebsite(),
     fetchTV2Website()
   ]);
