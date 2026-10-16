@@ -11,11 +11,18 @@ const getCachedStories = unstable_cache(
   { revalidate: 60 }
 );
 
+const getFastStories = unstable_cache(
+  async () => getLiveStories({ fast: true, limit: 20 }),
+  ["oel-live-news-fast-v1"],
+  { revalidate: 60 }
+);
+
 export async function GET(req: NextRequest) {
   try {
-    const stories = await getCachedStories();
-    const totalCount = await getVisibleArchiveCount();
     const requestedLimit = Number(req.nextUrl.searchParams.get("limit"));
+    const wantsFast = req.nextUrl.searchParams.get("fast") === "1";
+    const stories = wantsFast ? await getFastStories() : await getCachedStories();
+    const totalCount = await getVisibleArchiveCount();
     const limit = Number.isFinite(requestedLimit) && requestedLimit > 0
       ? Math.min(Math.floor(requestedLimit), stories.length)
       : stories.length;
