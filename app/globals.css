@@ -213,6 +213,7 @@ button{font:inherit}
 /* ØL brand initials */
 .brandInitial{
   color:var(--teal);
+  font-weight:400;
   text-decoration:underline;
   text-decoration-thickness:2px;
   text-underline-offset:2px;
