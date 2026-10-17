@@ -276,7 +276,25 @@ function StoryCard({ story }: { story: Story }) {
             })()}
           </span>
         </div>
-        <h2>{story.title}</h2>
+        <h2
+          className={summaryHasOverflow || textOpen ? "expandableStoryTitle" : undefined}
+          onClick={() => {
+            if (summaryHasOverflow || textOpen) setTextOpen((value) => !value);
+          }}
+          onKeyDown={(event) => {
+            if (!(summaryHasOverflow || textOpen)) return;
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              setTextOpen((value) => !value);
+            }
+          }}
+          role={summaryHasOverflow || textOpen ? "button" : undefined}
+          tabIndex={summaryHasOverflow || textOpen ? 0 : undefined}
+          aria-expanded={summaryHasOverflow || textOpen ? textOpen : undefined}
+          title={summaryHasOverflow || textOpen ? (textOpen ? "Tryk for at vise mindre" : "Tryk for at vise hele teksten") : undefined}
+        >
+          {story.title}
+        </h2>
         <div className={`summaryRow ${textOpen ? "expanded" : ""}`}>
           <p
             ref={summaryTextRef}
