@@ -475,6 +475,8 @@ function StoryCard({ story }: { story: Story }) {
 }
 
 function isAndersWinnerskjoldStory(story: Story) {
+  if (story.mentions?.includes("anders-winnerskjold")) return true;
+
   const haystack = [
     story.title,
     story.summary,
