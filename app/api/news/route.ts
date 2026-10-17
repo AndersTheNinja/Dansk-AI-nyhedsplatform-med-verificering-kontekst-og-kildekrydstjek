@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { unstable_cache } from "next/cache";
 import { getLiveStories } from "@/lib/live-news";
-import { getVisibleArchiveCount } from "@/lib/news-store";
+import { getAndersWinnerskjoldArchiveStories, getVisibleArchiveCount } from "@/lib/news-store";
 
 export const revalidate = 60;
 
@@ -21,7 +21,17 @@ export async function GET(req: NextRequest) {
   try {
     const requestedLimit = Number(req.nextUrl.searchParams.get("limit"));
     const wantsFast = req.nextUrl.searchParams.get("fast") === "1";
-    const stories = wantsFast ? await getFastStories() : await getCachedStories();
+    const liveStories = wantsFast ? await getFastStories() : await getCachedStories();
+    const andersArchive = wantsFast ? [] : await getAndersWinnerskjoldArchiveStories();
+    const seen = new Set(liveStories.map((story) => story.id));
+    const stories = [
+      ...liveStories,
+      ...andersArchive.filter((story) => !seen.has(story.id))
+    ].sort((a, b) => {
+      const at = a.publishedAt ? Date.parse(a.publishedAt) : 0;
+      const bt = b.publishedAt ? Date.parse(b.publishedAt) : 0;
+      return bt - at;
+    });
     const totalCount = await getVisibleArchiveCount();
     const limit = Number.isFinite(requestedLimit) && requestedLimit > 0
       ? Math.min(Math.floor(requestedLimit), stories.length)
