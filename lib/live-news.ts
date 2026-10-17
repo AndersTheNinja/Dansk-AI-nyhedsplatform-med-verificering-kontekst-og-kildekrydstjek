@@ -1080,7 +1080,7 @@ function extractComputerworldOverview(html: string, title: string) {
     .replace(/\s+/g, " ")
     .trim();
 
-  const stop = excerpt.search(/\b(?:bliv abonnent|log ind|opret bruger|seneste nyt|mest læste)\b/i);
+  const stop = excerpt.search(/\b(?:få ubegrænset adgang|computerworld premium|opret et gratis intro-abonnement|bliv abonnent|log ind|opret bruger|seneste nyt|mest læste)\b/i);
   if (stop > 180) excerpt = excerpt.slice(0, stop).trim();
 
   return cleanPreviewText(excerpt, title);
