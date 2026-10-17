@@ -1049,6 +1049,39 @@ function extractPublicPreview(html: string) {
     .sort((a, b) => b.length - a.length)[0] || "";
 }
 
+function extractComputerworldOverview(html: string, title: string) {
+  const scope =
+    html.match(/<main\b[^>]*>([\s\S]*?)<\/main>/i)?.[1] ||
+    html.match(/<article\b[^>]*>([\s\S]*?)<\/article>/i)?.[1] ||
+    html;
+
+  const plain = decodeHtmlEntities(stripHtml(
+    scope
+      .replace(/<script\b[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style\b[\s\S]*?<\/style>/gi, " ")
+      .replace(/<noscript\b[\s\S]*?<\/noscript>/gi, " ")
+      .replace(/<svg\b[\s\S]*?<\/svg>/gi, " ")
+  ))
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const start = plain.toLocaleLowerCase("da-DK").indexOf("det får du i artiklen");
+  if (start < 0) return "";
+
+  let excerpt = plain.slice(start, start + 1800)
+    .replace(/^det får du i artiklen\s*/i, "")
+    .replace(/\bantal ord\s+\d+\b/gi, " ")
+    .replace(/\blæsetid\s+\d+\s*min\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  // Stop before recurring account/navigation UI if present.
+  const stop = excerpt.search(/\b(?:bliv abonnent|log ind|opret bruger|seneste nyt|mest læste)\b/i);
+  if (stop > 120) excerpt = excerpt.slice(0, stop).trim();
+
+  return cleanPreviewText(excerpt, title);
+}
+
 function extractTextFollowingSeed(html: string, title: string, seed: string) {
   if (!seed.trim()) return "";
 
@@ -1277,6 +1310,7 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
         : isComputerworld
           ? [
               extractArticleBodyFromJson(html),
+              extractComputerworldOverview(html, item.title),
               extractTextFollowingSeed(html, item.title, item.description),
               extractMainScopedPreview(html, item.title, item.description),
               extractScopedArticlePreview(html, item.title, item.description),
