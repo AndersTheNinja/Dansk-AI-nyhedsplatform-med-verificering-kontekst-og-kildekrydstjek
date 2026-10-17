@@ -1209,7 +1209,8 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
     // Only use explicit metadata for them, never arbitrary <p> elements.
     const isPolitiken = /(?:^|\.)politiken\.dk$/i.test(hostname);
     const isDr = /(?:^|\.)dr\.dk$/i.test(hostname);
-    const metadataOnly = /(?:^|\.)(?:ing|version2|computerworld|nordjyske)\.dk$/i.test(hostname);
+    const isComputerworld = /(?:^|\.)computerworld\.dk$/i.test(hostname);
+    const metadataOnly = /(?:^|\.)(?:ing|version2|nordjyske)\.dk$/i.test(hostname);
     const trustedStiftenAsyncPreview = isStiften
       ? extractJfmAsyncArticleText(stiftenAsyncHtml, item.title)
       : "";
@@ -1236,6 +1237,14 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
           ? [
               extractArticleBodyFromJson(html),
               extractScopedArticlePreview(html, item.title, item.description),
+              extractMetadataPreview(html)
+            ]
+              .filter((text) => text && !isBoilerplatePreview(text))
+              .sort((a, b) => previewQuality(b) - previewQuality(a))[0] || ""
+        : isComputerworld
+          ? [
+              extractArticleBodyFromJson(html),
+              extractEmbeddedArticlePreview(html, item.title, item.description),
               extractMetadataPreview(html)
             ]
               .filter((text) => text && !isBoilerplatePreview(text))
