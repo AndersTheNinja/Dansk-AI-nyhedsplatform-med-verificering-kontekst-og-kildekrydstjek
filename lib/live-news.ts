@@ -1049,6 +1049,32 @@ function extractPublicPreview(html: string) {
     .sort((a, b) => b.length - a.length)[0] || "";
 }
 
+function extractTextFollowingSeed(html: string, title: string, seed: string) {
+  if (!seed.trim()) return "";
+
+  const scope =
+    html.match(/<article\b[^>]*>([\s\S]*?)<\/article>/i)?.[1] ||
+    html.match(/<main\b[^>]*>([\s\S]*?)<\/main>/i)?.[1] ||
+    html;
+
+  const plain = cleanPreviewText(scope, title);
+  const normalizedPlain = plain.toLocaleLowerCase("da-DK");
+  const anchor = seed
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(" ")
+    .slice(0, 10)
+    .join(" ")
+    .toLocaleLowerCase("da-DK");
+
+  if (anchor.length < 35) return "";
+  const start = normalizedPlain.indexOf(anchor);
+  if (start < 0) return "";
+
+  const excerpt = plain.slice(start, start + 1400);
+  return cleanPreviewText(excerpt, title);
+}
+
 function extractMainScopedPreview(html: string, title: string, seed: string) {
   const main = html.match(/<main\b[^>]*>([\s\S]*?)<\/main>/i)?.[1] || "";
   if (!main) return "";
@@ -1251,6 +1277,7 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
         : isComputerworld
           ? [
               extractArticleBodyFromJson(html),
+              extractTextFollowingSeed(html, item.title, item.description),
               extractMainScopedPreview(html, item.title, item.description),
               extractScopedArticlePreview(html, item.title, item.description),
               extractEmbeddedArticlePreview(html, item.title, item.description),
