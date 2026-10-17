@@ -1244,6 +1244,7 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
         : isComputerworld
           ? [
               extractArticleBodyFromJson(html),
+              extractScopedArticlePreview(html, item.title, item.description),
               extractEmbeddedArticlePreview(html, item.title, item.description),
               extractMetadataPreview(html)
             ]
