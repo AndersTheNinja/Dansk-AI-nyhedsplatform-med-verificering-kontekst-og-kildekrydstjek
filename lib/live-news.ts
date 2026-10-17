@@ -431,6 +431,8 @@ function cleanPreviewText(value = "", title = "") {
     /(?:^|\s+)kom med til valgfest\b/i,
     /(?:^|\s+)som abonnent får du\b/i,
     /(?:^|\s+)lyd kan du få alt det\b/i,
+    /(?:^|\s+)få ubegrænset adgang til computerworld premium\b/i,
+    /(?:^|\s+)opret et gratis intro-abonnement\b/i,
     /(?:^|\s+)for at støtte den demokratiske samtale\b/i,
     /(?:^|\s+)vi vil gerne spørge om din tilladelse til at vise dig politiske reklamer\b/i,
     /(?:^|\s+)du vil altid kunne se, hvem der er afsender af reklamen\b/i,
@@ -1315,9 +1317,6 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
           ? [
               extractArticleBodyFromJson(html),
               extractComputerworldOverview(html, item.title),
-              extractTextFollowingSeed(html, item.title, item.description),
-              extractMainScopedPreview(html, item.title, item.description),
-              extractScopedArticlePreview(html, item.title, item.description),
               extractEmbeddedArticlePreview(html, item.title, item.description),
               extractMetadataPreview(html)
             ]
