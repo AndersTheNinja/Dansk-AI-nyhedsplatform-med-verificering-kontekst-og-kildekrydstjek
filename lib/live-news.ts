@@ -1088,6 +1088,33 @@ function extractComputerworldOverview(html: string, title: string) {
   return cleanPreviewText(excerpt, title);
 }
 
+function extractVisibleTextFollowingSeed(html: string, title: string, seed: string) {
+  if (!seed.trim()) return "";
+
+  const visible = decodeHtmlEntities(stripHtml(
+    html
+      .replace(/<script\b[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style\b[\s\S]*?<\/style>/gi, " ")
+      .replace(/<noscript\b[\s\S]*?<\/noscript>/gi, " ")
+      .replace(/<svg\b[\s\S]*?<\/svg>/gi, " ")
+  ))
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const anchor = seed
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(" ")
+    .slice(0, 9)
+    .join(" ");
+
+  if (anchor.length < 32) return "";
+  const start = visible.toLocaleLowerCase("da-DK").indexOf(anchor.toLocaleLowerCase("da-DK"));
+  if (start < 0) return "";
+
+  return cleanPreviewText(visible.slice(start, start + 1800), title);
+}
+
 function extractTextFollowingSeed(html: string, title: string, seed: string) {
   if (!seed.trim()) return "";
 
@@ -1300,6 +1327,7 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
       : isPolitiken
         ? [
             extractArticleBodyFromJson(html),
+            extractVisibleTextFollowingSeed(html, item.title, item.description),
             extractScopedArticlePreview(html, item.title, item.description),
             extractMetadataPreview(html)
           ]
