@@ -1048,6 +1048,12 @@ function extractPublicPreview(html: string) {
     .sort((a, b) => b.length - a.length)[0] || "";
 }
 
+function extractMainScopedPreview(html: string, title: string, seed: string) {
+  const main = html.match(/<main\b[^>]*>([\s\S]*?)<\/main>/i)?.[1] || "";
+  if (!main) return "";
+  return extractScopedArticlePreview(main, title, seed);
+}
+
 function extractScopedArticlePreview(html: string, title: string, seed: string) {
   const articleBlocks = Array.from(html.matchAll(/<article\b[^>]*>([\s\S]*?)<\/article>/gi))
     .map((match) => match[1] || "");
@@ -1244,6 +1250,7 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
         : isComputerworld
           ? [
               extractArticleBodyFromJson(html),
+              extractMainScopedPreview(html, item.title, item.description),
               extractScopedArticlePreview(html, item.title, item.description),
               extractEmbeddedArticlePreview(html, item.title, item.description),
               extractMetadataPreview(html)
