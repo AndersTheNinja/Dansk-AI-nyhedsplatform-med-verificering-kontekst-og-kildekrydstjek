@@ -19,6 +19,7 @@ export type Story = {
   publishedDate?: string;
   sourceMethod?: "RSS" | "WEB";
   summary: string;
+  mentions?: string[];
   imageUrl?: string;
   why: string;
   verification: Verification;
