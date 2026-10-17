@@ -88,6 +88,81 @@ export async function getVisibleArchiveCount() {
 }
 
 
+function cleanArchiveHtmlText(value: string) {
+  return value
+    .replace(/<script\b[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style\b[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&aelig;/gi, "æ")
+    .replace(/&oslash;/gi, "ø")
+    .replace(/&aring;/gi, "å")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+async function refreshStiftenArchiveTeaser(url: string, title: string, teaser: string) {
+  const isFallback = /ingen selvstændig artikeltekst tilgængelig/i.test(teaser);
+  if (!isFallback || !/stiften\.dk/i.test(url)) return teaser;
+
+  try {
+    const articleUrl = new URL(url);
+    articleUrl.searchParams.delete("rss");
+
+    const response = await fetch(articleUrl.toString(), {
+      next: { revalidate: 3600 },
+      redirect: "follow",
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; OELdk/1.0; +https://øl.dk)",
+        Accept: "text/html,application/xhtml+xml"
+      },
+      signal: AbortSignal.timeout(4000)
+    });
+    if (!response.ok) return teaser;
+
+    const html = await response.text();
+    const asyncPath = html.match(/data-load-async-url=["']([^"']+)["']/i)?.[1];
+    let scopedHtml = "";
+
+    if (asyncPath) {
+      try {
+        const asyncUrl = new URL(asyncPath, articleUrl).toString();
+        const asyncResponse = await fetch(asyncUrl, {
+          next: { revalidate: 3600 },
+          redirect: "follow",
+          headers: {
+            "User-Agent": "Mozilla/5.0 (compatible; OELdk/1.0; +https://øl.dk)",
+            Accept: "text/html,application/xhtml+xml,*/*"
+          },
+          signal: AbortSignal.timeout(4000)
+        });
+        if (asyncResponse.ok) scopedHtml = await asyncResponse.text();
+      } catch {}
+    }
+
+    const source = scopedHtml || html;
+    const paragraphs = Array.from(source.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi))
+      .map((match) => cleanArchiveHtmlText(match[1] || ""))
+      .filter((text) =>
+        text.length >= 35 &&
+        text.toLocaleLowerCase("da-DK") !== title.toLocaleLowerCase("da-DK") &&
+        !/^(?:læs også|se også|relateret|annonce|bliv abonnent|log ind|gem artiklen)\b/i.test(text) &&
+        !/ingen selvstændig artikeltekst tilgængelig/i.test(text)
+      );
+
+    if (!paragraphs.length) return teaser;
+
+    const unique = Array.from(new Set(paragraphs));
+    const refreshed = unique.slice(0, 8).join(" ").trim();
+    return refreshed.length >= 80 ? refreshed : teaser;
+  } catch {
+    return teaser;
+  }
+}
+
 function formatArchivePublishedDate(value?: string) {
   if (!value) return undefined;
   const date = new Date(value);
@@ -140,7 +215,7 @@ export async function getAndersWinnerskjoldArchiveStories(): Promise<Story[]> {
     const rows = await response.json();
     if (!Array.isArray(rows)) return [];
 
-    return rows.map((row: any) => {
+    return Promise.all(rows.map(async (row: any) => {
       const raw = row?.raw_metadata || {};
       const sources = Array.isArray(row?.sources) && row.sources.length
         ? row.sources
@@ -162,7 +237,11 @@ export async function getAndersWinnerskjoldArchiveStories(): Promise<Story[]> {
         publishedAt: row?.published_at ? String(row.published_at) : undefined,
         publishedDate: formatArchivePublishedDate(row?.published_at ? String(row.published_at) : undefined),
         sourceMethod: row?.source_method === "WEB" ? "WEB" : "RSS",
-        summary: String(row?.teaser || ""),
+        summary: await refreshStiftenArchiveTeaser(
+          String(row?.canonical_url || ""),
+          String(row?.title || ""),
+          String(row?.teaser || "")
+        ),
         why: "Gemte ØL.dk-nyheder om Aarhus-borgmester Anders Winnerskjold.",
         verification: raw?.verification === "confirmed" || raw?.verification === "nuance"
           ? raw.verification
@@ -178,7 +257,7 @@ export async function getAndersWinnerskjoldArchiveStories(): Promise<Story[]> {
         },
         sources
       } satisfies Story;
-    }).filter((story: Story) => story.title && story.sources[0]?.url);
+    })).then((stories) => stories.filter((story: Story) => story.title && story.sources[0]?.url));
   } catch {
     return [];
   }
