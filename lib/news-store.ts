@@ -88,6 +88,36 @@ export async function getVisibleArchiveCount() {
 }
 
 
+function formatArchivePublishedDate(value?: string) {
+  if (!value) return undefined;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return undefined;
+
+  const timePart = new Intl.DateTimeFormat("da-DK", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "Europe/Copenhagen"
+  }).format(date);
+
+  const datePart = new Intl.DateTimeFormat("da-DK", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "Europe/Copenhagen"
+  }).format(date);
+
+  const keyFormatter = new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    timeZone: "Europe/Copenhagen"
+  });
+  const isToday = keyFormatter.format(date) === keyFormatter.format(new Date());
+
+  return `${timePart} · ${isToday ? "I dag, " : ""}${datePart}`;
+}
+
 export async function getAndersWinnerskjoldArchiveStories(): Promise<Story[]> {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_PUBLISHABLE_KEY;
@@ -130,9 +160,7 @@ export async function getAndersWinnerskjoldArchiveStories(): Promise<Story[]> {
         sourceLabel: String(row?.source || "Ukendt"),
         published: "Arkiv",
         publishedAt: row?.published_at ? String(row.published_at) : undefined,
-        publishedDate: row?.published_at
-          ? new Intl.DateTimeFormat("da-DK", { day: "numeric", month: "short", year: "numeric", timeZone: "Europe/Copenhagen" }).format(new Date(row.published_at))
-          : undefined,
+        publishedDate: formatArchivePublishedDate(row?.published_at ? String(row.published_at) : undefined),
         sourceMethod: row?.source_method === "WEB" ? "WEB" : "RSS",
         summary: String(row?.teaser || ""),
         why: "Gemte ØL.dk-nyheder om Aarhus-borgmester Anders Winnerskjold.",
