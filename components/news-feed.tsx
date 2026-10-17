@@ -474,6 +474,19 @@ function StoryCard({ story }: { story: Story }) {
   );
 }
 
+function isAndersWinnerskjoldStory(story: Story) {
+  const haystack = [
+    story.title,
+    story.summary,
+    ...story.sources.map((source) => source.title || "")
+  ]
+    .join(" ")
+    .toLocaleLowerCase("da-DK");
+
+  return /\banders\s+winners(?:kjold|kiold)\b/i.test(haystack) ||
+    /\bwinners(?:kjold|kiold)\b/i.test(haystack);
+}
+
 export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
   const [categoriesSelected, setCategoriesSelected] = useState<string[]>([]);
   const [mediaSelected, setMediaSelected] = useState<string[]>([]);
@@ -481,6 +494,11 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
   const [jokeMode, setJokeMode] = useState(false);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const categories = ["AI/Tech", "Erhverv", "Danmark", "Aarhus"];
+  const andersTopic = "ANDERS W.";
+  const andersCount = useMemo(
+    () => initialStories.filter(isAndersWinnerskjoldStory).length,
+    [initialStories]
+  );
 
   const mediaOptions = useMemo(() => {
     const names = initialStories.flatMap((story) =>
@@ -497,7 +515,9 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
       initialStories
         .filter((story) => {
           const matchesCategory =
-            categoriesSelected.length === 0 || categoriesSelected.includes(story.category);
+            categoriesSelected.length === 0 ||
+            categoriesSelected.includes(story.category) ||
+            (categoriesSelected.includes(andersTopic) && isAndersWinnerskjoldStory(story));
           const matchesMedia =
             mediaSelected.length === 0 ||
             story.sources.some((source) => mediaSelected.includes(mediaName(source.label)));
@@ -566,6 +586,14 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
             {item}
           </button>
         ))}
+        <button
+          className={`filterTab ${categoriesSelected.includes(andersTopic) ? "active" : ""}`}
+          onClick={() => toggleCategory(andersTopic)}
+          aria-pressed={categoriesSelected.includes(andersTopic)}
+          title="Nyheder om Aarhus-borgmester Anders Winnerskjold"
+        >
+          {andersTopic} ({andersCount})
+        </button>
       </div>
 
       <div className="mediaFilter" aria-label="Filtrer efter medie">
