@@ -1646,12 +1646,13 @@ export async function getLiveStories(options?: { fast?: boolean; limit?: number 
         leadHost = new URL(entry.lead.link).hostname.toLowerCase();
       } catch {}
       const alwaysEnrichStiften = /(?:^|\.)stiften\.dk$/i.test(leadHost);
+      const alwaysEnrichComputerworld = /(?:^|\.)computerworld\.dk$/i.test(leadHost);
+      const alwaysEnrich = alwaysEnrichStiften || alwaysEnrichComputerworld;
 
-      // Stiften frequently publishes very short RSS teasers while the actual
-      // article body is available from its page/async endpoint. Always attempt
-      // enrichment for Stiften, even when the story is outside the general
-      // enrichment budget. Other publishers keep the normal request cap.
-      if (!alwaysEnrichStiften && (
+      // Stiften and Computerworld frequently publish short RSS teasers while
+      // additional article text is available on the article page. Always attempt
+      // enrichment for those publishers, even outside the general request budget.
+      if (!alwaysEnrich && (
         (entry.lead.description.length >= 340 && !isBoilerplatePreview(entry.lead.description) && entry.lead.imageUrl) ||
         index >= 220
       )) return entry;
