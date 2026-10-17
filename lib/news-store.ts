@@ -86,3 +86,72 @@ export async function getVisibleArchiveCount() {
     return 0;
   }
 }
+
+
+export async function getAndersWinnerskjoldArchiveStories(): Promise<Story[]> {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY;
+  if (!url || !key) return [];
+
+  try {
+    const response = await fetch(`${url}/rest/v1/rpc/anders_winnerskjold_archive`, {
+      method: "POST",
+      headers: {
+        apikey: key,
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json"
+      },
+      body: "{}",
+      cache: "no-store",
+      signal: AbortSignal.timeout(5000)
+    });
+
+    if (!response.ok) return [];
+    const rows = await response.json();
+    if (!Array.isArray(rows)) return [];
+
+    return rows.map((row: any) => {
+      const raw = row?.raw_metadata || {};
+      const sources = Array.isArray(row?.sources) && row.sources.length
+        ? row.sources
+        : [{
+            label: String(row?.source || "Ukendt"),
+            url: String(row?.canonical_url || ""),
+            title: String(row?.title || ""),
+            method: row?.source_method === "WEB" ? "WEB" : "RSS"
+          }];
+
+      return {
+        id: String(row?.story_group || `archive:${row?.id}`),
+        category: (["AI/Tech", "Erhverv", "Danmark", "Aarhus"].includes(row?.category)
+          ? row.category
+          : "Aarhus") as Story["category"],
+        title: String(row?.title || ""),
+        sourceLabel: String(row?.source || "Ukendt"),
+        published: "Arkiv",
+        publishedAt: row?.published_at ? String(row.published_at) : undefined,
+        publishedDate: row?.published_at
+          ? new Intl.DateTimeFormat("da-DK", { day: "numeric", month: "short", year: "numeric", timeZone: "Europe/Copenhagen" }).format(new Date(row.published_at))
+          : undefined,
+        sourceMethod: row?.source_method === "WEB" ? "WEB" : "RSS",
+        summary: String(row?.teaser || ""),
+        why: "Gemte ØL.dk-nyheder om Aarhus-borgmester Anders Winnerskjold.",
+        verification: raw?.verification === "confirmed" || raw?.verification === "nuance"
+          ? raw.verification
+          : "unverified",
+        verificationText: String(raw?.verificationText || "Arkivhistorie fra ØL.dk."),
+        neutrality: raw?.neutrality || {
+          wording: 100,
+          wordingNote: "Arkivhistorie.",
+          wordingExamples: [],
+          sources: null,
+          sourcesNote: "Arkivhistorie.",
+          sourcesExamples: []
+        },
+        sources
+      } satisfies Story;
+    }).filter((story: Story) => story.title && story.sources[0]?.url);
+  } catch {
+    return [];
+  }
+}
