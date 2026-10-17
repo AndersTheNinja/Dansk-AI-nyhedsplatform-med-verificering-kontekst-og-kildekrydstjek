@@ -1741,6 +1741,10 @@ export async function getLiveStories(options?: { fast?: boolean; limit?: number 
     // photo credits are not article text, and the headline must not repeat at
     // the beginning of the teaser.
     const cleanDescription = cleanPreviewText(lead.description, lead.title);
+    const mentionHaystack = `${lead.title} ${cleanDescription}`;
+    const mentions = /\bwinners(?:kjold|kiold)\b/i.test(mentionHaystack)
+      ? ["anders-winnerskjold"]
+      : [];
     let summary = isBoilerplatePreview(cleanDescription) ? "" : cleanDescription;
     if (!summary) {
       summary = `${publisherName(lead.source)} har publiceret historien “${lead.title}”. ØL.dk har endnu ikke kunnet hente et sikkert tekstuddrag fra selve artiklen.`;
@@ -1766,6 +1770,7 @@ export async function getLiveStories(options?: { fast?: boolean; limit?: number 
       publishedDate: formatPublishedDate(lead.pubDate),
       sourceMethod: lead.method,
       summary,
+      mentions,
       imageUrl: lead.imageUrl,
       why: categoryWhy(lead.category),
       verification: hasCrossCheck ? "nuance" : "unverified",
