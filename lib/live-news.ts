@@ -1088,6 +1088,49 @@ function extractComputerworldOverview(html: string, title: string) {
   return cleanPreviewText(excerpt, title);
 }
 
+function extractPolitikenArticlePreview(html: string, title: string, seed: string) {
+  const article = html.match(/<article\b[^>]*>([\s\S]*?)<\/article>/i)?.[1] || "";
+  if (!article || !seed.trim()) return "";
+
+  const paragraphs = Array.from(article.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi))
+    .map((match) => cleanPreviewText(match[1] || "", title))
+    .filter(Boolean);
+
+  const anchor = seed
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(" ")
+    .slice(0, 9)
+    .join(" ")
+    .toLocaleLowerCase("da-DK");
+
+  let start = paragraphs.findIndex((text) =>
+    text.toLocaleLowerCase("da-DK").includes(anchor) ||
+    similarity(seed, text) >= 0.7
+  );
+  if (start < 0) return "";
+
+  const selected: string[] = [];
+  const seen = new Set<string>();
+
+  for (let i = start; i < paragraphs.length && selected.length < 5; i++) {
+    const text = paragraphs[i].trim();
+    const normalized = text.toLocaleLowerCase("da-DK");
+
+    if (/^(?:læs næste|du er ikke logget ind|gem artiklen|gemt|læst|annonce)$/i.test(text)) continue;
+    if (/^(?:læs videre for|du er godt i gang|bliv abonnent|allerede abonnent|log ind)\b/i.test(text)) break;
+    if (/^(?:bøger\s+)?\d{1,2}\.\s*[a-z]+\s+\d{4}/i.test(text)) continue;
+    if (text.length < 45) continue;
+    if (similarity(title, text) > 0.8) continue;
+    if (seen.has(normalized)) continue;
+
+    seen.add(normalized);
+    selected.push(text);
+  }
+
+  return cleanPreviewText(joinEditorialParagraphs(selected), title);
+}
+
 function extractVisibleTextFollowingSeed(html: string, title: string, seed: string) {
   if (!seed.trim()) return "";
 
@@ -1326,6 +1369,7 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
           .sort((a, b) => previewQuality(b) - previewQuality(a))[0] || ""
       : isPolitiken
         ? [
+            extractPolitikenArticlePreview(html, item.title, item.description),
             extractArticleBodyFromJson(html),
             extractVisibleTextFollowingSeed(html, item.title, item.description),
             extractScopedArticlePreview(html, item.title, item.description),
