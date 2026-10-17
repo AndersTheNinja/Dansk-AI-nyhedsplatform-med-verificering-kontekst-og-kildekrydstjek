@@ -807,17 +807,18 @@ async function fetchFeed(feed: FeedConfig, timeoutMs = 7000): Promise<NewsItem[]
     const item = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
     const title = stripHtml(textValue(item.title) || "Ukendt historie");
     const link = linkValue(item.link) || feed.url;
-    const rawDescription = cleanPreviewText(
-      textValue(
-        item.description ??
-        item.summary ??
-        item["media:description"] ??
-        item["content:encoded"] ??
-        item.content ??
-        ""
-      ),
-      title
-    );
+    const descriptionCandidates = [
+      item.description,
+      item.summary,
+      item["media:description"],
+      item["content:encoded"],
+      item.content
+    ]
+      .map((value) => cleanPreviewText(textValue(value ?? ""), title))
+      .filter((text) => text && !isBoilerplatePreview(text));
+
+    const rawDescription = descriptionCandidates
+      .sort((a, b) => previewQuality(b) - previewQuality(a))[0] || "";
     const isMigogAarhusAuthorBio =
       /^mit navn er\b/i.test(rawDescription) ||
       /en del af redaktionen hos migogaarhus/i.test(rawDescription) ||
