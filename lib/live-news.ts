@@ -1050,13 +1050,10 @@ function extractPublicPreview(html: string) {
 }
 
 function extractComputerworldOverview(html: string, title: string) {
-  const scope =
-    html.match(/<main\b[^>]*>([\s\S]*?)<\/main>/i)?.[1] ||
-    html.match(/<article\b[^>]*>([\s\S]*?)<\/article>/i)?.[1] ||
-    html;
-
+  // Computerworld renders the useful body text outside its <article> element,
+  // so search the full visible HTML after removing scripts/styles.
   const plain = decodeHtmlEntities(stripHtml(
-    scope
+    html
       .replace(/<script\b[\s\S]*?<\/script>/gi, " ")
       .replace(/<style\b[\s\S]*?<\/style>/gi, " ")
       .replace(/<noscript\b[\s\S]*?<\/noscript>/gi, " ")
@@ -1065,19 +1062,26 @@ function extractComputerworldOverview(html: string, title: string) {
     .replace(/\s+/g, " ")
     .trim();
 
-  const start = plain.toLocaleLowerCase("da-DK").indexOf("det får du i artiklen");
+  const marker = "det får du i artiklen";
+  const start = plain.toLocaleLowerCase("da-DK").indexOf(marker);
   if (start < 0) return "";
 
-  let excerpt = plain.slice(start, start + 1800)
-    .replace(/^det får du i artiklen\s*/i, "")
+  let excerpt = plain.slice(start + marker.length, start + marker.length + 2400).trim();
+
+  // Prefer the actual article body that follows Computerworld's "Antal ord /
+  // Læsetid" overview box. If that marker is absent, keep the overview text.
+  const readingTime = excerpt.match(/\blæsetid\s+\d+\s*min\b/i);
+  if (readingTime?.index !== undefined) {
+    excerpt = excerpt.slice(readingTime.index + readingTime[0].length).trim();
+  }
+
+  excerpt = excerpt
     .replace(/\bantal ord\s+\d+\b/gi, " ")
-    .replace(/\blæsetid\s+\d+\s*min\b/gi, " ")
     .replace(/\s+/g, " ")
     .trim();
 
-  // Stop before recurring account/navigation UI if present.
   const stop = excerpt.search(/\b(?:bliv abonnent|log ind|opret bruger|seneste nyt|mest læste)\b/i);
-  if (stop > 120) excerpt = excerpt.slice(0, stop).trim();
+  if (stop > 180) excerpt = excerpt.slice(0, stop).trim();
 
   return cleanPreviewText(excerpt, title);
 }
