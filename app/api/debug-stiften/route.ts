@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-const URL = "https://stiften.dk/debat/traek-nu-plasteret-af-winnerskjold-aarhus-kan-ikke-holde-til-mere-letbane";
+const ARTICLE_URL = "https://stiften.dk/debat/traek-nu-plasteret-af-winnerskjold-aarhus-kan-ikke-holde-til-mere-letbane";
 
 function clean(value: string) {
   return value
@@ -19,7 +19,7 @@ function clean(value: string) {
 }
 
 export async function GET() {
-  const response = await fetch(URL, {
+  const response = await fetch(ARTICLE_URL, {
     cache: "no-store",
     redirect: "follow",
     headers: {
@@ -36,7 +36,7 @@ export async function GET() {
   let asyncHtml = "";
   let asyncParagraphs: string[] = [];
   if (asyncPath) {
-    const asyncUrl = new URL(asyncPath, URL).toString();
+    const asyncUrl = new URL(asyncPath, ARTICLE_URL).toString();
     const ar = await fetch(asyncUrl, {
       cache: "no-store",
       redirect: "follow",
