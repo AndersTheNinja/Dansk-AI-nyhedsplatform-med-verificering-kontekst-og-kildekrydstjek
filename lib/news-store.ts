@@ -35,7 +35,8 @@ export async function persistStories(stories: Story[]) {
       raw_metadata: {
         verification: story.verification,
         verificationText: story.verificationText,
-        neutrality: story.neutrality
+        neutrality: story.neutrality,
+        mentions: story.mentions || []
       },
       sources: story.sources
     }));
@@ -237,6 +238,7 @@ export async function getAndersWinnerskjoldArchiveStories(): Promise<Story[]> {
         publishedAt: row?.published_at ? String(row.published_at) : undefined,
         publishedDate: formatArchivePublishedDate(row?.published_at ? String(row.published_at) : undefined),
         sourceMethod: row?.source_method === "WEB" ? "WEB" : "RSS",
+        mentions: Array.isArray(raw?.mentions) ? raw.mentions.map(String) : [],
         summary: await refreshStiftenArchiveTeaser(
           String(row?.canonical_url || ""),
           String(row?.title || ""),
