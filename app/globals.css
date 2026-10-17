@@ -74,7 +74,7 @@ button{font:inherit}
 .summaryRow{display:flex;align-items:flex-end;gap:6px;margin:0}
 .summaryRow p{flex:1;min-width:0;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
 .summaryRow.expanded p{display:block;overflow:visible}
-.expandableStoryText{cursor:pointer}
+.expandableStoryText,.expandableStoryTitle{cursor:pointer}
 .storyExpandButton{appearance:none;border:0;background:transparent;color:#9a6258;padding:0 1px 1px;font:700 24px/1 Arial,sans-serif;cursor:pointer;flex:0 0 auto;transition:transform .2s ease}
 .storyExpandButton:hover{color:var(--teal-dark)}
 .storyExpandButton.open{transform:rotate(180deg)}
@@ -125,7 +125,7 @@ button{font:inherit}
   .neutralityLabel{white-space:normal}
 }
 
-.scoreLine{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:2px 0 2px;font:calc(11px * var(--reader-scale)) Arial,sans-serif;color:#9a6258}
+.scoreLine{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 2px;font:calc(11px * var(--reader-scale)) Arial,sans-serif;color:#9a6258}
 .scoreLine strong{font-weight:400}
 .scoreLine .scoreValue{font-weight:800;color:#9a3f36}
 .aiCheckLink{appearance:none;border:0;background:transparent;padding:0;color:#9a6258;text-decoration:none;font:700 11px Arial,sans-serif;cursor:pointer}
