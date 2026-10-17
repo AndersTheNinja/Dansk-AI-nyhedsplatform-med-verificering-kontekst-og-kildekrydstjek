@@ -16,6 +16,7 @@ type NewsItem = {
   link: string;
   pubDate?: string;
   description: string;
+  mentions?: string[];
   imageUrl?: string;
   source: string;
   method: "RSS" | "WEB";
@@ -1422,9 +1423,17 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
         ? cleanedPreview
         : item.description;
 
+    const fullArticleMentionText = isStiften
+      ? stiftenAsyncHtml
+      : articleHtml;
+    const fullArticleMentions = /\bwinners(?:kjold|kiold)\b/i.test(fullArticleMentionText)
+      ? Array.from(new Set([...(item.mentions || []), "anders-winnerskjold"]))
+      : (item.mentions || []);
+
     return {
       ...item,
       description: bestDescription,
+      mentions: fullArticleMentions,
       imageUrl: isStiften && !stiftenPreviewMatchesTitle ? item.imageUrl : (pageImageUrl || item.imageUrl),
       pubDate: extractPublishedDateFromHtml(html) || item.pubDate
     };
@@ -1742,9 +1751,10 @@ export async function getLiveStories(options?: { fast?: boolean; limit?: number 
     // the beginning of the teaser.
     const cleanDescription = cleanPreviewText(lead.description, lead.title);
     const mentionHaystack = `${lead.title} ${cleanDescription}`;
-    const mentions = /\bwinners(?:kjold|kiold)\b/i.test(mentionHaystack)
-      ? ["anders-winnerskjold"]
-      : [];
+    const mentions = Array.from(new Set([
+      ...(lead.mentions || []),
+      ...(/\bwinners(?:kjold|kiold)\b/i.test(mentionHaystack) ? ["anders-winnerskjold"] : [])
+    ]));
     let summary = isBoilerplatePreview(cleanDescription) ? "" : cleanDescription;
     if (!summary) {
       summary = `${publisherName(lead.source)} har publiceret historien “${lead.title}”. ØL.dk har endnu ikke kunnet hente et sikkert tekstuddrag fra selve artiklen.`;
