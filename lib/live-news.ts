@@ -1455,6 +1455,10 @@ async function enrichTV2Item(item: NewsItem): Promise<NewsItem> {
 
     if (!response.ok) return item;
     const html = await response.text();
+    const explicitPageTitle = extractMetaContent(html, "og:title") ||
+      extractMetaContent(html, "twitter:title");
+    if (explicitPageTitle && !articleTitleMatchesPage(item.title, html)) return item;
+
     const pageImageUrl = extractArticleImageUrl(html, item.title);
 
     const jsonHeadline =
@@ -1469,7 +1473,8 @@ async function enrichTV2Item(item: NewsItem): Promise<NewsItem> {
 
     const description =
       extractArticleBodyFromJson(html) ||
-      extractPublicPreview(html) ||
+      extractScopedArticlePreview(html, item.title, item.description) ||
+      extractMetadataPreview(html) ||
       item.description;
 
     return {
@@ -1497,10 +1502,15 @@ async function enrichBorsenItem(item: NewsItem): Promise<NewsItem> {
 
     if (!response.ok) return item;
     const html = await response.text();
+    const explicitPageTitle = extractMetaContent(html, "og:title") ||
+      extractMetaContent(html, "twitter:title");
+    if (explicitPageTitle && !articleTitleMatchesPage(item.title, html)) return item;
+
     const pageImageUrl = extractArticleImageUrl(html, item.title);
 
     const description =
-      extractPublicPreview(html) ||
+      extractScopedArticlePreview(html, item.title, item.description) ||
+      extractMetadataPreview(html) ||
       item.description;
 
     const pageHeadline = extractMetaContent(html, "og:title");
@@ -1685,15 +1695,13 @@ export async function getLiveStories(options?: { fast?: boolean; limit?: number 
         return bTime - aTime;
       });
       const chronologicalLead = orderedCluster[0];
-      const bestContent = [...orderedCluster].sort(
-        (a, b) => previewQuality(b.description) - previewQuality(a.description)
-      )[0];
-      const lead = bestContent && previewQuality(bestContent.description) > previewQuality(chronologicalLead.description)
-        ? { ...chronologicalLead, description: bestContent.description }
-        : chronologicalLead;
-      const sources = Array.from(
-        new Map(orderedCluster.map((item) => [publisherName(item.source), item])).values()
-      );
+      // Keep the headline, body and URL from the same article. Clustering
+      // establishes related coverage, not interchangeable editorial text.
+      const lead = chronologicalLead;
+      const sources = [lead, ...orderedCluster.filter((item) => item !== lead)]
+        .filter((item, index, items) =>
+          items.findIndex((candidate) => publisherName(candidate.source) === publisherName(item.source)) === index
+        );
       const age = chronologicalLead?.pubDate ? parseNewsDate(chronologicalLead.pubDate)?.getTime() ?? 0 : 0;
       return { lead, sources, age };
     })
