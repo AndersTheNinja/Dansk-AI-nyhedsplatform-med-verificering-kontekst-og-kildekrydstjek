@@ -1784,7 +1784,7 @@ export async function getLiveStories(options?: { fast?: boolean; limit?: number 
       title: lead.title,
       sourceLabel: hasCrossCheck ? `${publisherName(lead.source)} · ${sources.length} kilder` : lead.source,
       published: timeAgo(lead.pubDate),
-      publishedAt: lead.pubDate,
+      publishedAt: parseNewsDate(lead.pubDate)?.toISOString(),
       publishedDate: formatPublishedDate(lead.pubDate),
       sourceMethod: lead.method,
       summary,
