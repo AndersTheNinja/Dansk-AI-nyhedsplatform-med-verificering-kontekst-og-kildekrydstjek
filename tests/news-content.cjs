@@ -5,7 +5,7 @@ const vm = require('node:vm');
 const ts = require('typescript');
 
 function load(fetch) {
-  const source = fs.readFileSync('lib/live-news.ts', 'utf8') + '\nexport { enrichTV2Item, enrichBorsenItem, parseNewsDate };';
+  const source = fs.readFileSync('lib/live-news.ts', 'utf8') + '\nexport { enrichTV2Item, enrichBorsenItem, parseNewsDate, enrichPreview, extractScopedArticlePreview, articleMentionText };';
   const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
   const context = { exports: {}, fetch, AbortSignal, URL, console, require: (id) => id === 'fast-xml-parser' ? require(id) : { persistStories: async () => {} } };
   vm.runInNewContext(compiled, context);
@@ -45,4 +45,28 @@ test('related stories retain the newest article body and its original source URL
   assert.equal(stories[0].publishedAt, new Date(newest).toISOString());
   assert.equal(stories[0].sources[0].url, 'https://dr.dk/new');
   assert.equal(stories[0].sources.length, 2);
+});
+
+test('scoped previews exclude image captions and related-story paragraphs', () => {
+  const api = load();
+  const html = `<article><p>Aarhus åbner en ny svømmehal ved havnen. Kommunen inviterer alle borgere til åbningen.</p><figure><p>Arkivfoto af en svømmehal i en anden by.</p></figure><p class="image-caption">Billedtekst som ikke hører til brødteksten.</p><aside><p>Anders Winnerskjold omtales i en anden historie.</p></aside><p>Svømmehallen får åbent hver dag fra morgen til aften.</p></article>`;
+  const result = api.extractScopedArticlePreview(html, item.title, 'Aarhus åbner en ny svømmehal');
+  assert.match(result, /morgen til aften/);
+  assert.doesNotMatch(result, /Arkivfoto|Billedtekst|Winnerskjold/);
+});
+
+test('person detection searches the article, excluding navigation and related stories', () => {
+  const api = load();
+  assert.doesNotMatch(api.articleMentionText('<nav>Anders Winnerskjold</nav><article><p>Kommunen åbner en svømmehal.</p><aside>Anders Winnerskjold</aside></article>'), /Winnerskjold/);
+  assert.match(api.articleMentionText('<article><p>Borgmester Anders Winnerskjold deltager i åbningen.</p></article>'), /Winnerskjold/);
+});
+
+test('Stiften prefers its public article endpoint and detects names beyond the teaser', async () => {
+  const title = item.title;
+  const body = '<p>Kommunen åbner det nye anlæg til sommer. Der bliver plads til både familier og foreninger.</p><p>Borgmester Anders Winnerskjold deltager ved åbningen sammen med lokale svømmeklubber.</p>';
+  const api = load(async (url) => ({ ok: true, text: async () => url.includes('/article-body') ? body : `<meta property="og:title" content="${title}"><div data-load-async-url="/article-body"></div><article><p>${'Aarhus svømmehal ved havnen. '.repeat(35)}</p></article>` }));
+  const result = await api.enrichPreview({...item, link:'https://stiften.dk/aarhus/svoemmehal', source:'Stiften.dk', category:'Aarhus'});
+  assert.match(result.description, /familier og foreninger/);
+  assert.ok(result.mentions.includes('anders-winnerskjold'));
+  assert.doesNotMatch(result.description, /Aarhus svømmehal ved havnen/);
 });
