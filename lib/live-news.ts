@@ -996,7 +996,7 @@ function extractArticleBodyFromJson(html: string) {
     .replace(/\\"/g, '"')
     .replace(/\\\//g, "/");
 
-  return cleanPreviewText(decoded);
+  return cleanPreviewText(editorialHtml(decoded));
 }
 
 function extractMetadataPreview(html: string) {
@@ -1023,6 +1023,22 @@ function joinEditorialParagraphs(paragraphs: string[]) {
     })
     .filter(Boolean)
     .join(" ");
+}
+
+function editorialHtml(html: string) {
+  // These blocks may contain paragraphs and names from other stories.
+  return html
+    .replace(/<(script|style|noscript|figure|figcaption|aside|nav|header|footer)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, " ")
+    .replace(/<([a-z][\w-]*)\b[^>]*(?:class|data-testid)=["'][^"']*(?:caption|photo-credit|related-articles|related-stories)[^"']*["'][^>]*>[\s\S]*?<\/\1\s*>/gi, " ");
+}
+
+function articleMentionText(html: string, asyncHtml = "") {
+  if (asyncHtml) return stripHtml(editorialHtml(asyncHtml));
+  const body = extractArticleBodyFromJson(html);
+  const article = html.match(/<article\b[^>]*>([\s\S]*?)<\/article>/i)?.[1] || "";
+  // Never search a whole page: navigation and related cards are not evidence
+  // that the person is mentioned in the current story.
+  return `${body} ${stripHtml(editorialHtml(article))}`;
 }
 
 function extractPublicPreview(html: string) {
@@ -1090,6 +1106,7 @@ function extractComputerworldOverview(html: string, title: string) {
 }
 
 function extractPolitikenArticlePreview(html: string, title: string, seed: string) {
+  html = editorialHtml(html);
   const article = html.match(/<article\b[^>]*>([\s\S]*?)<\/article>/i)?.[1] || "";
   if (!article || !seed.trim()) return "";
 
@@ -1192,6 +1209,7 @@ function extractMainScopedPreview(html: string, title: string, seed: string) {
 }
 
 function extractScopedArticlePreview(html: string, title: string, seed: string) {
+  html = editorialHtml(html);
   const articleBlocks = Array.from(html.matchAll(/<article\b[^>]*>([\s\S]*?)<\/article>/gi))
     .map((match) => match[1] || "");
 
@@ -1252,6 +1270,7 @@ function extractEmbeddedArticlePreview(html: string, title: string, seed: string
 
 function extractJfmAsyncArticleText(html: string, title: string) {
   if (!html) return "";
+  html = editorialHtml(html);
 
   // The async JFM endpoint is already scoped to the current article body, so it
   // is safer to collect its paragraph tags broadly than to depend on one CSS
@@ -1282,7 +1301,7 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
   if (isOtherJfmPublisher) return item;
 
   // A long teaser is only trusted if it is actually editorial text.
-  if (!isStiften && item.description.length >= 340 && !isBoilerplatePreview(item.description) && item.imageUrl) return item;
+  if (!isStiften && item.category !== "Aarhus" && item.description.length >= 340 && !isBoilerplatePreview(item.description) && item.imageUrl) return item;
 
   try {
     let articleFetchUrl = item.link;
@@ -1359,15 +1378,14 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
       : "";
 
     const preview = isStiften
-      ? [
-          trustedStiftenAsyncPreview,
+      ? (trustedStiftenAsyncPreview.length >= 80 ? trustedStiftenAsyncPreview : [
           extractArticleBodyFromJson(articleHtml),
           extractScopedArticlePreview(articleHtml, item.title, item.description),
           extractEmbeddedArticlePreview(articleHtml, item.title, item.description),
           extractMetadataPreview(articleHtml)
         ]
           .filter((text) => text && !isBoilerplatePreview(text))
-          .sort((a, b) => previewQuality(b) - previewQuality(a))[0] || ""
+          .sort((a, b) => previewQuality(b) - previewQuality(a))[0] || "")
       : isPolitiken
         ? [
             extractPolitikenArticlePreview(html, item.title, item.description),
@@ -1423,9 +1441,7 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
         ? cleanedPreview
         : item.description;
 
-    const fullArticleMentionText = isStiften
-      ? stiftenAsyncHtml
-      : articleHtml;
+    const fullArticleMentionText = articleMentionText(html, stiftenAsyncHtml);
     const fullArticleMentions = /\bwinners(?:kjold|kiold)\b/i.test(fullArticleMentionText)
       ? Array.from(new Set([...(item.mentions || []), "anders-winnerskjold"]))
       : (item.mentions || []);
@@ -1735,7 +1751,7 @@ export async function getLiveStories(options?: { fast?: boolean; limit?: number 
       } catch {}
       const alwaysEnrichStiften = /(?:^|\.)stiften\.dk$/i.test(leadHost);
       const alwaysEnrichComputerworld = /(?:^|\.)computerworld\.dk$/i.test(leadHost);
-      const alwaysEnrich = alwaysEnrichStiften || alwaysEnrichComputerworld;
+      const alwaysEnrich = alwaysEnrichStiften || alwaysEnrichComputerworld || entry.lead.category === "Aarhus";
 
       // Stiften and Computerworld frequently publish short RSS teasers while
       // additional article text is available on the article page. Always attempt
