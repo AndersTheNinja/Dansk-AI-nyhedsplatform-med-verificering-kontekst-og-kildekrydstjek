@@ -1,0 +1,37 @@
+name: Package ØL.dk for Firebase ZIP deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/firebase-zip-release.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  create-zip:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check project builds
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+      - name: Package clean project root
+        run: |
+          zip -q -r /tmp/OELDK-Firebase.zip . \
+            -x './.git/*' './.github/*' './node_modules/*' './.next/*' './.env*' './firebase-debug*'
+          unzip -l /tmp/OELDK-Firebase.zip | tail -n 3
+      - name: Publish direct download
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create firebase-ready-20261018 /tmp/OELDK-Firebase.zip \
+            --title "ØL.dk Firebase ZIP - 18 October 2026" \
+            --notes "Project root ZIP for manual Firebase App Hosting rollout. This archive contains the Next.js code, apphosting.yaml and package-lock.json. Environment variables remain configured in Firebase." \
+            --target "${{ github.sha }}"
