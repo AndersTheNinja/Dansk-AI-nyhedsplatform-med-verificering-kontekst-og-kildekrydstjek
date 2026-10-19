@@ -627,7 +627,8 @@ function isFresh(pubDate?: string) {
   const time = parsed.getTime();
   const ageHours = (Date.now() - time) / 3600000;
   const maxHours = 21 * 24;
-  return ageHours >= -2 && ageHours <= maxHours;
+  // A two-hour tolerance made future-dated publisher items jump above actual breaking news.
+  return ageHours >= -0.25 && ageHours <= maxHours;
 }
 
 function isLiveCoverage(item: NewsItem) {
@@ -973,45 +974,59 @@ function imageUrlFromFeedValue(value: unknown): string | undefined {
   return undefined;
 }
 
-function extractPublishedDateFromHtml(html: string) {
+function extractPublishedDateFromHtml(html: string, expectedTitle: string) {
+  // The page may contain dates for recommended articles. Trust an explicit
+  // publication meta tag; never take the first datePublished from arbitrary JSON.
   const meta =
     extractMetaContent(html, "article:published_time") ||
-    extractMetaContent(html, "datePublished") ||
-    extractMetaContent(html, "date");
-
+    extractMetaContent(html, "datePublished");
   if (meta && parseNewsDate(meta)) return meta;
 
-  const jsonLd = html.match(/"datePublished"\s*:\s*"([^"]+)"/i)?.[1];
-  if (jsonLd && parseNewsDate(jsonLd)) return jsonLd;
-
-  return undefined;
+  const dates = Array.from(html.matchAll(/"datePublished"\s*:\s*"([^"]+)"/gi))
+    .map((match) => match[1])
+    .filter((value) => Boolean(parseNewsDate(value)));
+  // A single structured date is useful when tied to the same page headline.
+  // Multiple dates usually indicate related stories or other page widgets.
+  return dates.length === 1 && articleTitleMatchesPage(expectedTitle, html)
+    ? dates[0]
+    : undefined;
 }
-function extractArticleBodyFromJson(html: string) {
-  const match = html.match(/"articleBody"\s*:\s*"((?:\\.|[^"\\])*)"/i);
-  if (!match?.[1]) return "";
 
-  const decoded = match[1]
-    .replace(/\\u([0-9a-f]{4})/gi, (_, hex: string) => String.fromCharCode(parseInt(hex, 16)))
-    .replace(/\\n|\\r|\\t/g, " ")
-    .replace(/\\"/g, '"')
-    .replace(/\\\//g, "/");
+function extractArticleBodyFromJson(html: string, title = "", seed = "") {
+  const bodies = Array.from(html.matchAll(/"articleBody"\s*:\s*"((?:\\.|[^"\\])*)"/gi))
+    .map((match) => cleanPreviewText(decodeJsonString(match[1] || ""), title))
+    .filter((body) => body.length >= 50 && !isBoilerplatePreview(body));
+  if (bodies.length === 1) return bodies[0];
+  if (bodies.length < 2) return "";
 
-  return cleanPreviewText(editorialHtml(decoded));
+  // When embedded data contains multiple articles, only accept a body with
+  // meaningful overlap to this headline or its own RSS lead.
+  const relevant = bodies.map((body) => ({
+    body,
+    match: Math.max(similarity(title, body), seed ? similarity(seed, body) : 0)
+  })).filter((candidate) => candidate.match >= 0.5);
+  relevant.sort((a, b) => b.match - a.match);
+  return relevant[0]?.body || "";
 }
 
 function extractMetadataPreview(html: string) {
-  const meta = cleanPreviewText(
-    extractMetaContent(html, "description") ||
-    extractMetaContent(html, "og:description")
+  // A first arbitrary JSON "description" often describes a suggested story.
+  // Page-level metadata is a much safer fallback for the current headline.
+  const metaCandidates = [
+    extractMetaContent(html, "og:description"),
+    extractMetaContent(html, "description")
+  ].map((value) => cleanPreviewText(value))
+    .filter((value) => value.length >= 40 && !isBoilerplatePreview(value));
+  if (metaCandidates.length) {
+    return metaCandidates.sort((a, b) => previewQuality(b) - previewQuality(a))[0];
+  }
+
+  const jsonDescriptions = Array.from(
+    html.matchAll(/"description"\s*:\s*"((?:\\.|[^"\\])*)"/gi)
   );
-
-  const jsonDescription =
-    html.match(/"description"\s*:\s*"((?:\\.|[^"\\])*)"/i)?.[1] || "";
-  const jsonText = cleanPreviewText(jsonDescription);
-
-  return [meta, jsonText]
-    .filter((text) => text.length >= 40)
-    .sort((a, b) => b.length - a.length)[0] || "";
+  return jsonDescriptions.length === 1
+    ? cleanPreviewText(decodeJsonString(jsonDescriptions[0][1]))
+    : "";
 }
 
 function joinEditorialParagraphs(paragraphs: string[]) {
@@ -1041,31 +1056,17 @@ function articleMentionText(html: string, asyncHtml = "") {
   return `${body} ${stripHtml(editorialHtml(article))}`;
 }
 
-function extractPublicPreview(html: string) {
-  const meta = cleanPreviewText(
-    extractMetaContent(html, "description") ||
-    extractMetaContent(html, "og:description")
-  );
-
-  const jsonDescription =
-    html.match(/"description"\s*:\s*"((?:\\.|[^"\\])*)"/i)?.[1] || "";
-  const jsonText = cleanPreviewText(
-    jsonDescription
-      .replace(/\\n/g, " ")
-      .replace(/\\t/g, " ")
-      .replace(/\\"/g, '"')
-  );
-
-  const paragraphs = joinEditorialParagraphs(
-    Array.from(html.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi))
-      .map((match) => cleanPreviewText(match[1] || ""))
-      .filter((text) => text.length >= 55)
-      .slice(0, 5)
-  );
-
-  return [meta, jsonText, paragraphs]
-    .filter((text) => text.length >= 80)
-    .sort((a, b) => b.length - a.length)[0] || "";
+function extractPublicPreview(html: string, title: string, seed: string) {
+  // Never scrape the first paragraphs from a whole publisher page: those
+  // frequently belong to navigation, recommendations or a different article.
+  return [
+    extractArticleBodyFromJson(html, title, seed),
+    extractScopedArticlePreview(html, title, seed),
+    extractEmbeddedArticlePreview(html, title, seed),
+    extractMetadataPreview(html)
+  ]
+    .filter((text) => text.length >= 60 && !isBoilerplatePreview(text))
+    .sort((a, b) => previewQuality(b) - previewQuality(a))[0] || "";
 }
 
 function extractComputerworldOverview(html: string, title: string) {
@@ -1213,7 +1214,8 @@ function extractScopedArticlePreview(html: string, title: string, seed: string) 
   const articleBlocks = Array.from(html.matchAll(/<article\b[^>]*>([\s\S]*?)<\/article>/gi))
     .map((match) => match[1] || "");
 
-  const candidates = articleBlocks.length ? articleBlocks : [html];
+  const main = html.match(/<main\b[^>]*>([\s\S]*?)<\/main>/i)?.[1] || "";
+  const candidates = articleBlocks.length ? articleBlocks : main ? [main] : [];
 
   const ranked = candidates
     .map((block) => {
@@ -1379,7 +1381,7 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
 
     const preview = isStiften
       ? (trustedStiftenAsyncPreview.length >= 80 ? trustedStiftenAsyncPreview : [
-          extractArticleBodyFromJson(articleHtml),
+          extractArticleBodyFromJson(articleHtml, item.title, item.description),
           extractScopedArticlePreview(articleHtml, item.title, item.description),
           extractEmbeddedArticlePreview(articleHtml, item.title, item.description),
           extractMetadataPreview(articleHtml)
@@ -1389,7 +1391,7 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
       : isPolitiken
         ? [
             extractPolitikenArticlePreview(html, item.title, item.description),
-            extractArticleBodyFromJson(html),
+            extractArticleBodyFromJson(html, item.title, item.description),
             extractVisibleTextFollowingSeed(html, item.title, item.description),
             extractScopedArticlePreview(html, item.title, item.description),
             extractMetadataPreview(html)
@@ -1398,7 +1400,7 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
             .sort((a, b) => previewQuality(b) - previewQuality(a))[0] || ""
         : isDr
           ? [
-              extractArticleBodyFromJson(html),
+              extractArticleBodyFromJson(html, item.title, item.description),
               extractScopedArticlePreview(html, item.title, item.description),
               extractMetadataPreview(html)
             ]
@@ -1406,7 +1408,7 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
               .sort((a, b) => previewQuality(b) - previewQuality(a))[0] || ""
         : isComputerworld
           ? [
-              extractArticleBodyFromJson(html),
+              extractArticleBodyFromJson(html, item.title, item.description),
               extractComputerworldOverview(html, item.title),
               extractEmbeddedArticlePreview(html, item.title, item.description),
               extractMetadataPreview(html)
@@ -1415,7 +1417,7 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
               .sort((a, b) => previewQuality(b) - previewQuality(a))[0] || ""
         : metadataOnly
           ? extractMetadataPreview(html)
-          : extractPublicPreview(html);
+          : extractPublicPreview(html, item.title, item.description);
 
     const normalizedPreview = cleanPreviewText(preview, item.title);
     const cleanedPreview = isBoilerplatePreview(normalizedPreview) ? "" : normalizedPreview;
@@ -1451,7 +1453,7 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
       description: bestDescription,
       mentions: fullArticleMentions,
       imageUrl: isStiften && !stiftenPreviewMatchesTitle ? item.imageUrl : (pageImageUrl || item.imageUrl),
-      pubDate: extractPublishedDateFromHtml(html) || item.pubDate
+      pubDate: extractPublishedDateFromHtml(html, item.title) || item.pubDate
     };
   } catch {
     return item;
@@ -1479,13 +1481,10 @@ async function enrichTV2Item(item: NewsItem): Promise<NewsItem> {
 
     const jsonHeadline =
       html.match(/"headline"\s*:\s*"((?:\\.|[^"\\])*)"/i)?.[1] || "";
-    const headline = cleanPreviewText(
-      jsonHeadline
-        .replace(/\\u([0-9a-f]{4})/gi, (_, hex: string) => String.fromCharCode(parseInt(hex, 16)))
-        .replace(/\\n|\\r|\\t/g, " ")
-        .replace(/\\"/g, '"')
-        .replace(/\\\//g, "/")
-    ) || extractMetaContent(html, "og:title") || item.title;
+    const embeddedHeadline = cleanPreviewText(decodeJsonString(jsonHeadline));
+    const headline = embeddedHeadline && similarity(item.title, embeddedHeadline) >= 0.6
+      ? embeddedHeadline
+      : extractMetaContent(html, "og:title") || item.title;
 
     const description =
       extractArticleBodyFromJson(html) ||
@@ -1498,7 +1497,7 @@ async function enrichTV2Item(item: NewsItem): Promise<NewsItem> {
       title: stripHtml(headline).replace(/^TV 2[:\s|-]+/i, "").trim() || item.title,
       description: cleanPreviewText(description, headline),
       imageUrl: pageImageUrl || item.imageUrl,
-      pubDate: extractPublishedDateFromHtml(html) || item.pubDate
+      pubDate: extractPublishedDateFromHtml(html, item.title) || item.pubDate
     };
   } catch {
     return item;
@@ -1539,7 +1538,7 @@ async function enrichBorsenItem(item: NewsItem): Promise<NewsItem> {
       title: stripHtml(headline) || item.title,
       description: cleanPreviewText(description, headline),
       imageUrl: pageImageUrl || item.imageUrl,
-      pubDate: extractPublishedDateFromHtml(html) || item.pubDate
+      pubDate: extractPublishedDateFromHtml(html, item.title) || item.pubDate
     };
   } catch {
     return item;
