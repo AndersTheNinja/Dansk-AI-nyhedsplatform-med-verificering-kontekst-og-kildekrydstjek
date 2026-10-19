@@ -1,4 +1,5 @@
 name: ØL.dk news quality checks
+# CI verifies article sourcing and timestamp behavior before release.
 
 on:
   push:
