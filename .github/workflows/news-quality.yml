@@ -6,6 +6,10 @@ on:
     branches: [main]
     paths:
       - "lib/live-news.ts"
+      - "lib/news-store.ts"
+      - "components/news-feed.tsx"
+      - "components/news-loader.tsx"
+      - "app/api/news/route.ts"
       - "tests/news-content.cjs"
       - "package.json"
       - "package-lock.json"
