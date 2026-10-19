@@ -109,3 +109,67 @@ test('unscoped page paragraphs are rejected when no article or main section exis
   const html = `<nav><p>${'Aarhus svømmehal nyheden blev omtalt i en menu. '.repeat(12)}</p></nav>`;
   assert.equal(api.extractScopedArticlePreview(html, item.title, 'Aarhus svømmehal'), '');
 });
+
+
+test('Politiken prefers matching article paragraphs over longer site navigation', async () => {
+  const seed = 'Kommunen åbner en ny svømmehal ved havnen, og alle byens borgere inviteres til en stor indvielse på søndag.';
+  const html = '<meta property="og:title" content="Aarhus åbner svømmehal ved havnen">' +
+    '<nav><p>' + seed + ' ' + 'Forkerte anbefalinger og abonnementsinformation. '.repeat(30) + '</p></nav>' +
+    '<article><p>' + seed + '</p><p>Den nye svømmehal kommer til at rumme både motionsbaner og faciliteter for børn i alle aldre.</p>' +
+    '<p>Kommunen forventer, at tusindvis af besøgende vil bruge anlægget, når det åbner for offentligheden.</p></article>';
+  const api = load(async () => ({ ok: true, text: async () => html }));
+  const story = await api.enrichPreview({ ...item, link: 'https://politiken.dk/danmark/artikel', source: 'Politiken', description: seed });
+  assert.match(story.description, /motionsbaner/);
+  assert.doesNotMatch(story.description, /Forkerte anbefalinger/);
+});
+
+test('Børsen ignores unrelated article cards even when they have much longer text', async () => {
+  const other = '<article><h2>Udenlandske virksomheder ændrer regnskab</h2><p>' +
+    'Udenlandske selskaber og investorer i andre lande. '.repeat(30) + '</p></article>';
+  const correct = '<article><h2>Aarhus åbner svømmehal ved havnen</h2>' +
+    '<p>Aarhus åbner en ny svømmehal ved havnen med flere baner og faciliteter for børn og foreninger.</p>' +
+    '<p>Svømmehallen skal være åben for publikum hele ugen, og kommunen forventer mange besøgende.</p></article>';
+  const api = load(async () => ({ ok: true, text: async () =>
+    '<meta property="og:title" content="Aarhus åbner svømmehal ved havnen">' + other + correct
+  }));
+  const story = await api.enrichBorsenItem({ ...item, link: 'https://borsen.dk/nyheder/artikel', source: 'Børsen' });
+  assert.match(story.description, /åben for publikum/);
+  assert.doesNotMatch(story.description, /Udenlandske selskaber/);
+});
+
+test('TV 2 picks the matching JSON article rather than unrelated embedded news', async () => {
+  const html = '<meta property="og:title" content="Aarhus åbner svømmehal ved havnen"><script>' +
+    '{"articleBody":"En helt anden historie om udenrigspolitik og internationale handelsaftaler med mange detaljer fra udlandet.",' +
+    '"articleBody":"Aarhus åbner svømmehal ved havnen. Svømmehallen får flere bassiner og nye faciliteter for alle byens borgere."}' +
+    '</script>';
+  const api = load(async () => ({ ok: true, text: async () => html }));
+  const story = await api.enrichTV2Item(item);
+  assert.match(story.description, /flere bassiner/);
+  assert.doesNotMatch(story.description, /handelsaftaler/);
+});
+
+test('Stiften removes repeated paragraphs and sidebar mentions from its article endpoint', async () => {
+  const lead = 'Kommunen åbner en ny svømmehal ved havnen. Der er plads til mange børn og familier i området.';
+  const asyncBody = '<p>' + lead + '</p><p>' + lead + '</p>' +
+    '<aside><p>Relaterede nyheder om andre steder i Danmark.</p></aside>' +
+    '<p>Den nye hal kan benyttes af foreningerne efter den officielle åbning på søndag.</p>';
+  const api = load(async (url) => ({ ok: true, text: async () => url.includes('/article-body') ? asyncBody :
+    '<meta property="og:title" content="Aarhus åbner svømmehal ved havnen"><div data-load-async-url="/article-body"></div>' }));
+  const story = await api.enrichPreview({ ...item, source: 'Stiften.dk', category: 'Aarhus', link: 'https://stiften.dk/aarhus/test' });
+  assert.equal(story.description.split('Kommunen åbner en ny svømmehal').length - 1, 1);
+  assert.match(story.description, /officielle åbning/);
+  assert.doesNotMatch(story.description, /Relaterede nyheder/);
+});
+
+test('Stiften does not fetch an async article endpoint on another website', async () => {
+  const urls = [];
+  const api = load(async (url) => {
+    urls.push(String(url));
+    return { ok: true, text: async () =>
+      '<meta property="og:title" content="Aarhus åbner svømmehal ved havnen"><div data-load-async-url="https://other.example/article-body"></div>'
+    };
+  });
+  await api.enrichPreview({ ...item, source: 'Stiften.dk', category: 'Aarhus', link: 'https://stiften.dk/aarhus/test' });
+  assert.equal(urls.length, 1);
+  assert.match(urls[0], /stiften\.dk/);
+});
