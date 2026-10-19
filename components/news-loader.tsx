@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { NewsFeed } from "@/components/news-feed";
 import type { Story } from "@/lib/stories";
 
@@ -9,13 +9,23 @@ export function NewsLoader() {
   const [error, setError] = useState(false);
   const [newsCount, setNewsCount] = useState<number | null>(null);
   const [visitorCount, setVisitorCount] = useState<number | null>(null);
+  const fullNewsLoadedRef = useRef(false);
+  const latestFullRequestRef = useRef(0);
 
   async function loadNews(limit?: number) {
+    const isPreview = typeof limit === "number";
+    const requestId = isPreview ? 0 : ++latestFullRequestRef.current;
     try {
       const response = await fetch(limit ? `/api/news?fast=1&limit=${limit}` : "/api/news");
       if (!response.ok) throw new Error("News request failed");
       const data = await response.json();
       const nextStories: Story[] = Array.isArray(data.stories) ? data.stories : [];
+
+      // The quick 20-story response must never replace a complete feed, even
+      // when its network request finishes after the full request.
+      if (isPreview && fullNewsLoadedRef.current) return;
+      if (!isPreview && requestId !== latestFullRequestRef.current) return;
+      if (!isPreview) fullNewsLoadedRef.current = true;
 
       setStories(nextStories);
       setError(false);
@@ -27,8 +37,10 @@ export function NewsLoader() {
         ? archiveTotal
         : nextStories.length);
     } catch {
+      // Ignore stale failures; preserve the last successfully loaded news.
+      if (isPreview && fullNewsLoadedRef.current) return;
+      if (!isPreview && requestId !== latestFullRequestRef.current) return;
       setError(true);
-      setNewsCount(null);
     }
   }
 
@@ -79,12 +91,17 @@ export function NewsLoader() {
     const countNode = document.getElementById("news-count");
     if (!countNode) return;
     const numberFormat = new Intl.NumberFormat("da-DK");
-    const newsText = newsCount === null ? "Indlæser…" : `${numberFormat.format(newsCount)} nyheder`;
+    const newsText = newsCount === null
+      ? (error ? "Nyheder utilgængelige" : "Indlæser…")
+      : `${numberFormat.format(newsCount)} nyheder`;
     const peopleText = visitorCount === null ? "– pers." : `${numberFormat.format(visitorCount)} pers.`;
     countNode.textContent = `${newsText} / ${peopleText}`;
-  }, [newsCount, visitorCount]);
+  }, [newsCount, visitorCount, error]);
 
   if (stories === null) {
+    if (error) {
+      return <div className="newsLoadError" role="alert">Nyhederne kunne ikke hentes. Siden prøver automatisk igen.</div>;
+    }
     return (
       <section id="feed" aria-busy="true">
         <div className="newsLoadingFilters" aria-hidden="true">
