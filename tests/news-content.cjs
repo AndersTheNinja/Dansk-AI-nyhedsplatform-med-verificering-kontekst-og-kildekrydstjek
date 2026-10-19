@@ -5,7 +5,7 @@ const vm = require('node:vm');
 const ts = require('typescript');
 
 function load(fetch) {
-  const source = fs.readFileSync('lib/live-news.ts', 'utf8') + '\nexport { enrichTV2Item, enrichBorsenItem, parseNewsDate, enrichPreview, extractScopedArticlePreview, articleMentionText };';
+  const source = fs.readFileSync('lib/live-news.ts', 'utf8') + '\nexport { enrichTV2Item, enrichBorsenItem, parseNewsDate, enrichPreview, extractScopedArticlePreview, articleMentionText, extractPublicPreview, extractPublishedDateFromHtml, extractArticleBodyFromJson, isFresh };';
   const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
   const context = { exports: {}, fetch, AbortSignal, URL, console, require: (id) => id === 'fast-xml-parser' ? require(id) : { persistStories: async () => {} } };
   vm.runInNewContext(compiled, context);
@@ -69,4 +69,43 @@ test('Stiften prefers its public article endpoint and detects names beyond the t
   assert.match(result.description, /familier og foreninger/);
   assert.ok(result.mentions.includes('anders-winnerskjold'));
   assert.doesNotMatch(result.description, /Aarhus svømmehal ved havnen/);
+});
+
+test('whole-page navigation paragraphs never replace a real article preview', () => {
+  const api = load();
+  const html = `<meta property="og:title" content="${item.title}">
+    <meta name="description" content="Kommunen åbner en ny svømmehal ved Aarhus havn. Borgere får adgang til den i næste uge.">
+    <nav><p>${'Uvedkommende annoncer og vejledning til abonnement. '.repeat(35)}</p></nav>
+    <p>${'Flere ugyldige nyheder fra andre artikler. '.repeat(25)}</p>`;
+  const excerpt = api.extractPublicPreview(html, item.title, 'Kommunen åbner en ny svømmehal');
+  assert.match(excerpt, /Borgere får adgang/);
+  assert.doesNotMatch(excerpt, /Uvedkommende|ugyldige nyheder/);
+});
+
+test('multiple unrelated JSON article bodies cannot hijack the current article', () => {
+  const api = load();
+  const html = `<script>{"articleBody":"Aarhus åbner en svømmehal ved havnen. Den nye svømmehal skal være åben for borgerne hele året.","articleBody":"Politikerne i København diskuterer en anden sag. Det er en helt anden nyhed med andre mennesker og begivenheder."}</script>`;
+  const excerpt = api.extractArticleBodyFromJson(html, item.title, item.description);
+  assert.match(excerpt, /Den nye svømmehal/);
+  assert.doesNotMatch(excerpt, /København/);
+});
+
+test('dates from unrelated JSON stories are not assigned to the current article', () => {
+  const api = load();
+  const html = `<meta property="og:title" content="${item.title}"><script>{"datePublished":"2026-10-17T08:00:00Z","datePublished":"2026-10-19T12:00:00Z"}</script>`;
+  assert.equal(api.extractPublishedDateFromHtml(html, item.title), undefined);
+  const withMeta = html.replace('<script>', '<meta property="article:published_time" content="2026-10-18T11:45:00+02:00"><script>');
+  assert.equal(api.extractPublishedDateFromHtml(withMeta, item.title), '2026-10-18T11:45:00+02:00');
+});
+
+test('articles dated far in the future cannot jump above breaking news', () => {
+  const api = load();
+  assert.equal(api.isFresh(new Date(Date.now() + 60 * 60 * 1000).toISOString()), false);
+  assert.equal(api.isFresh(new Date(Date.now() - 60 * 1000).toISOString()), true);
+});
+
+test('unscoped page paragraphs are rejected when no article or main section exists', () => {
+  const api = load();
+  const html = `<nav><p>${'Aarhus svømmehal nyheden blev omtalt i en menu. '.repeat(12)}</p></nav>`;
+  assert.equal(api.extractScopedArticlePreview(html, item.title, 'Aarhus svømmehal'), '');
 });
