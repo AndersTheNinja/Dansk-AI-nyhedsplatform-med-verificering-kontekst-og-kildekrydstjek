@@ -465,6 +465,44 @@ function cleanPreviewText(value = "", title = "") {
   return text.replace(/\s+/g, " ").trim();
 }
 
+function cleanPublisherTeaser(value: string, title: string, source: string) {
+  let text = cleanPreviewText(value, title);
+  if (!/^politiken\b/i.test(source)) return text;
+
+  // Some Politiken pages include this sequence in the public visible text:
+  // intro, headline, photo credit, date, "Gem artiklen Gemt Læst", body.
+  // Keep the real intro/body and discard the intervening UI and credits.
+  const chrome = /\bGem artiklen\s+Gemt\s+Læst\b/i.exec(text);
+  if (chrome) {
+    const before = text.slice(0, chrome.index);
+    let after = text.slice(chrome.index + chrome[0].length).trim();
+    const titleIndex = before.toLocaleLowerCase("da-DK")
+      .lastIndexOf(title.toLocaleLowerCase("da-DK"));
+    if (titleIndex >= 40 && titleIndex < 450 && after.length >= 70 &&
+        !/^læs videre\b/i.test(after)) {
+      const intro = before.slice(0, titleIndex).trim();
+      // A second navigation bar must not be appended after the story excerpt.
+      const secondChrome = /\bGem artiklen\s+Gemt\s+Læst\b/i.exec(after);
+      if (secondChrome && secondChrome.index > 100) {
+        const prefix = after.slice(0, secondChrome.index);
+        const repeatMeta = /\b(?:Danmark|Internationalt|Erhverv|Sport|Kultur|Fodbold|Bøger|Kunst|iBYEN)\s+\d{1,2}\.\s+[a-zæøå]+\s+\d{4},\s+\d{1,2}\.\d{2}\s*$/i.exec(prefix);
+        after = (repeatMeta ? prefix.slice(0, repeatMeta.index) : prefix).trim();
+      }
+      text = [intro, after].filter(Boolean).join(" ");
+    }
+  }
+
+  // The headline is already displayed separately above the teaser.
+  if (title.length >= 18) {
+    const at = text.toLocaleLowerCase("da-DK")
+      .indexOf(title.toLocaleLowerCase("da-DK"), 40);
+    if (at >= 40 && at <= 450) {
+      text = (text.slice(0, at) + " " + text.slice(at + title.length)).replace(/\s+/g, " ").trim();
+    }
+  }
+  return cleanPreviewText(text, title);
+}
+
 function isBoilerplatePreview(value: string) {
   const text = value.toLowerCase();
   if (!text.trim()) return true;
@@ -1786,7 +1824,7 @@ export async function getLiveStories(options?: { fast?: boolean; limit?: number 
     // Apply the same final safeguards to every source, including RSS-only items:
     // photo credits are not article text, and the headline must not repeat at
     // the beginning of the teaser.
-    const cleanDescription = cleanPreviewText(lead.description, lead.title);
+    const cleanDescription = cleanPublisherTeaser(lead.description, lead.title, lead.source);
     const mentionHaystack = `${lead.title} ${cleanDescription}`;
     const mentions = Array.from(new Set([
       ...(lead.mentions || []),
