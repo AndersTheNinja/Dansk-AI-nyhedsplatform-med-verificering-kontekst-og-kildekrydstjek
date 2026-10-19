@@ -1,0 +1,31 @@
+name: ØL.dk news quality checks
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "lib/live-news.ts"
+      - "tests/news-content.cjs"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/news-quality.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  news-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Regression tests for article provenance and timestamps
+        run: node --test tests/news-content.cjs
+      - name: Verify Next.js production build
+        run: npm run build
