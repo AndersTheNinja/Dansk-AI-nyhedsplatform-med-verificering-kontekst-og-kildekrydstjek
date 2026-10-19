@@ -994,17 +994,22 @@ function extractPublishedDateFromHtml(html: string, expectedTitle: string) {
 
 function extractArticleBodyFromJson(html: string, title = "", seed = "") {
   const bodies = Array.from(html.matchAll(/"articleBody"\s*:\s*"((?:\\.|[^"\\])*)"/gi))
-    .map((match) => cleanPreviewText(decodeJsonString(match[1] || ""), title))
-    .filter((body) => body.length >= 50 && !isBoilerplatePreview(body));
-  if (bodies.length === 1) return bodies[0];
+    .map((match) => {
+      const raw = decodeJsonString(match[1] || "");
+      return {
+        body: cleanPreviewText(raw, title),
+        // Score the original body BEFORE removing a repeated headline:
+        // the headline itself is often the strongest provenance evidence.
+        match: Math.max(similarity(title, raw), seed ? similarity(seed, raw) : 0)
+      };
+    })
+    .filter(({ body }) => body.length >= 50 && !isBoilerplatePreview(body));
+  if (bodies.length === 1) return bodies[0].body;
   if (bodies.length < 2) return "";
 
   // When embedded data contains multiple articles, only accept a body with
   // meaningful overlap to this headline or its own RSS lead.
-  const relevant = bodies.map((body) => ({
-    body,
-    match: Math.max(similarity(title, body), seed ? similarity(seed, body) : 0)
-  })).filter((candidate) => candidate.match >= 0.5);
+  const relevant = bodies.filter((candidate) => candidate.match >= 0.5);
   relevant.sort((a, b) => b.match - a.match);
   return relevant[0]?.body || "";
 }
