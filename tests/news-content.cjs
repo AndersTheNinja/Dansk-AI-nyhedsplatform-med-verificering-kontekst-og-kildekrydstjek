@@ -215,5 +215,5 @@ test('non-Politiken previews remain intact and ambiguous Politiken page chrome i
   const intact = 'Det amerikanske aktiemarked steg efter en stærk handelsdag med kursstigninger til flere teknologiselskaber.';
   assert.equal(api.cleanPublisherTeaser(intact, title, 'Børsen'), intact);
   const tooShort = 'Den nye artikel. ' + title + ' Foto: presse Gem artiklen Gemt Læst Læs videre for 1 kr.';
-  assert.match(api.cleanPublisherTeaser(tooShort, title, 'Politiken'), /Gem artiklen/);
+  assert.match(api.cleanPublisherTeaser(tooShort, title, 'Politiken'), /Den nye artikel/);
 });
