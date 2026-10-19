@@ -5,7 +5,7 @@ const vm = require('node:vm');
 const ts = require('typescript');
 
 function load(fetch) {
-  const source = fs.readFileSync('lib/live-news.ts', 'utf8') + '\nexport { enrichTV2Item, enrichBorsenItem, parseNewsDate, enrichPreview, extractScopedArticlePreview, articleMentionText, extractPublicPreview, extractPublishedDateFromHtml, extractArticleBodyFromJson, isFresh };';
+  const source = fs.readFileSync('lib/live-news.ts', 'utf8') + '\nexport { enrichTV2Item, enrichBorsenItem, parseNewsDate, enrichPreview, extractScopedArticlePreview, articleMentionText, extractPublicPreview, extractPublishedDateFromHtml, extractArticleBodyFromJson, isFresh, cleanPublisherTeaser };';
   const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
   const context = { exports: {}, fetch, AbortSignal, URL, console, require: (id) => id === 'fast-xml-parser' ? require(id) : { persistStories: async () => {} } };
   vm.runInNewContext(compiled, context);
@@ -172,4 +172,48 @@ test('Stiften does not fetch an async article endpoint on another website', asyn
   await api.enrichPreview({ ...item, source: 'Stiften.dk', category: 'Aarhus', link: 'https://stiften.dk/aarhus/test' });
   assert.equal(urls.length, 1);
   assert.match(urls[0], /stiften\.dk/);
+});
+
+test('Politiken public-page chrome is removed while real article context remains', () => {
+  const api = load();
+  const title = 'Ronaldo får kosmetisk karantæne fra landsholdet efter drama i København';
+  const original = 'Cristiano Ronaldo har fået 30 dages karantæne for at forlade Portugals lejr forud for kampen mod Danmark. ' +
+    title + ' De Melo Moreira/Ritzau Scanpix Fodbold 19. oktober 2026, 21.28 Gem artiklen Gemt Læst ' +
+    'Det portugisiske fodboldforbunds disciplinærudvalg har tildelt Cristiano Ronaldo 30 kalenderdages karantæne. Det oplyser forbundet ifølge mediet A Bola.';
+  const teaser = api.cleanPublisherTeaser(original, title, 'Politiken');
+  assert.match(teaser, /Cristiano Ronaldo har fået/);
+  assert.match(teaser, /disciplinærudvalg/);
+  assert.doesNotMatch(teaser, /Gem artiklen|Ritzau Scanpix|19\. oktober 2026/);
+  assert.equal(teaser.split(title).length - 1, 0);
+});
+
+test('Politiken duplicated headline without reader chrome is removed', () => {
+  const api = load();
+  const title = 'FCM indhenter FCK med sejr i lokalopgør';
+  const excerpt = 'FC Midtjylland er på siden af FC København i Superligaens top. ' + title +
+    ' For to runder siden havde FC Midtjylland fem point op til FC København. Det er nu ændret.';
+  const teaser = api.cleanPublisherTeaser(excerpt, title, 'Politiken');
+  assert.match(teaser, /For to runder siden/);
+  assert.doesNotMatch(teaser, /FCM indhenter FCK/);
+});
+
+test('Politiken second navigation bar is removed after the available body', () => {
+  const api = load();
+  const title = 'Overgravet kabel forårsager flere togaflysninger';
+  const excerpt = 'DSB har bestilt togbusser efter et overgravet kabel på Fyn. ' +
+    title + ' Danmark 19. oktober 2026, 10.10 Gem artiklen Gemt Læst ' +
+    'Der kører i øjeblikket ingen regionaltog mellem Odense og Fredericia. Trafikken er berørt efter et overgravet kabel. ' +
+    'Danmark 19. oktober 2026, 10.10 Gem artiklen Gemt Læst Læs videre for 1 kr.';
+  const teaser = api.cleanPublisherTeaser(excerpt, title, 'Politiken');
+  assert.match(teaser, /ingen regionaltog/);
+  assert.doesNotMatch(teaser, /Gem artiklen|Læs videre for 1 kr/);
+});
+
+test('non-Politiken previews remain intact and ambiguous Politiken page chrome is not overstripped', () => {
+  const api = load();
+  const title = 'Aktieluk i USA';
+  const intact = 'Det amerikanske aktiemarked steg efter en stærk handelsdag med kursstigninger til flere teknologiselskaber.';
+  assert.equal(api.cleanPublisherTeaser(intact, title, 'Børsen'), intact);
+  const tooShort = 'Den nye artikel. ' + title + ' Foto: presse Gem artiklen Gemt Læst Læs videre for 1 kr.';
+  assert.match(api.cleanPublisherTeaser(tooShort, title, 'Politiken'), /Gem artiklen/);
 });
