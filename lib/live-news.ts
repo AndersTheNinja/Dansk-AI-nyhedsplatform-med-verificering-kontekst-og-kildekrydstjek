@@ -1112,47 +1112,40 @@ function extractComputerworldOverview(html: string, title: string) {
 }
 
 function extractPolitikenArticlePreview(html: string, title: string, seed: string) {
-  html = editorialHtml(html);
-  const article = html.match(/<article\b[^>]*>([\s\S]*?)<\/article>/i)?.[1] || "";
-  if (!article || !seed.trim()) return "";
+  if (!seed.trim()) return "";
+  const blocks = Array.from(editorialHtml(html).matchAll(/<article\b[^>]*>([\s\S]*?)<\/article>/gi))
+    .map((match) => match[1] || "");
+  const anchor = seed.replace(/\s+/g, " ").trim().split(" ").slice(0, 9).join(" ").toLocaleLowerCase("da-DK");
+  const results: string[] = [];
 
-  const paragraphs = Array.from(article.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi))
-    .map((match) => cleanPreviewText(match[1] || "", title))
-    .filter(Boolean);
+  for (const block of blocks) {
+    const paragraphs = Array.from(block.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi))
+      .map((match) => cleanPreviewText(match[1] || "", title))
+      .filter(Boolean);
+    // A matching lead must be inside THIS article. A lead in a related-story
+    // widget or site navigation is not proof that its following text is ours.
+    const start = paragraphs.findIndex((text) =>
+      (anchor.length >= 20 && text.toLocaleLowerCase("da-DK").includes(anchor)) ||
+      similarity(seed, text) >= 0.7
+    );
+    if (start < 0) continue;
 
-  const anchor = seed
-    .replace(/\s+/g, " ")
-    .trim()
-    .split(" ")
-    .slice(0, 9)
-    .join(" ")
-    .toLocaleLowerCase("da-DK");
-
-  let start = paragraphs.findIndex((text) =>
-    text.toLocaleLowerCase("da-DK").includes(anchor) ||
-    similarity(seed, text) >= 0.7
-  );
-  if (start < 0) return "";
-
-  const selected: string[] = [];
-  const seen = new Set<string>();
-
-  for (let i = start; i < paragraphs.length && selected.length < 5; i++) {
-    const text = paragraphs[i].trim();
-    const normalized = text.toLocaleLowerCase("da-DK");
-
-    if (/^(?:læs næste|du er ikke logget ind|gem artiklen|gemt|læst|annonce)$/i.test(text)) continue;
-    if (/^(?:læs videre for|du er godt i gang|bliv abonnent|allerede abonnent|log ind)\b/i.test(text)) break;
-    if (/^(?:bøger\s+)?\d{1,2}\.\s*[a-z]+\s+\d{4}/i.test(text)) continue;
-    if (text.length < 45) continue;
-    if (similarity(title, text) > 0.8) continue;
-    if (seen.has(normalized)) continue;
-
-    seen.add(normalized);
-    selected.push(text);
+    const selected: string[] = [];
+    const seen = new Set<string>();
+    for (let i = start; i < paragraphs.length && selected.length < 5; i++) {
+      const text = paragraphs[i].trim();
+      const normalized = text.toLocaleLowerCase("da-DK");
+      if (/^(?:læs næste|du er ikke logget ind|gem artiklen|gemt|læst|annonce)$/i.test(text)) continue;
+      if (/^(?:læs videre for|du er godt i gang|bliv abonnent|allerede abonnent|log ind)\b/i.test(text)) break;
+      if (/^(?:bøger\s+)?\d{1,2}\.\s*[a-z]+\s+\d{4}/i.test(text)) continue;
+      if (text.length < 45 || similarity(title, text) > 0.8 || seen.has(normalized)) continue;
+      seen.add(normalized);
+      selected.push(text);
+    }
+    const excerpt = cleanPreviewText(joinEditorialParagraphs(selected), title);
+    if (excerpt.length >= 50) results.push(excerpt);
   }
-
-  return cleanPreviewText(joinEditorialParagraphs(selected), title);
+  return results.sort((a, b) => previewQuality(b) - previewQuality(a))[0] || "";
 }
 
 function extractVisibleTextFollowingSeed(html: string, title: string, seed: string) {
@@ -1218,7 +1211,6 @@ function extractScopedArticlePreview(html: string, title: string, seed: string) 
   html = editorialHtml(html);
   const articleBlocks = Array.from(html.matchAll(/<article\b[^>]*>([\s\S]*?)<\/article>/gi))
     .map((match) => match[1] || "");
-
   const main = html.match(/<main\b[^>]*>([\s\S]*?)<\/main>/i)?.[1] || "";
   const candidates = articleBlocks.length ? articleBlocks : main ? [main] : [];
 
@@ -1227,21 +1219,29 @@ function extractScopedArticlePreview(html: string, title: string, seed: string) 
       const paragraphs = Array.from(block.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi))
         .map((match) => cleanPreviewText(match[1] || ""))
         .filter((text) => text.length >= 35 && !isBoilerplatePreview(text));
-
-      const joined = joinEditorialParagraphs(paragraphs.slice(0, 6));
-      const score = Math.max(
+      const headline = cleanPreviewText(block.match(/<h[1-3]\b[^>]*>([\s\S]*?)<\/h[1-3]>/i)?.[1] || "");
+      const headingScore = headline ? similarity(title, headline) : 0;
+      const firstRelevant = paragraphs.findIndex((text) =>
+        (seed && similarity(seed, text) >= 0.5) || similarity(title, text) >= 0.5
+      );
+      // Do not prepend sidebars or unrelated teasers that precede the article lead.
+      const start = firstRelevant >= 0 ? firstRelevant : 0;
+      const joined = joinEditorialParagraphs(paragraphs.slice(start, start + 6));
+      const textScore = Math.max(
         similarity(title, joined),
         seed ? similarity(seed, joined) : 0
       );
-
-      return { joined, score };
+      const score = Math.max(headingScore, textScore);
+      return { joined, score, headingScore, firstRelevant };
     })
     .filter((candidate) => candidate.joined.length >= 80)
     .sort((a, b) => b.score - a.score);
 
   const best = ranked[0];
   if (!best || best.score < 0.12) return "";
-
+  // A page with multiple article cards needs strong evidence of ownership.
+  if (articleBlocks.length > 1 &&
+      best.headingScore < 0.5 && (best.firstRelevant < 0 || best.score < 0.5)) return "";
   return cleanPreviewText(best.joined, title);
 }
 
@@ -1279,16 +1279,18 @@ function extractJfmAsyncArticleText(html: string, title: string) {
   if (!html) return "";
   html = editorialHtml(html);
 
-  // The async JFM endpoint is already scoped to the current article body, so it
-  // is safer to collect its paragraph tags broadly than to depend on one CSS
-  // class name that changes between templates (news, debate, sport, etc.).
+  // This is the current article's public JFM async endpoint, not a full page.
+  // Drop repeated introductions and unrelated subscription/navigation blocks.
+  const seen = new Set<string>();
   const paragraphs = Array.from(html.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi))
     .map((match) => cleanPreviewText(match[1] || "", title))
-    .filter((text) =>
-      text.length >= 25 &&
-      !isBoilerplatePreview(text) &&
-      !/^(?:læs også|se også|relateret|annonce|bliv abonnent|log ind)\b/i.test(text)
-    );
+    .filter((text) => {
+      const key = text.toLocaleLowerCase("da-DK");
+      if (text.length < 25 || isBoilerplatePreview(text) || seen.has(key) ||
+          /^(?:læs også|se også|relateret|annonce|bliv abonnent|log ind)\b/i.test(text)) return false;
+      seen.add(key);
+      return true;
+    });
 
   if (!paragraphs.length) return "";
   return cleanPreviewText(joinEditorialParagraphs(paragraphs.slice(0, 10)), title);
@@ -1354,8 +1356,13 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
       const asyncPath = html.match(/data-load-async-url=["']([^"']+)["']/i)?.[1];
       if (asyncPath) {
         try {
-          const asyncUrl = new URL(asyncPath, articleFetchUrl).toString();
-          const asyncResponse = await fetch(asyncUrl, {
+          const asyncEndpoint = new URL(asyncPath, articleFetchUrl);
+          // Never follow a publisher-supplied async path to a different host.
+          if (asyncEndpoint.protocol !== "https:" ||
+              asyncEndpoint.hostname !== new URL(articleFetchUrl).hostname) {
+            throw new Error("Stiften article endpoint was outside the source host");
+          }
+          const asyncResponse = await fetch(asyncEndpoint.toString(), {
             next: { revalidate: 900 },
             redirect: "follow",
             headers: {
@@ -1397,7 +1404,6 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
         ? [
             extractPolitikenArticlePreview(html, item.title, item.description),
             extractArticleBodyFromJson(html, item.title, item.description),
-            extractVisibleTextFollowingSeed(html, item.title, item.description),
             extractScopedArticlePreview(html, item.title, item.description),
             extractMetadataPreview(html)
           ]
@@ -1492,7 +1498,7 @@ async function enrichTV2Item(item: NewsItem): Promise<NewsItem> {
       : extractMetaContent(html, "og:title") || item.title;
 
     const description =
-      extractArticleBodyFromJson(html) ||
+      extractArticleBodyFromJson(html, item.title, item.description) ||
       extractScopedArticlePreview(html, item.title, item.description) ||
       extractMetadataPreview(html) ||
       item.description;
@@ -1528,10 +1534,13 @@ async function enrichBorsenItem(item: NewsItem): Promise<NewsItem> {
 
     const pageImageUrl = extractArticleImageUrl(html, item.title);
 
-    const description =
-      extractScopedArticlePreview(html, item.title, item.description) ||
-      extractMetadataPreview(html) ||
-      item.description;
+    const candidates = [
+      extractArticleBodyFromJson(html, item.title, item.description),
+      extractScopedArticlePreview(html, item.title, item.description),
+      extractMetadataPreview(html)
+    ].filter((text) => text && !isBoilerplatePreview(text));
+    const description = candidates
+      .sort((a, b) => previewQuality(b) - previewQuality(a))[0] || item.description;
 
     const pageHeadline = extractMetaContent(html, "og:title");
     const headline = pageHeadline && articleTitleMatchesPage(item.title, html)
