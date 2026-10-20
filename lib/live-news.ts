@@ -1370,9 +1370,13 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
       } catch {}
     }
 
-    // JFM/Stiften occasionally stalls before sending HTML. For articles with
-    // an empty RSS teaser, retry once on a network/timeout failure. This work
-    // happens in the scheduled collector, not during a visitor's page load.
+    // For Stiften articles without RSS text, a single 26-second attempt works
+    // better than two short attempts that both abort before JFM responds.
+    // The scheduled collector does this work off the visitor's request path.
+    const needsStiftenText = isStiften && (
+      !item.description.trim() ||
+      /ingen selvstændig artikeltekst tilgængelig/i.test(item.description)
+    );
     const fetchArticlePage = (retry = false) => fetch(articleFetchUrl, {
       ...(retry ? { cache: "no-store" as const } : { next: { revalidate: 900 } }),
       redirect: "follow",
@@ -1380,14 +1384,13 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
         "User-Agent": "Mozilla/5.0 (compatible; OELdk/1.0; +https://øl.dk)",
         Accept: "text/html,application/xhtml+xml"
       },
-      signal: AbortSignal.timeout(isStiften ? (retry ? 12000 : 8000) : 3500)
+      signal: AbortSignal.timeout(needsStiftenText ? (retry ? 12000 : 26000) : 3500)
     });
     let response: Response;
     try {
       response = await fetchArticlePage();
     } catch {
-      if (!isStiften || (item.description.trim() &&
-          !/ingen selvstændig artikeltekst tilgængelig/i.test(item.description))) return item;
+      if (!needsStiftenText) return item;
       try {
         response = await fetchArticlePage(true);
       } catch {
@@ -1432,7 +1435,7 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
               "User-Agent": "Mozilla/5.0 (compatible; OELdk/1.0; +https://øl.dk)",
               Accept: "text/html,application/xhtml+xml,*/*"
             },
-            signal: AbortSignal.timeout(retry ? 12000 : 8000)
+            signal: AbortSignal.timeout(needsStiftenText ? (retry ? 12000 : 26000) : 8000)
           });
           let asyncResponse: Response | null = null;
           try {
