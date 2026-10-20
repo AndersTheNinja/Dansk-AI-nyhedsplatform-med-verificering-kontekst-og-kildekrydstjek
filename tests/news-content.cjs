@@ -217,3 +217,16 @@ test('non-Politiken previews remain intact and ambiguous Politiken page chrome i
   const tooShort = 'Den nye artikel. ' + title + ' Foto: presse Gem artiklen Gemt Læst Læs videre for 1 kr.';
   assert.match(api.cleanPublisherTeaser(tooShort, title, 'Politiken'), /Den nye artikel/);
 });
+
+test('TV2 image photo credits are removed without losing the following article text', () => {
+  const api = load();
+  const text = 'Det nye projekt har fået mange besøgende. Foto: Alex Wong / Ritzau Scanpix Kommunen fortæller, at byggeriet står færdigt og borgerne kan benytte faciliteterne.';
+  const cleaned = api.cleanPublisherTeaser(text, 'Nyt byggeri åbner', 'TV2.dk');
+  assert.doesNotMatch(cleaned, /Foto:|Ritzau Scanpix/);
+  assert.match(cleaned, /Kommunen fortæller/);
+});
+test('TV2 clean teaser leaves ordinary credited journalism intact', () => {
+  const api = load();
+  const text = 'Fotojournalisten forklarer, at billederne dokumenterer hændelsen. Politiet undersøger stadig sagen.';
+  assert.equal(api.cleanPublisherTeaser(text, 'Politiet undersøger', 'TV2.dk'), text);
+});
