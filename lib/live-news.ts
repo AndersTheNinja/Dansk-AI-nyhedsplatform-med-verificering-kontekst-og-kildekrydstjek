@@ -1425,16 +1425,27 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
               asyncEndpoint.hostname !== new URL(articleFetchUrl).hostname) {
             throw new Error("Stiften article endpoint was outside the source host");
           }
-          const asyncResponse = await fetch(asyncEndpoint.toString(), {
-            next: { revalidate: 900 },
+          const fetchBody = (retry = false) => fetch(asyncEndpoint.toString(), {
+            ...(retry ? { cache: "no-store" as const } : { next: { revalidate: 900 } }),
             redirect: "follow",
             headers: {
               "User-Agent": "Mozilla/5.0 (compatible; OELdk/1.0; +https://øl.dk)",
               Accept: "text/html,application/xhtml+xml,*/*"
             },
-            signal: AbortSignal.timeout(3500)
+            signal: AbortSignal.timeout(retry ? 12000 : 8000)
           });
-          if (asyncResponse.ok) {
+          let asyncResponse: Response | null = null;
+          try {
+            asyncResponse = await fetchBody();
+          } catch {
+            // Do not repeat slow publisher work for articles with a usable
+            // RSS description. The expensive retry is for missing text only.
+            if (!item.description.trim() ||
+                /ingen selvstændig artikeltekst tilgængelig/i.test(item.description)) {
+              try { asyncResponse = await fetchBody(true); } catch {}
+            }
+          }
+          if (asyncResponse?.ok) {
             stiftenAsyncHtml = await asyncResponse.text();
             articleHtml = `${html}\n${stiftenAsyncHtml}`;
           }
@@ -1453,9 +1464,16 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
     const trustedStiftenAsyncPreview = isStiften
       ? extractJfmAsyncArticleText(stiftenAsyncHtml, item.title)
       : "";
+    // The page's own description is tied to the verified og:title and can be
+    // trusted even if it shares few words with the headline (e.g. opinion).
+    const trustedStiftenMetadata = isStiften && explicitPageTitle &&
+      articleTitleMatchesPage(item.title, html)
+      ? extractMetadataPreview(html)
+      : "";
 
     const preview = isStiften
-      ? (trustedStiftenAsyncPreview.length >= 80 ? trustedStiftenAsyncPreview : [
+      ? (trustedStiftenAsyncPreview.length >= 80 ? trustedStiftenAsyncPreview :
+          trustedStiftenMetadata.length >= 80 ? trustedStiftenMetadata : [
           extractArticleBodyFromJson(articleHtml, item.title, item.description),
           extractScopedArticlePreview(articleHtml, item.title, item.description),
           extractEmbeddedArticlePreview(articleHtml, item.title, item.description),
@@ -1508,6 +1526,8 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
       // scoped to this article, so do not reject it just because the body uses
       // different wording than the headline.
       trustedStiftenAsyncPreview.length >= 80 ||
+      (trustedStiftenMetadata.length >= 80 &&
+        cleanedPreview === cleanPreviewText(trustedStiftenMetadata, item.title)) ||
       similarity(item.title, cleanedPreview) >= (stiftenSeedIsEmpty ? 0.12 : 0.2) ||
       (!stiftenSeedIsEmpty && similarity(item.description, cleanedPreview) >= 0.3)
     );
