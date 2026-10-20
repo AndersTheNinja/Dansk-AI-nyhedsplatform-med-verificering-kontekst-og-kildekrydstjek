@@ -467,6 +467,7 @@ function cleanPreviewText(value = "", title = "") {
 
 function cleanPublisherTeaser(value: string, title: string, source: string) {
   let text = cleanPreviewText(value, title);
+  if (/^TV2(?:\.dk)?\b/i.test(source)) return cleanTV2PhotoCaptions(text, title);
   if (!/^politiken\b/i.test(source)) return text;
 
   // Some Politiken pages include this sequence in the public visible text:
@@ -501,6 +502,15 @@ function cleanPublisherTeaser(value: string, title: string, source: string) {
     }
   }
   return cleanPreviewText(text, title);
+}
+
+function cleanTV2PhotoCaptions(value: string, title: string) {
+  const text = cleanPreviewText(value, title);
+  // Only remove a clearly delimited photograph credit in the middle of
+  // editorial prose. Retain the image caption itself when its boundary is
+  // unclear, so we never discard a legitimate article sentence.
+  const credit = /\b(?:Arkivfoto\.\s+)?(?:Foto:\s*\/?\s*[^.!?]{2,100}?(?:Ritzau Scanpix|Getty Images|Reuters|Instagram)|[^.!?]{2,100}?\s*\/\s*Ritzau Scanpix)\b\.?\s*/gi;
+  return text.replace(credit, " ").replace(/\s+/g, " ").trim();
 }
 
 function isBoilerplatePreview(value: string) {
