@@ -230,3 +230,49 @@ test('TV2 clean teaser leaves ordinary credited journalism intact', () => {
   const text = 'Fotojournalisten forklarer, at billederne dokumenterer hændelsen. Politiet undersøger stadig sagen.';
   assert.equal(api.cleanPublisherTeaser(text, 'Politiet undersøger', 'TV2.dk'), text);
 });
+
+
+test('Stiften retries a stalled public article when RSS supplies no text', async () => {
+  const title = 'I kan ikke trylle milliarder frem - men letbane-aftalen forpligter stadig';
+  const url = 'https://stiften.dk/debat/i-kan-ikke-trylle-milliarder-frem-men-letbane-aftalen-forpligter-stadig?rss';
+  const calls = [];
+  const api = load(async (requestUrl, options = {}) => {
+    calls.push({ url: String(requestUrl), options });
+    if (String(requestUrl).includes('/article-body')) {
+      return { ok: true, text: async () =>
+        '<p>En aftale om letbanens fremtid forpligter stadig de involverede parter. Borgerne bør få en forklaring på de politiske beslutninger.</p>' +
+        '<p>Spørgsmålet handler ikke kun om økonomien, men også om hvordan kommunen prioriterer sine kommende investeringer.</p>' };
+    }
+    if (calls.length === 1) throw new Error('Simulated publisher timeout');
+    return { ok: true, text: async () =>
+      '<meta property="og:title" content="' + title + '">' +
+      '<div data-load-async-url="/article-body"></div>' };
+  });
+  const article = await api.enrichPreview({
+    ...item, title, link: url, source: 'Stiften.dk', category: 'Aarhus', description: ''
+  });
+  assert.equal(calls.length, 3);
+  assert.doesNotMatch(calls[1].url, /\\?rss/);
+  assert.equal(calls[1].options.cache, 'no-store');
+  assert.match(article.description, /aftale om letbanens fremtid/);
+  assert.match(article.description, /kommunen prioriterer/);
+});
+
+test('Stiften keeps the RSS teaser when article fetch fails instead of inventing content', async () => {
+  const teaser = 'Kommunen forventer at arbejde videre med kollektiv trafik i den kommende tid.';
+  let calls = 0;
+  const api = load(async () => { calls++; throw new Error('Simulated publisher timeout'); });
+  const original = { ...item, link: 'https://stiften.dk/debat/ny-artikel?rss', source: 'Stiften.dk', description: teaser };
+  const article = await api.enrichPreview(original);
+  assert.equal(calls, 1);
+  assert.equal(article.description, teaser);
+});
+
+test('Stiften does not retry an explicit publisher HTTP rejection', async () => {
+  let calls = 0;
+  const api = load(async () => { calls++; return { ok: false, status: 403 }; });
+  const original = { ...item, link: 'https://stiften.dk/debat/ny-artikel?rss', source: 'Stiften.dk', description: '' };
+  const article = await api.enrichPreview(original);
+  assert.equal(calls, 1);
+  assert.equal(article.description, '');
+});
