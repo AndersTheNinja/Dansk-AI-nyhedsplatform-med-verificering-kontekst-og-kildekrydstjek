@@ -264,3 +264,35 @@ export async function getAndersWinnerskjoldArchiveStories(): Promise<Story[]> {
     return [];
   }
 }
+
+/** Read the latest precomputed feed. Never return stale news as current. */
+export async function getNewsSnapshot(): Promise<{
+  stories: Story[]; totalCount: number; generatedAt: string; availableStories: number
+} | null> {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY;
+  if (!url || !key) return null;
+
+  try {
+    const response = await fetch(`${url}/rest/v1/rpc/oeldk_latest_news_snapshot`, {
+      method: "POST",
+      headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: "{}",
+      cache: "no-store",
+      signal: AbortSignal.timeout(3500)
+    });
+    if (!response.ok) return null;
+    const value = await response.json();
+    if (!value || !Array.isArray(value.stories) || value.stories.length < 5) return null;
+    const created = Date.parse(value.generatedAt);
+    if (!Number.isFinite(created) || Date.now() - created > 20 * 60 * 1000 || created > Date.now() + 120000) return null;
+    return {
+      stories: value.stories,
+      totalCount: Number(value.totalCount) || value.stories.length,
+      generatedAt: value.generatedAt,
+      availableStories: value.stories.length
+    };
+  } catch {
+    return null;
+  }
+}
