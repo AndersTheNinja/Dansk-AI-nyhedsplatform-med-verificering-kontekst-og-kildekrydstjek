@@ -1370,15 +1370,30 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
       } catch {}
     }
 
-    const response = await fetch(articleFetchUrl, {
-      next: { revalidate: 900 },
+    // JFM/Stiften occasionally stalls before sending HTML. For articles with
+    // an empty RSS teaser, retry once on a network/timeout failure. This work
+    // happens in the scheduled collector, not during a visitor's page load.
+    const fetchArticlePage = (retry = false) => fetch(articleFetchUrl, {
+      ...(retry ? { cache: "no-store" as const } : { next: { revalidate: 900 } }),
       redirect: "follow",
       headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; OELdk/1.0; +https://vercel.app)",
+        "User-Agent": "Mozilla/5.0 (compatible; OELdk/1.0; +https://øl.dk)",
         Accept: "text/html,application/xhtml+xml"
       },
-      signal: AbortSignal.timeout(3500)
+      signal: AbortSignal.timeout(isStiften ? (retry ? 12000 : 8000) : 3500)
     });
+    let response: Response;
+    try {
+      response = await fetchArticlePage();
+    } catch {
+      if (!isStiften || (item.description.trim() &&
+          !/ingen selvstændig artikeltekst tilgængelig/i.test(item.description))) return item;
+      try {
+        response = await fetchArticlePage(true);
+      } catch {
+        return item;
+      }
+    }
 
     if (!response.ok) return item;
     const html = await response.text();
