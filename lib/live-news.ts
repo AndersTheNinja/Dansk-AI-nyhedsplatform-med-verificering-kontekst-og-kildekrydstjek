@@ -466,8 +466,8 @@ function cleanPreviewText(value = "", title = "") {
 }
 
 function cleanPublisherTeaser(value: string, title: string, source: string) {
+  if (/^TV2(?:\.dk)?\b/i.test(source)) return cleanTV2PhotoCaptions(value, title);
   let text = cleanPreviewText(value, title);
-  if (/^TV2(?:\.dk)?\b/i.test(source)) return cleanTV2PhotoCaptions(text, title);
   if (!/^politiken\b/i.test(source)) return text;
 
   // Some Politiken pages include this sequence in the public visible text:
@@ -505,12 +505,12 @@ function cleanPublisherTeaser(value: string, title: string, source: string) {
 }
 
 function cleanTV2PhotoCaptions(value: string, title: string) {
-  const text = cleanPreviewText(value, title);
-  // Only remove a clearly delimited photograph credit in the middle of
-  // editorial prose. Retain the image caption itself when its boundary is
-  // unclear, so we never discard a legitimate article sentence.
-  const credit = /\b(?:Arkivfoto\.\s+)?(?:Foto:\s*\/?\s*[^.!?]{2,100}?(?:Ritzau Scanpix|Getty Images|Reuters|Instagram)|[^.!?]{2,100}?\s*\/\s*Ritzau Scanpix)\b\.?\s*/gi;
-  return text.replace(credit, " ").replace(/\s+/g, " ").trim();
+  // Remove only credits with a recognizable end marker BEFORE generic cleaning.
+  // Otherwise the generic cleaner can consume the following editorial sentence.
+  const withoutCredits = value
+    .replace(/\bFoto:\s*[^.!?]{2,100}?\s*\/\s*(?:Ritzau Scanpix|Getty Images|Reuters)\b/gi, " ")
+    .replace(/\bArkivfoto\.\s+[^.!?]{2,100}?\s*\/\s*Ritzau Scanpix\b/gi, " ");
+  return cleanPreviewText(withoutCredits, title);
 }
 
 function isBoilerplatePreview(value: string) {
