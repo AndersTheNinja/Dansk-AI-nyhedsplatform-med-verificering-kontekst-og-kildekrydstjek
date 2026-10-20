@@ -276,3 +276,44 @@ test('Stiften does not retry an explicit publisher HTTP rejection', async () => 
   assert.equal(calls, 1);
   assert.equal(article.description, '');
 });
+
+
+test('Stiften verified article metadata can describe a story without repeating the headline', async () => {
+  const title = 'I kan ikke trylle milliarder frem - men letbane-aftalen forpligter stadig';
+  const description = 'Jeg deltog selv i aftalen om grøn kollektiv trafik i Aarhus. Vi har et ansvar for at sikre en ordentlig forbindelse til uddannelse og arbejdspladser.';
+  const html = '<meta property="og:title" content="' + title + '">' +
+    '<meta property="og:description" content="' + description + '">';
+  const api = load(async () => ({ ok: true, text: async () => html }));
+  const news = await api.enrichPreview({ ...item, title, description: '', source: 'Stiften.dk', link: 'https://stiften.dk/debat/letbane-aftalen?rss' });
+  assert.equal(news.description, description);
+});
+
+test('Stiften metadata from a different article is never accepted', async () => {
+  const api = load(async () => ({ ok: true, text: async () =>
+    '<meta property="og:title" content="Helt anden historie om udlandet">' +
+    '<meta property="og:description" content="Den fremmede nyhedsartikel beskriver en anden hændelse."'
+  }));
+  const news = await api.enrichPreview({ ...item, description: '', source: 'Stiften.dk', link: 'https://stiften.dk/debat/letbane-aftalen?rss' });
+  assert.equal(news.description, '');
+});
+
+test('Stiften retries its article-body endpoint when public text is otherwise missing', async () => {
+  const urls = [];
+  const api = load(async (url, options) => {
+    urls.push({ url: String(url), cache: options?.cache });
+    if (!String(url).includes('jfm-load-article-content')) {
+      return { ok: true, text: async () =>
+        '<meta property="og:title" content="Aarhus åbner svømmehal ved havnen">' +
+        '<div data-load-async-url="/jfm-load-article-content/abc123"></div>' };
+    }
+    if (urls.length === 2) throw new Error('Simulated article-body timeout');
+    return { ok: true, text: async () =>
+      '<p>Kommunen åbner den nye svømmehal ved havnen til sommer, og offentligheden inviteres til arrangementet.</p>' +
+      '<p>Foreninger og borgere får adgang til den store svømmehal, som også rummer aktiviteter for børn.</p>' };
+  });
+  const news = await api.enrichPreview({ ...item, description: '', source: 'Stiften.dk', link: 'https://stiften.dk/aarhus/ny-svoemmehal?rss' });
+  assert.equal(urls.length, 3);
+  assert.equal(urls[2].cache, 'no-store');
+  assert.match(news.description, /Foreninger og borgere/);
+  assert.doesNotMatch(news.description, /kan endnu ikke/);
+});
