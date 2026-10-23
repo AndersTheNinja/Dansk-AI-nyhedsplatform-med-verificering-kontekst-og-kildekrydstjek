@@ -417,3 +417,20 @@ test('Berlingske web text enriches the identical RSS URL while retaining its new
   assert.equal(rows[0].method, 'WEB');
   assert.equal(rows[2].description, rss.description);
 });
+
+
+test('Journalisten shows a short introduction with complete sentences instead of its entire WordPress article', () => {
+  const api = load();
+  const sentence = 'Prisen på at omdele blade er steget, og flere organisationer skærer derfor i deres udgivelser.';
+  const value = Array(40).fill(sentence).join(' ');
+  const result = api.cleanPublisherTeaser(value, 'Blade lukker', 'Journalisten');
+  assert.equal(result, Array(4).fill(sentence).join(' '));
+  assert.ok(result.length <= 750);
+  assert.ok(api.cleanPublisherTeaser(value, 'Blade lukker', 'Berlingske').length > 750);
+});
+
+test('Journalisten removes the automatic WordPress attribution without deleting editorial sentences', () => {
+  const api = load();
+  const editorial = 'Journalisten har undersøgt udviklingen. Flere blade har fået dyrere distribution.';
+  assert.equal(api.cleanPublisherTeaser(editorial + ' Indlægget Blade lukker blev først udgivet på Journalisten .', 'Blade lukker', 'Journalisten'), editorial);
+});
