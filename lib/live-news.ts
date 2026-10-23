@@ -1882,16 +1882,8 @@ export async function getLiveStories(options?: { fast?: boolean; limit?: number 
     if (!summary) {
       summary = `${publisherName(lead.source)} har publiceret historien “${lead.title}”. ØL.dk har endnu ikke kunnet hente et sikkert tekstuddrag fra selve artiklen.`;
     }
-    if (summary.length > 700) {
-      const clipped = summary.slice(0, 700);
-      const sentenceMatches = Array.from(clipped.matchAll(/[.!?](?:["”’])?(?=\s|$)/g));
-      const lastSentence = sentenceMatches.at(-1);
-      if (lastSentence?.index !== undefined && lastSentence.index > 180) {
-        summary = clipped.slice(0, lastSentence.index + lastSentence[0].length).trim();
-      } else {
-        summary = clipped.replace(/\s+\S*$/, "").trim() + "…";
-      }
-    }
+    // Preserve the fetched editorial excerpt; the feed handles visual collapse.
+
 
     return {
       id: `live:${lead.id}`,
