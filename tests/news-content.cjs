@@ -5,7 +5,7 @@ const vm = require('node:vm');
 const ts = require('typescript');
 
 function load(fetch, env = {}) {
-  const source = fs.readFileSync('lib/live-news.ts', 'utf8') + '\nexport { fetchFeed, enrichTV2Item, enrichBorsenItem, parseNewsDate, enrichPreview, extractScopedArticlePreview, articleMentionText, extractPublicPreview, extractPublishedDateFromHtml, extractArticleBodyFromJson, isFresh, cleanPublisherTeaser };';
+  const source = fs.readFileSync('lib/live-news.ts', 'utf8') + '\nexport { mergeBerlingskeWebsiteText, parseBerlingskeWebArticle, fetchBerlingskeWebsite, fetchFeed, enrichTV2Item, enrichBorsenItem, parseNewsDate, enrichPreview, extractScopedArticlePreview, articleMentionText, extractPublicPreview, extractPublishedDateFromHtml, extractArticleBodyFromJson, isFresh, cleanPublisherTeaser };';
   const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
   const context = { exports: {}, process: { env }, fetch, AbortSignal, URL, console, require: (id) => id === 'fast-xml-parser' ? require(id) : { persistStories: async () => {} } };
   vm.runInNewContext(compiled, context);
@@ -387,4 +387,33 @@ test('Berlingske uses the fresh scheduled RSS cache without contacting the rejec
   assert.equal(urls.length, 1);
   assert.match(urls[0], /oeldk_berlingske_rss$/);
   assert.equal(rows[0].source, 'Berlingske');
+});
+
+
+test('free Berlingske website article preserves editorial paragraphs and excludes related widgets', () => {
+  const api = load();
+  const raw = { url: 'https://www.berlingske.dk/danmark/ny-artikel', title: 'En ny artikel', publicationDate: '2026-10-23T18:52:48.000Z', body: [
+    { type: 'ParagraphNode', children: [{ type: 'TextNode', value: 'Dette er den gratis artikels første afsnit, der fortæller om en aktuel begivenhed. ' }] },
+    { type: 'RelatedArticleNode', children: [{ type: 'TextNode', value: 'En uvedkommende anbefaling' }] },
+    { type: 'ParagraphNode', children: [{ type: 'TextNode', value: 'Anders Winnerskjold udtaler sig om begivenheden i det næste afsnit.' }] }
+  ] };
+  const row = api.parseBerlingskeWebArticle(raw);
+  assert.equal(row.method, 'WEB');
+  assert.match(row.description, /næste afsnit/);
+  assert.doesNotMatch(row.description, /uvedkommende/);
+  assert.equal(row.mentions[0], 'anders-winnerskjold');
+  assert.equal(api.parseBerlingskeWebArticle({ ...raw, url: 'https://other.example/danmark/nyhed' }), null);
+  assert.equal(api.parseBerlingskeWebArticle({ ...raw, publicationDate: '' }), null);
+});
+
+
+test('Berlingske web text enriches the identical RSS URL while retaining its newer timestamp', () => {
+  const api = load();
+  const rss = { ...item, source: 'Berlingske', link: 'https://www.berlingske.dk/danmark/nyhed?referrer=RSS', pubDate: '2026-10-23T20:00:00Z' };
+  const web = { ...rss, method: 'WEB', link: 'https://www.berlingske.dk/danmark/nyhed', description: 'Den længere tekst fra den samme gratis artikel indeholder alle de relevante oplysninger.', pubDate: '2026-10-23T19:00:00Z' };
+  const rows = api.mergeBerlingskeWebsiteText([rss, web, { ...rss, link: 'https://www.berlingske.dk/danmark/anden' }]);
+  assert.equal(rows[0].description, web.description);
+  assert.equal(rows[0].pubDate, rss.pubDate);
+  assert.equal(rows[0].method, 'WEB');
+  assert.equal(rows[2].description, rss.description);
 });
