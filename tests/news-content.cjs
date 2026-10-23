@@ -5,7 +5,7 @@ const vm = require('node:vm');
 const ts = require('typescript');
 
 function load(fetch) {
-  const source = fs.readFileSync('lib/live-news.ts', 'utf8') + '\nexport { enrichTV2Item, enrichBorsenItem, parseNewsDate, enrichPreview, extractScopedArticlePreview, articleMentionText, extractPublicPreview, extractPublishedDateFromHtml, extractArticleBodyFromJson, isFresh, cleanPublisherTeaser };';
+  const source = fs.readFileSync('lib/live-news.ts', 'utf8') + '\nexport { fetchFeed, enrichTV2Item, enrichBorsenItem, parseNewsDate, enrichPreview, extractScopedArticlePreview, articleMentionText, extractPublicPreview, extractPublishedDateFromHtml, extractArticleBodyFromJson, isFresh, cleanPublisherTeaser };';
   const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
   const context = { exports: {}, fetch, AbortSignal, URL, console, require: (id) => id === 'fast-xml-parser' ? require(id) : { persistStories: async () => {} } };
   vm.runInNewContext(compiled, context);
@@ -353,4 +353,25 @@ test('Stiften recovers article body after a timeout even with a short RSS teaser
   assert.equal(calls, 3);
   assert.match(news.description, /familier og foreninger/);
   assert.ok(news.mentions.includes('anders-winnerskjold'));
+});
+
+
+test('Berlingske retries its legacy feed when the primary URL returns HTML with HTTP 200', async () => {
+  const urls = [];
+  const api = load(async (url) => {
+    urls.push(url);
+    return { ok: true, text: async () => urls.length === 1 ? '<html><h1>Unavailable</h1></html>' : '<rss><channel><item><title>En aktuel nyhed</title><link>https://www.berlingske.dk/danmark/nyhed</link><description>Et redaktionelt uddrag fra Berlingske.</description></item></channel></rss>' };
+  });
+  const stories = await api.fetchFeed({ name: 'Berlingske', category: 'Danmark', url: 'https://www.berlingske.dk/next-api/feeds/alle' });
+  assert.equal(urls.length, 2);
+  assert.equal(urls[1], 'https://www.berlingske.dk/content/rss');
+  assert.equal(stories.length, 1);
+  assert.equal(stories[0].source, 'Berlingske');
+});
+
+test('Berlingske reports an invalid feed after one fallback rather than returning silent success', async () => {
+  let calls = 0;
+  const api = load(async () => { calls++; return { ok: true, text: async () => '<html>Unavailable</html>' }; });
+  await assert.rejects(api.fetchFeed({ name: 'Berlingske', category: 'Danmark', url: 'https://www.berlingske.dk/next-api/feeds/alle' }), /did not return RSS or Atom/);
+  assert.equal(calls, 2);
 });
