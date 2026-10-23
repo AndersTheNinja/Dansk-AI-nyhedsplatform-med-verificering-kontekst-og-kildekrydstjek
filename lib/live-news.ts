@@ -836,27 +836,49 @@ function categoryWhy(category: Category) {
 async function fetchFeed(feed: FeedConfig, timeoutMs = 7000, retry = false): Promise<NewsItem[]> {
   const isBerlingske = feed.name === "Berlingske";
   const fallback = () => fetchFeed({ ...feed, url: "https://www.berlingske.dk/content/rss" }, timeoutMs, true);
-  let response: Response;
-  try {
-    response = await fetch(feed.url, {
-    next: { revalidate: 300 },
-    headers: {
-      "User-Agent": "Mozilla/5.0 (compatible; OELdk/1.0; +https://øl.dk)",
-      Accept: "application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.8"
-    },
-    signal: AbortSignal.timeout(isBerlingske && timeoutMs > 2200 ? 15000 : timeoutMs)
-    });
-  } catch (error) {
-    if (isBerlingske && !retry) return fallback();
-    throw error;
+  let xml = "";
+  // The scheduled database collector can reach the public RSS feed when the
+  // publisher rejects requests from the web host. It exposes only this fixed
+  // feed, and discards responses older than 20 minutes.
+  if (isBerlingske && !retry && process.env.SUPABASE_URL && process.env.SUPABASE_PUBLISHABLE_KEY) {
+    try {
+      const key = process.env.SUPABASE_PUBLISHABLE_KEY;
+      const cached = await fetch(`${process.env.SUPABASE_URL}/rest/v1/rpc/oeldk_berlingske_rss`, {
+        method: "POST",
+        headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+        body: "{}",
+        cache: "no-store",
+        signal: AbortSignal.timeout(4000)
+      });
+      if (cached.ok) {
+        const value = await cached.json();
+        if (typeof value === "string" && value.includes("<rss ")) xml = value;
+      }
+    } catch {}
   }
+  if (!xml) {
+    let response: Response;
+    try {
+      response = await fetch(feed.url, {
+      next: { revalidate: 300 },
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; OELdk/1.0; +https://øl.dk)",
+        Accept: "application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.8"
+      },
+      signal: AbortSignal.timeout(isBerlingske && timeoutMs > 2200 ? 15000 : timeoutMs)
+      });
+    } catch (error) {
+      if (isBerlingske && !retry) return fallback();
+      throw error;
+    }
 
-  if (!response.ok) {
-    if (isBerlingske && !retry && response.status >= 500) return fallback();
-    throw new Error(`${feed.name} returned ${response.status}`);
+    if (!response.ok) {
+      if (isBerlingske && !retry && response.status >= 500) return fallback();
+      throw new Error(`${feed.name} returned ${response.status}`);
+    }
+
+    xml = await response.text();
   }
-
-  const xml = await response.text();
   const parsed = parser.parse(xml);
 
   const rssItems = parsed?.rss?.channel?.item;
