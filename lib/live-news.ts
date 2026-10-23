@@ -1748,6 +1748,64 @@ async function fetchTV2Website(): Promise<NewsItem[]> {
   return Promise.all(items.slice(0, 100).map(enrichTV2Item));
 }
 
+function berlingskeTextNodes(value: unknown): string {
+  if (Array.isArray(value)) return value.map(berlingskeTextNodes).join("");
+  if (!value || typeof value !== "object") return "";
+  const node = value as Record<string, unknown>;
+  if (node.type === "TextNode") return typeof node.value === "string" ? node.value : "";
+  return berlingskeTextNodes(node.children);
+}
+
+function parseBerlingskeWebArticle(raw: Record<string, unknown>): NewsItem | null {
+  const link = String(raw.url || "");
+  if (!/^https:\/\/www\.berlingske\.dk\/[a-z-]+\/[^/?#]+$/.test(link)) return null;
+  const title = cleanPreviewText(String(raw.title || ""));
+  const pubDate = String(raw.publicationDate || "");
+  if (!title || !parseNewsDate(pubDate)) return null;
+  const paragraphs = Array.isArray(raw.body) ? raw.body
+    .filter((node) => node && node.type === "ParagraphNode")
+    .map((node) => cleanPreviewText(berlingskeTextNodes(node), title))
+    .filter(Boolean) : [];
+  const description = paragraphs.join(" ") || cleanPreviewText(berlingskeTextNodes(raw.subheadline), title);
+  if (description.length < 50) return null;
+  const assets = Array.isArray(raw.leadAssets) ? raw.leadAssets : [];
+  const imageUrl = assets.flatMap((asset) => Array.isArray(asset.assets) ? asset.assets : [])
+    .find((asset) => typeof asset.url === "string" && /image\//.test(String(asset.contentType)))?.url;
+  return {
+    id: `Berlingske-web:${link}`, source: "Berlingske", method: "WEB", link, title,
+    description, pubDate, imageUrl,
+    category: /\/(?:business|virksomheder|oekonomi|penge)\//.test(link) ? "Erhverv" : "Danmark",
+    mentions: /\bwinners(?:kjold|kiold)\b/i.test(description) ? ["anders-winnerskjold"] : []
+  };
+}
+
+function mergeBerlingskeWebsiteText(items: NewsItem[]): NewsItem[] {
+  const canonical = (link: string) => { try { const u = new URL(link); return u.origin + u.pathname.replace(/\/$/, ""); } catch { return link; } };
+  const web = new Map(items.filter((item) => item.source === "Berlingske" && item.method === "WEB")
+    .map((item) => [canonical(item.link), item]));
+  return items.map((item) => {
+    if (item.source !== "Berlingske" || item.method !== "RSS") return item;
+    const article = web.get(canonical(item.link));
+    return article && article.description.length > item.description.length
+      ? { ...item, description: article.description, imageUrl: article.imageUrl || item.imageUrl, mentions: article.mentions, method: "WEB" }
+      : item;
+  });
+}
+
+async function fetchBerlingskeWebsite(): Promise<NewsItem[]> {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY;
+  if (!url || !key) return [];
+  const response = await fetch(`${url}/rest/v1/rpc/oeldk_berlingske_web`, {
+    method: "POST", headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    body: "{}", cache: "no-store", signal: AbortSignal.timeout(5000)
+  });
+  if (!response.ok) throw new Error(`Berlingske website collection returned ${response.status}`);
+  const rows = await response.json();
+  if (!Array.isArray(rows)) return [];
+  return rows.map(parseBerlingskeWebArticle).filter((item): item is NewsItem => item !== null);
+}
+
 async function fetchBorsenWebsite(): Promise<NewsItem[]> {
   const response = await fetch("https://borsen.dk/", {
     next: { revalidate: 300 },
@@ -1816,6 +1874,7 @@ export async function getLiveStories(options?: { fast?: boolean; limit?: number 
           ...feeds.map((feed) => fetchFeed(feed)),
           fetchMigogAarhusApi(),
           fetchBorsenWebsite(),
+          fetchBerlingskeWebsite(),
           fetchTV2Website()
         ]
   );
@@ -1827,11 +1886,11 @@ export async function getLiveStories(options?: { fast?: boolean; limit?: number 
     }
   });
 
-  const fetched = results
+  const fetched = mergeBerlingskeWebsiteText(results
     .flatMap((result) => (result.status === "fulfilled" ? result.value : []))
     .filter((item) => isFresh(item.pubDate))
     .filter((item) => isVisiblePublisher(item.source))
-    .filter((item) => !isLiveCoverage(item));
+    .filter((item) => !isLiveCoverage(item)));
 
   if (!fetched.length) return [];
 
@@ -1849,7 +1908,11 @@ export async function getLiveStories(options?: { fast?: boolean; limit?: number 
       const orderedCluster = [...cluster].sort((a, b) => {
         const aTime = a.pubDate ? parseNewsDate(a.pubDate)?.getTime() ?? 0 : 0;
         const bTime = b.pubDate ? parseNewsDate(b.pubDate)?.getTime() ?? 0 : 0;
-        return bTime - aTime;
+        const byDate = bTime - aTime;
+        if (byDate) return byDate;
+        // For the same publisher and publication time, keep the fuller text
+        // from its free web article instead of the short RSS teaser.
+        return a.source === b.source ? b.description.length - a.description.length : 0;
       });
       const chronologicalLead = orderedCluster[0];
       // Keep the headline, body and URL from the same article. Clustering
