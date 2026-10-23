@@ -4,10 +4,10 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const ts = require('typescript');
 
-function load(fetch) {
+function load(fetch, env = {}) {
   const source = fs.readFileSync('lib/live-news.ts', 'utf8') + '\nexport { fetchFeed, enrichTV2Item, enrichBorsenItem, parseNewsDate, enrichPreview, extractScopedArticlePreview, articleMentionText, extractPublicPreview, extractPublishedDateFromHtml, extractArticleBodyFromJson, isFresh, cleanPublisherTeaser };';
   const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
-  const context = { exports: {}, fetch, AbortSignal, URL, console, require: (id) => id === 'fast-xml-parser' ? require(id) : { persistStories: async () => {} } };
+  const context = { exports: {}, process: { env }, fetch, AbortSignal, URL, console, require: (id) => id === 'fast-xml-parser' ? require(id) : { persistStories: async () => {} } };
   vm.runInNewContext(compiled, context);
   return context.exports;
 }
@@ -374,4 +374,17 @@ test('Berlingske reports an invalid feed after one fallback rather than returnin
   const api = load(async () => { calls++; return { ok: true, text: async () => '<html>Unavailable</html>' }; });
   await assert.rejects(api.fetchFeed({ name: 'Berlingske', category: 'Danmark', url: 'https://www.berlingske.dk/next-api/feeds/alle' }), /did not return RSS or Atom/);
   assert.equal(calls, 2);
+});
+
+
+test('Berlingske uses the fresh scheduled RSS cache without contacting the rejecting web endpoint', async () => {
+  const urls = [];
+  const api = load(async (url) => {
+    urls.push(url);
+    return { ok: true, json: async () => '<rss version="2.0"><channel><item><title>Aktuel Berlingske-nyhed</title><link>https://www.berlingske.dk/danmark/nyhed</link></item></channel></rss>' };
+  }, { SUPABASE_URL: 'https://example.supabase.co', SUPABASE_PUBLISHABLE_KEY: 'test-publishable' });
+  const rows = await api.fetchFeed({ name: 'Berlingske', category: 'Danmark', url: 'https://www.berlingske.dk/next-api/feeds/alle' });
+  assert.equal(urls.length, 1);
+  assert.match(urls[0], /oeldk_berlingske_rss$/);
+  assert.equal(rows[0].source, 'Berlingske');
 });
