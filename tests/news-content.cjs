@@ -317,3 +317,14 @@ test('Stiften retries its article-body endpoint when public text is otherwise mi
   assert.match(news.description, /Foreninger og borgere/);
   assert.doesNotMatch(news.description, /kan endnu ikke/);
 });
+
+
+test('feed retains available editorial text beyond 700 characters', async () => {
+  const description = 'Kommunen offentliggør flere detaljer om den nye svømmehal. '.repeat(20) + 'Til sidst beskrives åbningstiderne for familier.';
+  const published = new Date(Date.now() - 60000).toUTCString();
+  const api = load(async (url) => ({ ok: true, text: async () => url.includes('allenyheder') ? `<rss><channel><item><title>${item.title}</title><link>https://dr.dk/long-article</link><pubDate>${published}</pubDate><description>${description}</description></item></channel></rss>` : '<rss><channel></channel></rss>' }));
+  const stories = await api.getLiveStories({ fast: true });
+  assert.equal(stories.length, 1);
+  assert.ok(stories[0].summary.length > 700);
+  assert.match(stories[0].summary, /Til sidst beskrives åbningstiderne for familier/);
+});
