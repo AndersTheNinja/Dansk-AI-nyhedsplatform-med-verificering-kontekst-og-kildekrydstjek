@@ -1370,11 +1370,11 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
       } catch {}
     }
 
-    // For Stiften articles without RSS text, a single 26-second attempt works
+    // For Stiften articles with missing or very short RSS text, a 26-second attempt works
     // better than two short attempts that both abort before JFM responds.
     // The scheduled collector does this work off the visitor's request path.
     const needsStiftenText = isStiften && (
-      !item.description.trim() ||
+      item.description.trim().length < 180 ||
       /ingen selvstændig artikeltekst tilgængelig/i.test(item.description)
     );
     const fetchArticlePage = (retry = false) => fetch(articleFetchUrl, {
@@ -1442,9 +1442,8 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
             asyncResponse = await fetchBody();
           } catch {
             // Do not repeat slow publisher work for articles with a usable
-            // RSS description. The expensive retry is for missing text only.
-            if (!item.description.trim() ||
-                /ingen selvstændig artikeltekst tilgængelig/i.test(item.description)) {
+            // RSS description. Retry missing and very short excerpts.
+            if (needsStiftenText) {
               try { asyncResponse = await fetchBody(true); } catch {}
             }
           }
