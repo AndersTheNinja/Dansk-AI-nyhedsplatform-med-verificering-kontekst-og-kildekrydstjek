@@ -106,7 +106,7 @@ const feeds: FeedConfig[] = [
   },
   {
     name: "Berlingske",
-    url: "https://www.berlingske.dk/content/rss",
+    url: "https://www.berlingske.dk/next-api/feeds/alle",
     category: "Danmark"
   },
   {
@@ -833,17 +833,26 @@ function categoryWhy(category: Category) {
   }
 }
 
-async function fetchFeed(feed: FeedConfig, timeoutMs = 7000): Promise<NewsItem[]> {
-  const response = await fetch(feed.url, {
+async function fetchFeed(feed: FeedConfig, timeoutMs = 7000, retry = false): Promise<NewsItem[]> {
+  const isBerlingske = feed.name === "Berlingske";
+  const fallback = () => fetchFeed({ ...feed, url: "https://www.berlingske.dk/content/rss" }, timeoutMs, true);
+  let response: Response;
+  try {
+    response = await fetch(feed.url, {
     next: { revalidate: 300 },
     headers: {
       "User-Agent": "Mozilla/5.0 (compatible; OELdk/1.0; +https://øl.dk)",
       Accept: "application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.8"
     },
-    signal: AbortSignal.timeout(timeoutMs)
-  });
+    signal: AbortSignal.timeout(isBerlingske && timeoutMs > 2200 ? 15000 : timeoutMs)
+    });
+  } catch (error) {
+    if (isBerlingske && !retry) return fallback();
+    throw error;
+  }
 
   if (!response.ok) {
+    if (isBerlingske && !retry && response.status >= 500) return fallback();
     throw new Error(`${feed.name} returned ${response.status}`);
   }
 
@@ -854,6 +863,11 @@ async function fetchFeed(feed: FeedConfig, timeoutMs = 7000): Promise<NewsItem[]
   const atomItems = parsed?.feed?.entry;
   const rawItems = rssItems ?? atomItems ?? [];
   const items = Array.isArray(rawItems) ? rawItems : rawItems ? [rawItems] : [];
+  // A publisher error page can return HTTP 200. Do not accept it as an empty feed.
+  if (!parsed?.rss?.channel && !parsed?.feed) {
+    if (isBerlingske && !retry) return fallback();
+    throw new Error(`${feed.name} did not return RSS or Atom`);
+  }
 
   return items.slice(0, 500).map((raw: unknown, index: number) => {
     const item = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
@@ -1783,6 +1797,13 @@ export async function getLiveStories(options?: { fast?: boolean; limit?: number 
           fetchTV2Website()
         ]
   );
+
+  results.forEach((result, index) => {
+    if (result.status === "rejected") {
+      const source = (fast ? fastFeeds : feeds)[index]?.name || "Website source";
+      console.warn("News source fetch failed", source, String(result.reason));
+    }
+  });
 
   const fetched = results
     .flatMap((result) => (result.status === "fulfilled" ? result.value : []))
