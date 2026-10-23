@@ -468,6 +468,21 @@ function cleanPreviewText(value = "", title = "") {
 function cleanPublisherTeaser(value: string, title: string, source: string) {
   if (/^TV2(?:\.dk)?\b/i.test(source)) return cleanTV2PhotoCaptions(value, title);
   let text = cleanPreviewText(value, title);
+  if (/^journalisten\b/i.test(source)) {
+    text = text.replace(/\s*Indlægget\s+[\s\S]*?blev først udgivet på\s+Journalisten\s*\.?\s*$/i, "").trim();
+    // WordPress includes the entire article in content:encoded. Show a short
+    // introduction for this publisher, ending at a sentence boundary.
+    const sentences = Array.from(new Intl.Segmenter("da", { granularity: "sentence" }).segment(text), (part) => part.segment.trim());
+    const excerpt: string[] = [];
+    for (const sentence of sentences) {
+      if (excerpt.length >= 4 || [...excerpt, sentence].join(" ").length > 750) break;
+      excerpt.push(sentence);
+    }
+    if (excerpt.length) return excerpt.join(" ");
+    if (text.length <= 750) return text;
+    const prefix = text.slice(0, 747);
+    return prefix.slice(0, prefix.lastIndexOf(" ")).trimEnd() + "…";
+  }
   if (!/^politiken\b/i.test(source)) return text;
 
   // Some Politiken pages include this sequence in the public visible text:
