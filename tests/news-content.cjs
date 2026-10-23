@@ -259,7 +259,7 @@ test('Stiften retries a stalled public article when RSS supplies no text', async
 });
 
 test('Stiften keeps the RSS teaser when article fetch fails instead of inventing content', async () => {
-  const teaser = 'Kommunen forventer at arbejde videre med kollektiv trafik i den kommende tid.';
+  const teaser = 'Kommunen forventer at arbejde videre med kollektiv trafik i den kommende tid. Borgerne får flere oplysninger om tidsplanen på næste møde. Den samlede plan bliver offentliggjort efter de politiske drøftelser.';
   let calls = 0;
   const api = load(async () => { calls++; throw new Error('Simulated publisher timeout'); });
   const original = { ...item, link: 'https://stiften.dk/debat/ny-artikel?rss', source: 'Stiften.dk', description: teaser };
@@ -327,4 +327,30 @@ test('feed retains available editorial text beyond 700 characters', async () => 
   assert.equal(stories.length, 1);
   assert.ok(stories[0].summary.length > 700);
   assert.match(stories[0].summary, /Til sidst beskrives åbningstiderne for familier/);
+});
+
+
+test('Stiften retries short RSS excerpts and preserves the teaser if recovery fails', async () => {
+  let calls = 0;
+  const teaser = 'En kort introduktion til den aktuelle artikel.';
+  const api = load(async () => { calls++; throw new Error('Simulated timeout'); });
+  const news = await api.enrichPreview({ ...item, description: teaser, source: 'Stiften.dk', link: 'https://stiften.dk/aarhus/test?rss' });
+  assert.equal(calls, 2);
+  assert.equal(news.description, teaser);
+});
+
+test('Stiften recovers article body after a timeout even with a short RSS teaser', async () => {
+  let calls = 0;
+  const api = load(async (url) => {
+    calls++;
+    if (String(url).includes('/article-body')) {
+      if (calls === 2) throw new Error('Simulated body timeout');
+      return { ok: true, text: async () => '<p>Kommunen åbner den nye svømmehal ved havnen til sommer. Der bliver plads til familier og foreninger.</p><p>Borgmester Anders Winnerskjold deltager ved åbningen, hvor alle byens borgere er inviteret.</p>' };
+    }
+    return { ok: true, text: async () => `<meta property="og:title" content="${item.title}"><div data-load-async-url="/article-body"></div>` };
+  });
+  const news = await api.enrichPreview({ ...item, description: 'En kort introduktion.', source: 'Stiften.dk', link: 'https://stiften.dk/aarhus/test?rss' });
+  assert.equal(calls, 3);
+  assert.match(news.description, /familier og foreninger/);
+  assert.ok(news.mentions.includes('anders-winnerskjold'));
 });
