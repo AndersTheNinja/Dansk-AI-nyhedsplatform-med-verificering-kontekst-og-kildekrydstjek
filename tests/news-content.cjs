@@ -7,7 +7,7 @@ const ts = require('typescript');
 function load(fetch, env = {}) {
   const source = fs.readFileSync('lib/live-news.ts', 'utf8') + '\nexport { addPublisherFeaturedImages, extractMetaContent, hasEditorialPreview, applyPublisherPreviews, applyPublisherFeaturedImages, mergeBerlingskeWebsiteText, parseBerlingskeWebArticle, fetchBerlingskeWebsite, fetchFeed, enrichTV2Item, enrichBorsenItem, parseNewsDate, enrichPreview, extractScopedArticlePreview, articleMentionText, extractPublicPreview, extractPublishedDateFromHtml, extractArticleBodyFromJson, isFresh, cleanPublisherTeaser };';
   const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
-  const context = { exports: {}, process: { env }, fetch, AbortSignal, URL, console, require: (id) => id === 'fast-xml-parser' ? require(id) : { persistStories: async () => {} } };
+  const context = { exports: {}, process: { env }, fetch, AbortSignal, URL, console, require: (id) => id === 'fast-xml-parser' ? require(id) : { persistStories: async () => {}, queuePreviewRepairs: async () => {} } };
   vm.runInNewContext(compiled, context);
   return context.exports;
 }

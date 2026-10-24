@@ -14,6 +14,32 @@ type StoredStory = {
   sources: Story["sources"];
 };
 
+// Keep failed previews outside the visible archive until verified text is available.
+export async function queuePreviewRepairs(stories: Story[]) {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY;
+  const secret = process.env.OEL_INGEST_SECRET;
+  if (!url || !key || !secret || !stories.length) return;
+  const payload = stories.slice(0, 100).flatMap((story) => {
+    const lead = story.sources[0];
+    if (!lead) return [];
+    try {
+      const link = new URL(lead.url);
+      if (link.protocol !== "https:" || link.username || link.password || link.port) return [];
+      return [{ url: link.origin + link.pathname.replace(/\/$/, ""), source: lead.label, title: story.title }];
+    } catch { return []; }
+  });
+  if (!payload.length) return;
+  const response = await fetch(`${url}/rest/v1/rpc/oeldk_queue_preview_repairs`, {
+    method: "POST",
+    headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json", "x-oel-ingest-secret": secret },
+    body: JSON.stringify({ payload }),
+    signal: AbortSignal.timeout(8000),
+    cache: "no-store"
+  });
+  if (!response.ok) throw new Error(`Preview repair queue failed (${response.status})`);
+}
+
 export async function persistStories(stories: Story[]) {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_PUBLISHABLE_KEY;

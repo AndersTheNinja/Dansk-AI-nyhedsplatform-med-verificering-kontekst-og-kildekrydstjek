@@ -1,6 +1,6 @@
 import { XMLParser } from "fast-xml-parser";
 import type { Story } from "@/lib/stories";
-import { persistStories } from "@/lib/news-store";
+import { persistStories, queuePreviewRepairs } from "@/lib/news-store";
 
 type Category = Story["category"];
 
@@ -2130,6 +2130,11 @@ export async function getLiveStories(options?: { fast?: boolean; limit?: number 
   });
 
   if (!fast) {
+    try {
+      await queuePreviewRepairs(illustratedStories.filter((story) => !hasEditorialPreview(story.summary, story.title)));
+    } catch (error) {
+      console.error("Preview repair queue failed:", error);
+    }
     try {
       await persistStories(chronologicalStories);
     } catch (error) {
