@@ -66,7 +66,7 @@ const feeds: FeedConfig[] = [
   },
   {
     name: "TechSavvy",
-    url: "https://techsavvy.media/feed",
+    url: "https://techsavvy.media/feed/",
     category: "AI/Tech"
   },
   {
@@ -851,14 +851,16 @@ function categoryWhy(category: Category) {
 async function fetchFeed(feed: FeedConfig, timeoutMs = 7000, retry = false): Promise<NewsItem[]> {
   const isBerlingske = feed.name === "Berlingske";
   const fallback = () => fetchFeed({ ...feed, url: "https://www.berlingske.dk/content/rss" }, timeoutMs, true);
+  const cacheRpc = isBerlingske ? "oeldk_berlingske_rss"
+    : feed.name === "TechSavvy" ? "oeldk_techsavvy_rss" : "";
   let xml = "";
   // The scheduled database collector can reach the public RSS feed when the
   // publisher rejects requests from the web host. It exposes only this fixed
   // feed, and discards responses older than 20 minutes.
-  if (isBerlingske && !retry && process.env.SUPABASE_URL && process.env.SUPABASE_PUBLISHABLE_KEY) {
+  if (cacheRpc && !retry && process.env.SUPABASE_URL && process.env.SUPABASE_PUBLISHABLE_KEY) {
     try {
       const key = process.env.SUPABASE_PUBLISHABLE_KEY;
-      const cached = await fetch(`${process.env.SUPABASE_URL}/rest/v1/rpc/oeldk_berlingske_rss`, {
+      const cached = await fetch(`${process.env.SUPABASE_URL}/rest/v1/rpc/${cacheRpc}`, {
         method: "POST",
         headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
         body: "{}",
