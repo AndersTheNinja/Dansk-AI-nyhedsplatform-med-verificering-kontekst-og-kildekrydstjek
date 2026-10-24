@@ -999,13 +999,11 @@ async function fetchMigogAarhusApi(): Promise<NewsItem[]> {
 }
 
 function extractMetaContent(html: string, key: string) {
-  const patterns = [
-    new RegExp(`<meta[^>]+(?:property|name)=["']${key}["'][^>]+content=["']([^"']+)["']`, "i"),
-    new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']${key}["']`, "i")
-  ];
-  for (const pattern of patterns) {
-    const match = html.match(pattern);
-    if (match?.[1]) return decodeHtmlEntities(match[1]).trim();
+  for (const tag of html.match(/<meta\b[^>]*>/gi) || []) {
+    const identities = Array.from(tag.matchAll(/\b(?:property|name)\s*=\s*(["'])(.*?)\1/gi), (match) => match[2].toLowerCase());
+    if (!identities.includes(key.toLowerCase())) continue;
+    const content = tag.match(/\bcontent\s*=\s*(["'])([\s\S]*?)\1/i)?.[2];
+    if (content) return decodeHtmlEntities(content).trim();
   }
   return "";
 }
@@ -1881,6 +1879,30 @@ async function fetchBorsenWebsite(): Promise<NewsItem[]> {
   return Promise.all(items.map(enrichBorsenItem));
 }
 
+function hasEditorialPreview(text: string, title = "") {
+  const clean = cleanPreviewText(text, title);
+  return clean.length >= 20 && !isBoilerplatePreview(clean) &&
+    !/ØL\.dk har endnu ikke kunnet hente et sikkert tekstuddrag/i.test(clean);
+}
+
+function applyPublisherPreviews(stories: Story[], value: unknown): Story[] {
+  if (!Array.isArray(value)) return stories;
+  const canonical = (link: string) => { try { const u = new URL(link); return u.origin + u.pathname.replace(/\/$/, ""); } catch { return ""; } };
+  const rows = new Map(value.filter((row) => row && typeof row === "object" && typeof row.description === "string")
+    .map((row) => [`${row.source}:${canonical(String(row.url || ""))}`, row]));
+  return stories.map((story) => {
+    if (hasEditorialPreview(story.summary, story.title)) return story;
+    const lead = story.sources[0];
+    const row = lead && rows.get(`${lead.label}:${canonical(lead.url)}`);
+    if (!row || similarity(story.title, stripHtml(String(row.title || ""))) < 0.6) return story;
+    const summary = cleanPublisherTeaser(String(row.description), story.title, lead.label);
+    if (!hasEditorialPreview(summary, story.title)) return story;
+    return { ...story, summary, mentions: Array.from(new Set([
+      ...(story.mentions || []), ...(/\bwinners(?:kjold|kiold)\b/i.test(summary) ? ["anders-winnerskjold"] : [])
+    ])) };
+  });
+}
+
 function applyPublisherFeaturedImages(stories: Story[], value: unknown): Story[] {
   if (!Array.isArray(value)) return stories;
   const canonical = (link: string) => {
@@ -1919,13 +1941,16 @@ async function addPublisherFeaturedImages(stories: Story[]): Promise<Story[]> {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_PUBLISHABLE_KEY;
   if (!url || !key) return stories;
-  try {
-    const response = await fetch(`${url}/rest/v1/rpc/oeldk_featured_images`, {
+  const metadata = await Promise.allSettled(["oeldk_featured_images", "oeldk_article_previews"].map(async (rpc) => {
+    const response = await fetch(`${url}/rest/v1/rpc/${rpc}`, {
       method: "POST", headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
       body: "{}", cache: "no-store", signal: AbortSignal.timeout(4000)
     });
-    return response.ok ? applyPublisherFeaturedImages(stories, await response.json()) : stories;
-  } catch { return stories; }
+    return response.ok ? response.json() : [];
+  }));
+  const images = metadata[0].status === "fulfilled" ? metadata[0].value : [];
+  const previews = metadata[1].status === "fulfilled" ? metadata[1].value : [];
+  return applyPublisherFeaturedImages(applyPublisherPreviews(stories, previews), images);
 }
 
 export async function getLiveStories(options?: { fast?: boolean; limit?: number }): Promise<Story[]> {
@@ -2093,7 +2118,7 @@ export async function getLiveStories(options?: { fast?: boolean; limit?: number 
   });
 
   const illustratedStories = fast ? stories : await addPublisherFeaturedImages(stories);
-  const chronologicalStories = [...illustratedStories].sort((a, b) => {
+  const chronologicalStories = illustratedStories.filter((story) => hasEditorialPreview(story.summary, story.title)).sort((a, b) => {
     const aTime = parseNewsDate(a.publishedAt)?.getTime() ?? 0;
     const bTime = parseNewsDate(b.publishedAt)?.getTime() ?? 0;
     const safeA = Number.isFinite(aTime) ? aTime : 0;
