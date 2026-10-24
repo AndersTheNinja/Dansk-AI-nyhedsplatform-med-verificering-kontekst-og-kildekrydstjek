@@ -5,7 +5,7 @@ const vm = require('node:vm');
 const ts = require('typescript');
 
 function load(fetch, env = {}) {
-  const source = fs.readFileSync('lib/live-news.ts', 'utf8') + '\nexport { applyPublisherFeaturedImages, mergeBerlingskeWebsiteText, parseBerlingskeWebArticle, fetchBerlingskeWebsite, fetchFeed, enrichTV2Item, enrichBorsenItem, parseNewsDate, enrichPreview, extractScopedArticlePreview, articleMentionText, extractPublicPreview, extractPublishedDateFromHtml, extractArticleBodyFromJson, isFresh, cleanPublisherTeaser };';
+  const source = fs.readFileSync('lib/live-news.ts', 'utf8') + '\nexport { addPublisherFeaturedImages, extractMetaContent, hasEditorialPreview, applyPublisherPreviews, applyPublisherFeaturedImages, mergeBerlingskeWebsiteText, parseBerlingskeWebArticle, fetchBerlingskeWebsite, fetchFeed, enrichTV2Item, enrichBorsenItem, parseNewsDate, enrichPreview, extractScopedArticlePreview, articleMentionText, extractPublicPreview, extractPublishedDateFromHtml, extractArticleBodyFromJson, isFresh, cleanPublisherTeaser };';
   const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
   const context = { exports: {}, process: { env }, fetch, AbortSignal, URL, console, require: (id) => id === 'fast-xml-parser' ? require(id) : { persistStories: async () => {} } };
   vm.runInNewContext(compiled, context);
@@ -497,4 +497,55 @@ test('article metadata restores a Computerworld image and decodes query entities
   const row = { source: 'Computerworld', url: 'https://www.computerworld.dk/art/123/test', title: story.title, imageUrl: 'https://www.computerworld.dk/fil/123?width=1200&amp;height=630' };
   assert.equal(api.applyPublisherFeaturedImages([story], [row])[0].imageUrl, 'https://www.computerworld.dk/fil/123?width=1200&height=630');
   assert.equal(api.applyPublisherFeaturedImages([story], [{ ...row, url: 'https://other.example/art/123/test' }])[0].imageUrl, undefined);
+});
+
+
+test('metadata preserves apostrophes and supports both identity attributes regardless of order', () => {
+  const api = load();
+  assert.equal(api.extractMetaContent(`<meta content="Familien siger: 'Vi savner ham' hver dag." property="og:description" name="description">`, 'og:description'), "Familien siger: 'Vi savner ham' hver dag.");
+  assert.equal(api.extractMetaContent(`<meta name='description' property='og:description' content='Hun siger &quot;tak&quot; til personalet.'>`, 'og:description'), 'Hun siger "tak" til personalet.');
+});
+
+test('only verified public metadata restores a missing excerpt and its person mention', () => {
+  const api = load();
+  const story = { title: 'Kommunen åbner svømmehallen ved havnen', summary: 'ØL.dk har endnu ikke kunnet hente et sikkert tekstuddrag fra selve artiklen.', sources: [{ label: 'Stiften.dk', url: 'https://stiften.dk/aarhus/svoemmehal?rss' }], mentions: [] };
+  const metadata = { source: 'Stiften.dk', url: 'https://stiften.dk/aarhus/svoemmehal', title: story.title, description: 'Anders Winnerskjold åbner den nye svømmehal ved havnen. Familier og foreninger får adgang fra mandag.' };
+  const restored = api.applyPublisherPreviews([story], [metadata])[0];
+  assert.equal(restored.summary, metadata.description);
+  assert.equal(restored.mentions[0], 'anders-winnerskjold');
+  assert.equal(api.applyPublisherPreviews([story], [{ ...metadata, title: 'Andre kommuner indfører nye skatter' }])[0].summary, story.summary);
+  assert.equal(api.applyPublisherPreviews([story], [{ ...metadata, url: 'https://stiften.dk/aarhus/anden' }])[0].summary, story.summary);
+  assert.equal(api.applyPublisherPreviews([{ ...story, summary: metadata.description }], [{ ...metadata, description: 'En anden tekst, der ikke skal erstatte et eksisterende uddrag.' }])[0].summary, metadata.description);
+});
+
+test('empty editorial placeholders are not news excerpts but real short introductions are retained', () => {
+  const api = load();
+  assert.equal(api.hasEditorialPreview('x', 'Læs papirudgaven af Ingeniøren'), false);
+  assert.equal(api.hasEditorialPreview('ØL.dk har endnu ikke kunnet hente et sikkert tekstuddrag fra selve artiklen.'), false);
+  assert.equal(api.hasEditorialPreview('Minkavl i Danmark skal ophøre senest i august 2029.'), true);
+});
+
+
+test('ANDERS W includes archive stories with a name in the excerpt even if stored mentions are empty', () => {
+  const source = fs.readFileSync('components/news-feed.tsx', 'utf8');
+  const start = source.indexOf('function isAndersWinnerskjoldStory(');
+  const end = source.indexOf('export function NewsFeed(', start);
+  const compiled = ts.transpileModule(source.slice(start, end) + '\nexports.matches = isAndersWinnerskjoldStory;', { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
+  const context = { exports: {} };
+  vm.runInNewContext(compiled, context);
+  assert.equal(context.exports.matches({ title: 'Vi venter stadig, borgmester', summary: 'Borgmester Anders Winnerskjold fortsætter med at tøve.', mentions: [], sources: [] }), true);
+  assert.equal(context.exports.matches({ title: 'Familieforøgelse på borgmesterkontoret: Winnerskjold skal være far igen', summary: '', mentions: [], sources: [] }), true);
+  assert.equal(context.exports.matches({ title: 'En almindelig kommunal nyhed', summary: 'Anders fra foreningen deltager i mødet.', mentions: [], sources: [] }), false);
+});
+
+
+test('public introduction recovery succeeds independently of an unavailable image metadata service', async () => {
+  const story = { title: 'Anthropic åbner nyt konsulentfirma i Europa', summary: 'ØL.dk har endnu ikke kunnet hente et sikkert tekstuddrag fra selve artiklen.', sources: [{ label: 'Computerworld', url: 'https://www.computerworld.dk/art/123/anthropic' }] };
+  const description = 'Europæiske selskaber kan snart hyre konsulenter fra Anthropic til deres AI-projekter.';
+  const api = load(async (url) => {
+    if (url.endsWith('oeldk_featured_images')) throw new Error('Image metadata unavailable');
+    return { ok: true, json: async () => [{ source: 'Computerworld', url: story.sources[0].url, title: story.title, description }] };
+  }, { SUPABASE_URL: 'https://example.supabase.co', SUPABASE_PUBLISHABLE_KEY: 'test-publishable' });
+  const rows = await api.addPublisherFeaturedImages([story]);
+  assert.equal(rows[0].summary, description);
 });
