@@ -434,3 +434,29 @@ test('Journalisten removes the automatic WordPress attribution without deleting 
   const editorial = 'Journalisten har undersøgt udviklingen. Flere blade har fået dyrere distribution.';
   assert.equal(api.cleanPublisherTeaser(editorial + ' Indlægget Blade lukker blev først udgivet på Journalisten .', 'Blade lukker', 'Journalisten'), editorial);
 });
+
+
+test('TechSavvy uses its fixed scheduled public RSS cache when the web host is rejected', async () => {
+  const urls = [];
+  const api = load(async (url) => {
+    urls.push(url);
+    return { ok: true, json: async () => '<rss version="2.0"><channel><item><title>Ny dansk startup rejser kapital</title><link>https://techsavvy.media/ny-dansk-startup/</link><description>En dansk startup har hentet ny kapital til at udvikle sine teknologiske produkter.</description></item></channel></rss>' };
+  }, { SUPABASE_URL: 'https://example.supabase.co', SUPABASE_PUBLISHABLE_KEY: 'test-publishable' });
+  const rows = await api.fetchFeed({ name: 'TechSavvy', category: 'AI/Tech', url: 'https://techsavvy.media/feed/' });
+  assert.equal(urls.length, 1);
+  assert.match(urls[0], /oeldk_techsavvy_rss$/);
+  assert.equal(rows[0].source, 'TechSavvy');
+  assert.equal(rows[0].category, 'AI/Tech');
+});
+
+test('TechSavvy falls back to its public feed if the scheduled cache is not available', async () => {
+  const urls = [];
+  const api = load(async (url) => {
+    urls.push(url);
+    return url.includes('/rpc/') ? { ok: true, json: async () => null }
+      : { ok: true, text: async () => '<rss version="2.0"><channel><item><title>Aktuel startupnyhed</title><link>https://techsavvy.media/nyhed/</link></item></channel></rss>' };
+  }, { SUPABASE_URL: 'https://example.supabase.co', SUPABASE_PUBLISHABLE_KEY: 'test-publishable' });
+  const rows = await api.fetchFeed({ name: 'TechSavvy', category: 'AI/Tech', url: 'https://techsavvy.media/feed/' });
+  assert.equal(urls[1], 'https://techsavvy.media/feed/');
+  assert.equal(rows.length, 1);
+});
