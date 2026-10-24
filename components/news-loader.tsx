@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { NewsStats } from "@/components/news-stats";
 import { NewsFeed } from "@/components/news-feed";
 import type { Story } from "@/lib/stories";
 
 export function NewsLoader() {
   const [stories, setStories] = useState<Story[] | null>(null);
   const [error, setError] = useState(false);
+  const [countTarget, setCountTarget] = useState<HTMLElement | null>(null);
   const [newsCount, setNewsCount] = useState<number | null>(null);
   const [visitorCount, setVisitorCount] = useState<number | null>(null);
   const fullNewsLoadedRef = useRef(false);
@@ -88,22 +91,19 @@ export function NewsLoader() {
   }, []);
 
   useEffect(() => {
-    const countNode = document.getElementById("news-count");
-    if (!countNode) return;
-    const numberFormat = new Intl.NumberFormat("da-DK");
-    const newsText = newsCount === null
-      ? (error ? "Nyheder utilgængelige" : "Indlæser…")
-      : `${numberFormat.format(newsCount)} nyheder`;
-    const peopleText = visitorCount === null ? "– pers." : `${numberFormat.format(visitorCount)} pers.`;
-    countNode.textContent = `${newsText} / ${peopleText}`;
-  }, [newsCount, visitorCount, error]);
+    setCountTarget(document.getElementById("news-count"));
+  }, []);
+
+  const counter = countTarget ? createPortal(
+    <NewsStats newsCount={newsCount} visitorCount={visitorCount} error={error} />, countTarget
+  ) : null;
 
   if (stories === null) {
     if (error) {
-      return <div className="newsLoadError" role="alert">Nyhederne kunne ikke hentes. Siden prøver automatisk igen.</div>;
+      return <>{counter}<div className="newsLoadError" role="alert">Nyhederne kunne ikke hentes. Siden prøver automatisk igen.</div></>;
     }
     return (
-      <section id="feed" aria-busy="true">
+      <>{counter}<section id="feed" aria-busy="true">
         <div className="newsLoadingFilters" aria-hidden="true">
           <span /><span /><span /><span /><span />
         </div>
@@ -113,13 +113,13 @@ export function NewsLoader() {
         <div className="newsSkeleton" aria-hidden="true">
           <div /><div /><div /><div />
         </div>
-      </section>
+      </section></>
     );
   }
 
   if (error && stories.length === 0) {
-    return <div className="newsLoadError">Nyhederne kunne ikke hentes. Siden prøver automatisk igen.</div>;
+    return <>{counter}<div className="newsLoadError">Nyhederne kunne ikke hentes. Siden prøver automatisk igen.</div></>;
   }
 
-  return <NewsFeed initialStories={stories} />;
+  return <>{counter}<NewsFeed initialStories={stories} /></>;
 }

@@ -17,7 +17,7 @@ export default function Home() {
         <div className="headerStatus">
           <div className="liveStatusLine"><span className="liveDot" /> LIVE</div>
           <div className="headerStats">
-            <span id="news-count">Indlæser nyheder…</span>
+            <div id="news-count" />
           </div>
         </div>
       </header>

@@ -231,3 +231,28 @@ button{font:inherit}
 .jokeRow{background:#faf8f2;padding-left:8px;padding-right:8px;border-left:3px solid #d0a857}
 .jokeRow .storyMeta{color:#98723c}
 .jokeRow h2{font-size:calc(15px * var(--reader-scale))}
+
+/* The live count opens a compact publisher overview. */
+.newsStatsLine{display:inline-flex;align-items:baseline}
+.headerStatus{position:relative}
+.newsStats{display:inline-block}
+.newsStats summary{cursor:pointer;list-style:none;border-radius:3px;color:inherit;display:inline-flex;align-items:center;gap:4px}
+.newsStats summary::-webkit-details-marker{display:none}
+.newsStats summary:hover{color:var(--teal)}
+.newsStats summary:focus-visible{outline:2px solid var(--teal);outline-offset:4px}
+.newsStatsChevron{display:inline-block;font:14px/1 Arial,sans-serif;transition:transform .2s}
+.newsStats[open] .newsStatsChevron{transform:rotate(180deg)}
+.newsStatsPanel{position:absolute;z-index:30;top:calc(100% + 10px);right:0;width:min(350px,calc(100vw - 36px));padding:16px;background:var(--paper);border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 28px #1e293326;color:var(--ink);font:13px/1.4 Arial,sans-serif;white-space:normal;text-align:left;animation:newsStatsReveal .18s ease-out}
+.newsStatsTitle{font-weight:700;font-size:14px;margin-bottom:10px;color:var(--teal-dark)}
+.newsStatsScroll{max-height:min(440px,60vh);overflow:auto}
+.newsStats table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.newsStats th,.newsStats td{padding:7px 0;border-bottom:1px solid #e9edee}
+.newsStats thead th{color:var(--muted);font-size:11px;font-weight:400;white-space:nowrap}
+.newsStats tbody th{font-weight:400}
+.newsStats th:first-child{text-align:left}
+.newsStats td,.newsStats th:not(:first-child){text-align:right;padding-left:12px}
+.newsStats tbody tr:last-child>*{border-bottom:0}
+.newsStatsMessage,.newsStatsFootnote{font-size:11px;color:var(--muted);margin:10px 0 0}
+.srOnly{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+@keyframes newsStatsReveal{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+@media(prefers-reduced-motion:reduce){.newsStatsPanel{animation:none}.newsStatsChevron{transition:none}}
