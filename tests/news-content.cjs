@@ -5,7 +5,7 @@ const vm = require('node:vm');
 const ts = require('typescript');
 
 function load(fetch, env = {}) {
-  const source = fs.readFileSync('lib/live-news.ts', 'utf8') + '\nexport { mergeBerlingskeWebsiteText, parseBerlingskeWebArticle, fetchBerlingskeWebsite, fetchFeed, enrichTV2Item, enrichBorsenItem, parseNewsDate, enrichPreview, extractScopedArticlePreview, articleMentionText, extractPublicPreview, extractPublishedDateFromHtml, extractArticleBodyFromJson, isFresh, cleanPublisherTeaser };';
+  const source = fs.readFileSync('lib/live-news.ts', 'utf8') + '\nexport { applyPublisherFeaturedImages, mergeBerlingskeWebsiteText, parseBerlingskeWebArticle, fetchBerlingskeWebsite, fetchFeed, enrichTV2Item, enrichBorsenItem, parseNewsDate, enrichPreview, extractScopedArticlePreview, articleMentionText, extractPublicPreview, extractPublishedDateFromHtml, extractArticleBodyFromJson, isFresh, cleanPublisherTeaser };';
   const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
   const context = { exports: {}, process: { env }, fetch, AbortSignal, URL, console, require: (id) => id === 'fast-xml-parser' ? require(id) : { persistStories: async () => {} } };
   vm.runInNewContext(compiled, context);
@@ -459,4 +459,42 @@ test('TechSavvy falls back to its public feed if the scheduled cache is not avai
   const rows = await api.fetchFeed({ name: 'TechSavvy', category: 'AI/Tech', url: 'https://techsavvy.media/feed/' });
   assert.equal(urls[1], 'https://techsavvy.media/feed/');
   assert.equal(rows.length, 1);
+});
+
+
+test('Berlingske reads the image nested inside its lead figure, excluding video assets', () => {
+  const api = load();
+  const row = api.parseBerlingskeWebArticle({ url: 'https://www.berlingske.dk/danmark/nyhed', title: 'En aktuel nyhed', publicationDate: '2026-10-24T04:00:00Z', body: [{ type: 'ParagraphNode', children: [{ type: 'TextNode', value: 'En aktuel nyhed med tilstrækkelig tekst til at vise et redaktionelt uddrag.' }] }], leadAssets: [
+    { type: 'VideoNode', assets: [{ url: 'https://example.com/wrong.jpg', contentType: 'image/jpeg' }] },
+    { type: 'FigureNode', asset: { type: 'ImageNode', image: { assets: [{ url: 'https://example.com/correct.jpg', contentType: 'image/jpeg' }] } } }
+  ] });
+  assert.equal(row.imageUrl, 'https://example.com/correct.jpg');
+});
+
+test('featured image is added only to its own article and publisher with a matching title', () => {
+  const api = load();
+  const story = { title: 'Journalister møder rigspolitichefen efter demonstration', sources: [{ label: 'Journalisten', url: 'https://journalisten.dk/moede/?rss=1' }] };
+  const row = { source: 'Journalisten', url: 'https://journalisten.dk/moede/', title: story.title, imageUrl: 'https://journalisten.dk/wp-content/uploads/meeting.jpg' };
+  assert.equal(api.applyPublisherFeaturedImages([story], [row])[0].imageUrl, row.imageUrl);
+  assert.equal(api.applyPublisherFeaturedImages([story], [{ ...row, title: 'Ny finanslov og kommunale budgetter' }])[0].imageUrl, undefined);
+  assert.equal(api.applyPublisherFeaturedImages([story], [{ ...row, url: 'https://journalisten.dk/anden/' }])[0].imageUrl, undefined);
+  assert.equal(api.applyPublisherFeaturedImages([story], [{ ...row, source: 'TechSavvy' }])[0].imageUrl, undefined);
+  assert.equal(api.applyPublisherFeaturedImages([{ ...story, imageUrl: 'https://journalisten.dk/existing.jpg' }], [row])[0].imageUrl, 'https://journalisten.dk/existing.jpg');
+});
+
+test('featured image rejects logos and invalid image protocols', () => {
+  const api = load();
+  const story = { title: 'Dansk startup finder ny investor', sources: [{ label: 'TechSavvy', url: 'https://techsavvy.media/startup/' }] };
+  for (const imageUrl of ['http://techsavvy.media/image.jpg', 'https://techsavvy.media/logo.png', 'javascript:alert(1)']) {
+    assert.equal(api.applyPublisherFeaturedImages([story], [{ source: 'TechSavvy', url: story.sources[0].url, title: story.title, imageUrl }])[0].imageUrl, undefined);
+  }
+});
+
+
+test('article metadata restores a Computerworld image and decodes query entities', () => {
+  const api = load();
+  const story = { title: 'Prøvekørt: Apples nye telefon imponerer', sources: [{ label: 'Computerworld', url: 'https://www.computerworld.dk/art/123/test?utm_source=RSS' }] };
+  const row = { source: 'Computerworld', url: 'https://www.computerworld.dk/art/123/test', title: story.title, imageUrl: 'https://www.computerworld.dk/fil/123?width=1200&amp;height=630' };
+  assert.equal(api.applyPublisherFeaturedImages([story], [row])[0].imageUrl, 'https://www.computerworld.dk/fil/123?width=1200&height=630');
+  assert.equal(api.applyPublisherFeaturedImages([story], [{ ...row, url: 'https://other.example/art/123/test' }])[0].imageUrl, undefined);
 });
