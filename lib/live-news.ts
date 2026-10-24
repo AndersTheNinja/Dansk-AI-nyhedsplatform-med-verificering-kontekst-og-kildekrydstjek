@@ -455,7 +455,10 @@ function cleanPreviewText(value = "", title = "") {
       text = text.slice(normalizedTitle.length).replace(/^\s*[-–—:|]\s*/, "").trim();
     } else if (normalizedTitle && text) {
       const opening = text.split(/(?<=[.!?])\s+/)[0]?.trim() || "";
-      if (opening && opening.length <= Math.max(220, normalizedTitle.length * 2) && similarity(normalizedTitle, opening) >= 0.8) {
+      const headlineWords = (value: string) => value.toLocaleLowerCase("da-DK").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+      // An editorial introduction often paraphrases the headline. Remove only
+      // the same words in the same order, allowing punctuation differences.
+      if (opening && headlineWords(normalizedTitle) === headlineWords(opening)) {
         text = text.slice(opening.length).replace(/^\s*[-–—:|]\s*/, "").trim();
       }
     }

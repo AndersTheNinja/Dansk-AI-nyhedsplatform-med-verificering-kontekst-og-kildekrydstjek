@@ -549,3 +549,12 @@ test('public introduction recovery succeeds independently of an unavailable imag
   const rows = await api.addPublisherFeaturedImages([story]);
   assert.equal(rows[0].summary, description);
 });
+
+
+test('Computerworld public introduction is retained when it paraphrases its headline', () => {
+  const api = load();
+  const title = 'Snart kan du hyre AI-konsulenter direkte af Anthropic: Åbner konsulent-firma i Europa om få måneder';
+  const description = 'Anthropic åbner om få måneder sit første konsulent-firma i Europa, hvorfra europæiske selskaber vil kunne hyre Anthropics egne AI-konsulenter til deres AI-projekter.';
+  assert.equal(api.cleanPublisherTeaser(description, title, 'Computerworld'), description);
+  assert.equal(api.hasEditorialPreview(description, title), true);
+});
