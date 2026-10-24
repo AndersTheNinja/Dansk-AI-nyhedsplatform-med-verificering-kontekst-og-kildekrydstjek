@@ -1786,8 +1786,12 @@ function parseBerlingskeWebArticle(raw: Record<string, unknown>): NewsItem | nul
   const description = paragraphs.join(" ") || cleanPreviewText(berlingskeTextNodes(raw.subheadline), title);
   if (description.length < 50) return null;
   const assets = Array.isArray(raw.leadAssets) ? raw.leadAssets : [];
-  const imageUrl = assets.flatMap((asset) => Array.isArray(asset.assets) ? asset.assets : [])
-    .find((asset) => typeof asset.url === "string" && /image\//.test(String(asset.contentType)))?.url;
+  const imageUrl = assets.flatMap((node) => {
+    if (node.type === "FigureNode" && node.asset?.type === "ImageNode") return node.asset.image?.assets || [];
+    if (node.type === "ImageNode") return node.image?.assets || [];
+    return !node.type && Array.isArray(node.assets) ? node.assets : [];
+  }).find((asset) => typeof asset.url === "string" && /^https:\/\//.test(asset.url) &&
+    /image\//.test(String(asset.contentType)))?.url;
   return {
     id: `Berlingske-web:${link}`, source: "Berlingske", method: "WEB", link, title,
     description, pubDate, imageUrl,
@@ -1875,6 +1879,53 @@ async function fetchBorsenWebsite(): Promise<NewsItem[]> {
   }
 
   return Promise.all(items.map(enrichBorsenItem));
+}
+
+function applyPublisherFeaturedImages(stories: Story[], value: unknown): Story[] {
+  if (!Array.isArray(value)) return stories;
+  const canonical = (link: string) => {
+    try { const url = new URL(link); return url.protocol === "https:" && !url.username && !url.password ? url.origin + url.pathname.replace(/\/$/, "") : ""; }
+    catch { return ""; }
+  };
+  const images = new Map<string, { title: string; imageUrl: string }>();
+  const publisherHosts: Record<string, string[]> = {
+    Journalisten: ["journalisten.dk"], TechSavvy: ["techsavvy.media"],
+    Computerworld: ["computerworld.dk"], "Stiften.dk": ["stiften.dk"],
+    Ingeniøren: ["ing.dk"], Version2: ["version2.dk"],
+    "Berlingske Tidende": ["berlingske.dk"], "Danmarks Radio": ["dr.dk"],
+    "TV2.dk": ["nyheder.tv2.dk", "tv2.dk"], Børsen: ["borsen.dk"], MigogAarhus: ["migogaarhus.dk"]
+  };
+  for (const row of value) {
+    if (!row || typeof row !== "object" || !publisherHosts[row.source]) continue;
+    const link = canonical(String(row.url || ""));
+    if (!link || !publisherHosts[row.source].includes(new URL(link).hostname.replace(/^www\./, ""))) continue;
+    try {
+      const image = new URL(decodeHtmlEntities(String(row.imageUrl || "")));
+      if (image.protocol !== "https:" || image.username || image.password ||
+          /(?:^|\/)(?:logo|favicon|avatar|placeholder)(?:[-_.\/]|$)/i.test(image.pathname)) continue;
+      images.set(`${row.source}:${link}`, { title: stripHtml(String(row.title || "")), imageUrl: image.toString() });
+    } catch {}
+  }
+  return stories.map((story) => {
+    if (story.imageUrl) return story;
+    const lead = story.sources[0];
+    if (!lead) return story;
+    const image = images.get(`${lead.label}:${canonical(lead.url)}`);
+    return image && similarity(story.title, image.title) >= 0.6 ? { ...story, imageUrl: image.imageUrl } : story;
+  });
+}
+
+async function addPublisherFeaturedImages(stories: Story[]): Promise<Story[]> {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY;
+  if (!url || !key) return stories;
+  try {
+    const response = await fetch(`${url}/rest/v1/rpc/oeldk_featured_images`, {
+      method: "POST", headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: "{}", cache: "no-store", signal: AbortSignal.timeout(4000)
+    });
+    return response.ok ? applyPublisherFeaturedImages(stories, await response.json()) : stories;
+  } catch { return stories; }
 }
 
 export async function getLiveStories(options?: { fast?: boolean; limit?: number }): Promise<Story[]> {
@@ -2041,7 +2092,8 @@ export async function getLiveStories(options?: { fast?: boolean; limit?: number 
     } satisfies Story;
   });
 
-  const chronologicalStories = [...stories].sort((a, b) => {
+  const illustratedStories = fast ? stories : await addPublisherFeaturedImages(stories);
+  const chronologicalStories = [...illustratedStories].sort((a, b) => {
     const aTime = parseNewsDate(a.publishedAt)?.getTime() ?? 0;
     const bTime = parseNewsDate(b.publishedAt)?.getTime() ?? 0;
     const safeA = Number.isFinite(aTime) ? aTime : 0;
