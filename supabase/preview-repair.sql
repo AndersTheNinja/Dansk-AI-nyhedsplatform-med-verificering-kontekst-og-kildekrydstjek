@@ -28,7 +28,9 @@ if jsonb_typeof(payload) is distinct from 'array' then raise exception 'payload 
 for item in select value from jsonb_array_elements(payload) limit 100 loop
 if not private.oeldk_preview_url_allowed(item->>'url') or length(coalesce(item->>'title','')) not between 5 and 1000 or length(coalesce(item->>'source','')) not between 2 and 100 then continue; end if;
 insert into private.oeldk_preview_repairs(url,source,title) values(item->>'url',item->>'source',item->>'title')
-on conflict(url) do update set last_seen_at=now();
+on conflict(url) do update set last_seen_at=now(),
+-- If the application rejected the received metadata, retry after the same backoff.
+completed_at=case when private.oeldk_preview_repairs.next_attempt_at<=now() and private.oeldk_preview_repairs.attempts<4 then null else private.oeldk_preview_repairs.completed_at end;
 queued:=queued+1;
 end loop;
 return queued;
