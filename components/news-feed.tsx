@@ -591,6 +591,7 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
         {categories.map((item) => (
           <button
             key={item}
+            data-category={item}
             className={`filterTab ${categoriesSelected.includes(item) ? "active" : ""}`}
             onClick={() => toggleCategory(item)}
             aria-pressed={categoriesSelected.includes(item)}

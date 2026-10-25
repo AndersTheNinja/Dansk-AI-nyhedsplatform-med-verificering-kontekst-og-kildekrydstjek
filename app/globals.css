@@ -254,3 +254,15 @@ button{font:inherit}
 .srOnly{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .newsStatsPanel[hidden]{display:none}
 @media(prefers-reduced-motion:reduce){.newsStatsChevron{transition:none}}
+
+/* Keep topic controls on one line on phones; desktop keeps Danmark. */
+@media(max-width:560px){
+  .filterBar [data-category="Danmark"]{display:none}
+  .filterBar{flex-wrap:nowrap;gap:4px}
+  .filterBar .filterTab{white-space:nowrap}
+}
+@media(max-width:360px){
+  .filterBar{gap:3px}
+  .filterBar .filterTab{font-size:10px;padding:4px 4px}
+  .filterBar .filterTab:first-child{width:auto}
+}
