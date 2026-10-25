@@ -232,9 +232,8 @@ button{font:inherit}
 .jokeRow .storyMeta{color:#98723c}
 .jokeRow h2{font-size:calc(15px * var(--reader-scale))}
 
-/* Inline disclosure, using the same triangle and text style as news articles. */
-.masthead{display:grid;grid-template-columns:minmax(0,1fr) auto;align-content:end}
-.masthead:has(.newsStatsToggle[aria-expanded="true"]){height:auto;padding-top:20px}
+/* Compact disclosure anchored independently of the page layout. */
+.masthead{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;align-content:end}
 .newsStats{display:contents}
 .newsStatsLine{display:inline-flex;align-items:center}
 .newsStatsToggle{cursor:pointer;border:0;background:transparent;font:inherit;color:inherit;display:inline-flex;align-items:center;gap:4px;min-height:44px;padding:10px 5px;margin:-10px -5px;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
@@ -242,7 +241,7 @@ button{font:inherit}
 .newsStatsToggle:focus-visible{outline:2px solid var(--teal);outline-offset:4px}
 .newsStatsChevron{display:inline-block;color:#9a6258;font:700 24px/1 Arial,sans-serif;transition:transform .2s ease}
 .newsStatsToggle[aria-expanded="true"] .newsStatsChevron{transform:rotate(180deg)}
-.newsStatsPanel{grid-column:1/-1;justify-self:end;width:min(320px,100%);margin-top:10px;color:var(--muted);font:400 10px/1.3 Arial,Helvetica,sans-serif;white-space:normal;text-align:left}
+.newsStatsPanel{position:absolute;z-index:30;top:100%;right:0;width:min(320px,100%);padding:10px;background:var(--paper);max-height:70vh;overflow-y:auto;overscroll-behavior:contain;color:var(--muted);font:400 10px/1.3 Arial,Helvetica,sans-serif;white-space:normal;text-align:left}
 .newsStats table{width:100%;border-collapse:collapse;font:inherit;color:inherit;font-variant-numeric:tabular-nums}
 .newsStats th,.newsStats td{padding:2px 0;border:0}
 .newsStats thead th{color:inherit;font-size:inherit;font-weight:400;white-space:nowrap;padding-bottom:4px}
@@ -253,4 +252,3 @@ button{font:inherit}
 .srOnly{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .newsStatsPanel[hidden]{display:none}
 @media(prefers-reduced-motion:reduce){.newsStatsChevron{transition:none}}
-@media(max-width:780px){.masthead:has(.newsStatsToggle[aria-expanded="true"]){padding-top:14px}}
