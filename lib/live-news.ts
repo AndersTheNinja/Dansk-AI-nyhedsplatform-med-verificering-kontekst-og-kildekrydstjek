@@ -1894,12 +1894,15 @@ function applyPublisherPreviews(stories: Story[], value: unknown): Story[] {
   const rows = new Map(value.filter((row) => row && typeof row === "object" && typeof row.description === "string")
     .map((row) => [`${row.source}:${canonical(String(row.url || ""))}`, row]));
   return stories.map((story) => {
-    if (hasEditorialPreview(story.summary, story.title)) return story;
+    const hasCurrentPreview = hasEditorialPreview(story.summary, story.title);
+    // A usable RSS sentence can still omit the publisher's public introduction.
+    if (hasCurrentPreview && story.summary.length >= 180) return story;
     const lead = story.sources[0];
     const row = lead && rows.get(`${lead.label}:${canonical(lead.url)}`);
     if (!row || similarity(story.title, stripHtml(String(row.title || ""))) < 0.6) return story;
     const summary = cleanPublisherTeaser(String(row.description), story.title, lead.label);
-    if (!hasEditorialPreview(summary, story.title)) return story;
+    if (!hasEditorialPreview(summary, story.title) ||
+      (hasCurrentPreview && summary.length <= story.summary.length)) return story;
     return { ...story, summary, mentions: Array.from(new Set([
       ...(story.mentions || []), ...(/\bwinners(?:kjold|kiold)\b/i.test(summary) ? ["anders-winnerskjold"] : [])
     ])) };

@@ -558,3 +558,14 @@ test('Computerworld public introduction is retained when it paraphrases its head
   assert.equal(api.cleanPublisherTeaser(description, title, 'Computerworld'), description);
   assert.equal(api.hasEditorialPreview(description, title), true);
 });
+
+
+test('longer verified public introductions enrich short RSS text without shortening existing previews', () => {
+  const api = load();
+  const story = { title: 'Boligkøbere må opgive nyt byggeri', summary: 'En minister skulle flytte ind i byggeriet med sin familie.', sources: [{label:'Berlingske Tidende',url:'https://www.berlingske.dk/indland/boliger?referrer=RSS'}] };
+  const metadata = {source:'Berlingske Tidende',url:'https://www.berlingske.dk/indland/boliger',title:story.title,description:'En privat boligdrøm er bristet for en minister og hans familie. Sammen med andre boligkøbere må familien nu opgive drømmen om deres nye lejlighed.'};
+  assert.equal(api.applyPublisherPreviews([story],[metadata])[0].summary,metadata.description);
+  assert.equal(api.applyPublisherPreviews([story],[{...metadata,description:'Familien flytter ikke ind.'}])[0].summary,story.summary);
+  const long = {...story,summary:'Familien fortæller om deres boligplaner og de problemer, som har ramt det nye byggeri. '.repeat(4)};
+  assert.equal(api.applyPublisherPreviews([long],[{...metadata,description:metadata.description.repeat(5)}])[0].summary,long.summary);
+});
