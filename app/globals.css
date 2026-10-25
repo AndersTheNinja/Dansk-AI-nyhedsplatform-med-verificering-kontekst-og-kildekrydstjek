@@ -154,6 +154,18 @@ button{font:inherit}
 .factBadge.understøttet{background:#e7f6ed;color:#278a60}
 .factBadge.blandet{background:#fff1df;color:#9b641c}
 .factBadge.usikkert{background:#edf0f2;color:#667179}
+.factBadge.modstridt{background:#fae8e5;color:#963e35}
+.factClaims{padding-left:18px;margin:8px 0}
+.factClaims li{margin:10px 0}
+.factClaimStatus{display:inline-block;padding:2px 5px;font:700 10px Arial,sans-serif;border-radius:3px}
+.factClaimStatus.confirmed{background:#e7f6ed;color:#247450}
+.factClaimStatus.contradicted{background:#fae8e5;color:#963e35}
+.factClaimStatus.unverified{background:#edf0f2;color:#59656c}
+.factClaimLinks{display:flex;flex-wrap:wrap;gap:5px 10px;margin:4px 0}
+.factClaimLinks a,.factReferenceList a{font:11px/1.5 Arial,sans-serif;color:var(--teal-dark);text-decoration:underline;overflow-wrap:anywhere}
+.factReferenceList{display:grid;gap:5px;margin:12px 0}
+.factReferenceList strong{font:700 11px Arial,sans-serif}
+.factBasis{font:10px/1.5 Arial,sans-serif!important;color:var(--muted)!important;margin:10px 0!important}
 
 .textSizeBox{background:#fff;border:1px solid #d7dbdd;margin-bottom:18px;padding:14px;font-family:Arial,sans-serif}
 .textSizeBox h3{margin:0 0 10px;padding-bottom:8px;border-bottom:3px solid var(--teal);font-size:12px;letter-spacing:.08em;color:#4a565e}

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Story } from "@/lib/stories";
+import type { FactResult } from "@/lib/factcheck";
 
 const categoryLabel: Record<string,string> = {
   "AI/Tech": "AI",
@@ -75,15 +76,7 @@ function StoryCard({ story }: { story: Story }) {
   const [summaryHasOverflow, setSummaryHasOverflow] = useState(false);
   const [factOpen, setFactOpen] = useState(false);
   const [factLoading, setFactLoading] = useState(false);
-  const [factCheck, setFactCheck] = useState<{
-    verdict: string;
-    score: number;
-    neutrality: { score: number; balance: string; language: string; explanation: string };
-    otherMedia: { count: number; names: string[]; agreement: string };
-    truth: { score: number; support: string[]; discrepancies: string[] };
-    conclusion: string;
-    claims: string[];
-  } | null>(null);
+  const [factCheck, setFactCheck] = useState<FactResult | null>(null);
   const [factError, setFactError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -226,12 +219,15 @@ function StoryCard({ story }: { story: Story }) {
     setFactOpen(nextOpen);
     if (!nextOpen || factCheck || factLoading) return;
 
-    const cacheKey = `oel-fact-v2:${story.id}`;
+    const cacheKey = `oel-fact-v3:${story.id}:${story.summary}`;
     try {
       const cached = sessionStorage.getItem(cacheKey);
       if (cached) {
-        setFactCheck(JSON.parse(cached));
-        return;
+        const saved = JSON.parse(cached);
+        if (saved.expiresAt > Date.now() && saved.result?.search?.performed) {
+          setFactCheck(saved.result);
+          return;
+        }
       }
     } catch {}
 
@@ -244,17 +240,20 @@ function StoryCard({ story }: { story: Story }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: story.title,
-          text: aiSummary?.summary || story.summary,
+          text: story.summary,
+          url: story.sources[0]?.url,
+          publishedAt: story.publishedAt,
           sources: story.sources,
           neutrality: story.neutrality,
           primarySource: story.sources[0]?.label ?? story.sourceLabel
-        })
+        }),
+        signal: AbortSignal.timeout(95000)
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result?.error || "Faktatjekket kunne ikke laves.");
       setFactCheck(result);
       try {
-        sessionStorage.setItem(cacheKey, JSON.stringify(result));
+        sessionStorage.setItem(cacheKey, JSON.stringify({ expiresAt: Date.now() + 15 * 60 * 1000, result }));
       } catch {}
     } catch (error) {
       setFactError(error instanceof Error ? error.message : "Faktatjekket kunne ikke laves.");
@@ -405,23 +404,25 @@ function StoryCard({ story }: { story: Story }) {
         <div className={`aiSummaryPanel factPanel ${factOpen ? "open" : ""}`}>
           <div className="aiSummaryInner">
             <div className="aiSummaryHeader">Faktatjek</div>
-            {factLoading && <p className="aiSummaryStatus">Tjekker påstandene…</p>}
+            {factLoading && <p className="aiSummaryStatus" role="status">Søger efter eksterne kilder og tjekker påstandene…</p>}
             {factError && <p className="aiSummaryError">{factError}</p>}
             {factCheck && (
               <>
                 <section className="factSection">
                   <div className="factSectionHeading">
                     <span>Neutralitet</span>
-                    <strong>{factCheck.neutrality.score}/100</strong>
+                    <strong>{factCheck.neutrality.score == null ? "Ikke vurderet" : `${factCheck.neutrality.score}/100`}</strong>
                   </div>
-                  <p><strong>Balance:</strong> {factCheck.neutrality.balance}</p>
-                  <p><strong>Sprogbrug:</strong> {factCheck.neutrality.language}</p>
+                  {factCheck.neutrality.score != null ? <>
+                    <p><strong>Balance:</strong> {factCheck.neutrality.balance}</p>
+                    <p><strong>Sprogbrug:</strong> {factCheck.neutrality.language}</p>
+                  </> : <p>Neutraliteten er ikke vurderet i dette tjek.</p>}
                   {factCheck.neutrality.explanation && <p>{factCheck.neutrality.explanation}</p>}
                 </section>
 
                 <section className="factSection">
                   <div className="factSectionHeading">
-                    <span>Andre medier</span>
+                    <span>Eksterne kilder</span>
                     <strong>{factCheck.otherMedia.count}</strong>
                   </div>
                   {factCheck.otherMedia.names.length > 0 && (
@@ -434,20 +435,31 @@ function StoryCard({ story }: { story: Story }) {
 
                 <section className="factSection">
                   <div className="factSectionHeading truthHeading">
-                    <span>Truth-score</span>
+                    <span>Påstande og dokumentation</span>
                     <strong>{factCheck.truth.score}/100</strong>
                   </div>
-                  {factCheck.truth.support.length > 0 && (
-                    <ul className="factEvidenceList">
-                      {factCheck.truth.support.map((item) => <li key={item}>✓ {item}</li>)}
-                    </ul>
-                  )}
-                  {factCheck.truth.discrepancies.length > 0 && (
-                    <ul className="factEvidenceList factWarnings">
-                      {factCheck.truth.discrepancies.map((item) => <li key={item}>⚠ {item}</li>)}
-                    </ul>
-                  )}
+                  <ol className="factClaims">
+                    {factCheck.claims.map((claim, index) => (
+                      <li key={index}>
+                        <span className={`factClaimStatus ${claim.status === "bekræftet" ? "confirmed" : claim.status === "modstridt" ? "contradicted" : "unverified"}`}>{claim.status}</span>
+                        <p><strong>{claim.statement}</strong></p>
+                        <p>{claim.explanation}</p>
+                        <div className="factClaimLinks">
+                          {claim.sourceIds.map(id => {
+                            const source = factCheck.references.find(reference => reference.id === id);
+                            return source ? <a key={id} href={source.url} target="_blank" rel="noopener noreferrer" title={source.title}>[{id}] {source.domain} ↗</a> : null;
+                          })}
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                  {factCheck.references.length > 0 && <div className="factReferenceList">
+                    <strong>Kildehenvisninger</strong>
+                    {factCheck.references.map(source => <a key={source.id} href={source.url} target="_blank" rel="noopener noreferrer">[{source.id}] {source.title} ↗</a>)}
+                  </div>}
                 </section>
+
+                <p className="factBasis">{factCheck.basis}<br />Tjekket {new Date(factCheck.checkedAt).toLocaleString("da-DK", { timeZone: "Europe/Copenhagen", dateStyle: "short", timeStyle: "short" })}.</p>
 
                 <section className="factConclusion">
                   <div className="factConclusionLabel">AI-konklusion</div>
@@ -470,7 +482,7 @@ function StoryCard({ story }: { story: Story }) {
                 </a>
 
                 <div className="aiSummaryFoot">
-                  Truth-score måler dokumentationsstyrken i det tilgængelige materiale — ikke sandsynligheden for, at en nyhed er sand.
+                  Vurderingen kan ændre sig, når der kommer nye oplysninger.
                 </div>
               </>
             )}
