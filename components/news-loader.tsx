@@ -1,17 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-import { NewsStats } from "@/components/news-stats";
 import { NewsFeed } from "@/components/news-feed";
 import type { Story } from "@/lib/stories";
 
 export function NewsLoader() {
   const [stories, setStories] = useState<Story[] | null>(null);
   const [error, setError] = useState(false);
-  const [countTarget, setCountTarget] = useState<HTMLElement | null>(null);
-  const [newsCount, setNewsCount] = useState<number | null>(null);
-  const [visitorCount, setVisitorCount] = useState<number | null>(null);
   const fullNewsLoadedRef = useRef(false);
   const latestFullRequestRef = useRef(0);
 
@@ -32,13 +27,6 @@ export function NewsLoader() {
 
       setStories(nextStories);
       setError(false);
-
-      // The cumulative archive count comes from the database rather than
-      // the moving RSS feed or a browser-specific high-water mark.
-      const archiveTotal = Number(data.totalCount);
-      setNewsCount(Number.isFinite(archiveTotal) && archiveTotal >= nextStories.length
-        ? archiveTotal
-        : nextStories.length);
     } catch {
       // Ignore stale failures; preserve the last successfully loaded news.
       if (isPreview && fullNewsLoadedRef.current) return;
@@ -53,57 +41,19 @@ export function NewsLoader() {
     const fullLoad = window.setTimeout(() => loadNews(), 350);
     const interval = window.setInterval(() => loadNews(), 60000);
 
-    let visitorId = sessionStorage.getItem("oel-presence-id");
-    if (!visitorId) {
-      visitorId = crypto.randomUUID();
-      sessionStorage.setItem("oel-presence-id", visitorId);
-    }
-
-    const pingPresence = async () => {
-      if (document.visibilityState !== "visible") return;
-      try {
-        const response = await fetch("/api/presence", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ visitorId }),
-          cache: "no-store"
-        });
-        const data = await response.json();
-        if (typeof data.count === "number") setVisitorCount(data.count);
-      } catch {}
-    };
-
-    const presenceStart = window.setTimeout(pingPresence, 100);
-    const presenceInterval = window.setInterval(pingPresence, 30000);
-    const onVisibility = () => {
-      if (document.visibilityState === "visible") pingPresence();
-    };
-    document.addEventListener("visibilitychange", onVisibility);
-
     return () => {
       window.clearTimeout(start);
       window.clearTimeout(fullLoad);
       window.clearInterval(interval);
-      window.clearTimeout(presenceStart);
-      window.clearInterval(presenceInterval);
-      document.removeEventListener("visibilitychange", onVisibility);
     };
   }, []);
 
-  useEffect(() => {
-    setCountTarget(document.getElementById("news-count"));
-  }, []);
-
-  const counter = countTarget ? createPortal(
-    <NewsStats newsCount={newsCount} visitorCount={visitorCount} error={error} />, countTarget
-  ) : null;
-
   if (stories === null) {
     if (error) {
-      return <>{counter}<div className="newsLoadError" role="alert">Nyhederne kunne ikke hentes. Siden prøver automatisk igen.</div></>;
+      return <div className="newsLoadError" role="alert">Nyhederne kunne ikke hentes. Siden prøver automatisk igen.</div>;
     }
     return (
-      <>{counter}<section id="feed" aria-busy="true">
+      <section id="feed" aria-busy="true">
         <div className="newsLoadingFilters" aria-hidden="true">
           <span /><span /><span /><span /><span />
         </div>
@@ -113,13 +63,13 @@ export function NewsLoader() {
         <div className="newsSkeleton" aria-hidden="true">
           <div /><div /><div /><div />
         </div>
-      </section></>
+      </section>
     );
   }
 
   if (error && stories.length === 0) {
-    return <>{counter}<div className="newsLoadError">Nyhederne kunne ikke hentes. Siden prøver automatisk igen.</div></>;
+    return <div className="newsLoadError">Nyhederne kunne ikke hentes. Siden prøver automatisk igen.</div>;
   }
 
-  return <>{counter}<NewsFeed initialStories={stories} /></>;
+  return <NewsFeed initialStories={stories} />;
 }

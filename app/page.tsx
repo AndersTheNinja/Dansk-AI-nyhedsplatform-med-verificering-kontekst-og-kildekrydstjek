@@ -1,3 +1,4 @@
+import { NewsStatus } from "@/components/news-status";
 import { NewsLoader } from "@/components/news-loader";
 import { TextSizeControl } from "@/components/text-size-control";
 
@@ -14,12 +15,7 @@ export default function Home() {
           </a>
           <div className="siteTagline"><strong><span className="brandInitial">Ø</span>jeblikkelig &amp; <span className="brandInitial">L</span>ive</strong><br />Nyheder. Nu.</div>
         </div>
-        <div className="headerStatus">
-          <div className="liveStatusLine"><span className="liveDot" /> LIVE</div>
-          <div className="headerStats">
-            <div id="news-count" />
-          </div>
-        </div>
+        <NewsStatus />
       </header>
 
       <div className="tealRule" />

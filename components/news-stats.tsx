@@ -1,15 +1,21 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 type MediaCount = { source: string; last24h: number; total: number };
 const numberFormat = new Intl.NumberFormat("da-DK");
 
 export function NewsStats({ newsCount, visitorCount, error }: { newsCount: number | null; visitorCount: number | null; error: boolean }) {
-  const details = useRef<HTMLDetailsElement>(null);
+  const root = useRef<HTMLDivElement>(null);
+  const toggle = useRef<HTMLButtonElement>(null);
+  const panelId = useId();
   const [open, setOpen] = useState(false);
   const [media, setMedia] = useState<MediaCount[] | null>(null);
   const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("medier") === "1") setOpen(true);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -29,12 +35,12 @@ export function NewsStats({ newsCount, visitorCount, error }: { newsCount: numbe
     refresh();
     const interval = window.setInterval(refresh, 60000);
     function closeOutside(event: PointerEvent) {
-      if (event.target instanceof Node && !details.current?.contains(event.target) && details.current) details.current.open = false;
+      if (event.target instanceof Node && !root.current?.contains(event.target)) setOpen(false);
     }
     function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === "Escape" && details.current) {
-        details.current.open = false;
-        details.current.querySelector("summary")?.focus();
+      if (event.key === "Escape") {
+        setOpen(false);
+        toggle.current?.focus();
       }
     }
     document.addEventListener("pointerdown", closeOutside);
@@ -48,12 +54,12 @@ export function NewsStats({ newsCount, visitorCount, error }: { newsCount: numbe
   }, [open]);
 
   return <div className="newsStatsLine">
-    <details className="newsStats" ref={details} onToggle={(event) => setOpen(event.currentTarget.open)}>
-      <summary aria-label="Vis artikelantal pr. medie">
+    <div className="newsStats" ref={root}>
+      <button type="button" ref={toggle} className="newsStatsToggle" aria-label="Vis artikelantal pr. medie" aria-expanded={open} aria-controls={panelId} onClick={() => setOpen(value => !value)}>
         {newsCount === null ? (error ? "Nyheder utilgængelige" : "Indlæser…") : `${numberFormat.format(newsCount)} nyheder`}
         <span className="newsStatsChevron" aria-hidden="true">⌄</span>
-      </summary>
-      <div className="newsStatsPanel">
+      </button>
+      <div className="newsStatsPanel" id={panelId} hidden={!open}>
         <div className="newsStatsTitle">Artikler pr. medie</div>
         {failed && <p className="newsStatsMessage" role="status">{media ? "Kunne ikke opdatere tallene. Prøver igen." : "Oversigten kunne ikke hentes. Luk og åbn for at prøve igen."}</p>}
         {!media && !failed && <p className="newsStatsMessage" role="status">Henter oversigt…</p>}
@@ -70,7 +76,7 @@ export function NewsStats({ newsCount, visitorCount, error }: { newsCount: numbe
           <p className="newsStatsFootnote">I alt: artikler gemt på ØL.dk.</p>
         </>}
       </div>
-    </details>
+    </div>
     <span> / {visitorCount === null ? "–" : numberFormat.format(visitorCount)} pers.</span>
   </div>;
 }
