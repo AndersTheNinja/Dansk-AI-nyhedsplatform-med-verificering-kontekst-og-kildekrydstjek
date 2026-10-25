@@ -569,3 +569,20 @@ test('longer verified public introductions enrich short RSS text without shorten
   const long = {...story,summary:'Familien fortæller om deres boligplaner og de problemer, som har ramt det nye byggeri. '.repeat(4)};
   assert.equal(api.applyPublisherPreviews([long],[{...metadata,description:metadata.description.repeat(5)}])[0].summary,long.summary);
 });
+
+
+test('media filter follows the displayed article rather than secondary cross-check sources', () => {
+  const source = fs.readFileSync('components/news-feed.tsx', 'utf8');
+  const start = source.indexOf('function mediaName(');
+  const end = source.indexOf('function splitPublishedDate(', start);
+  const compiled = ts.transpileModule(source.slice(start, end) + '\nexports.matches = matchesMediaSelection;', { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
+  const context = { exports: {} };
+  vm.runInNewContext(compiled, context);
+  const story = {sources:[{label:'Børsen'},{label:'Berlingske Tidende'}]};
+  assert.equal(context.exports.matches(story,['Berlingske']),false);
+  assert.equal(context.exports.matches(story,['Børsen']),true);
+  assert.equal(context.exports.matches(story,['Berlingske','Børsen']),true);
+  assert.equal(context.exports.matches(story,[]),true);
+  assert.equal(context.exports.matches({sources:[{label:'Berlingske Tidende'},{label:'Børsen'}]},['Berlingske']),true);
+  assert.equal(context.exports.matches({sources:[{label:'Danmarks Radio'}]},['DR']),true);
+});

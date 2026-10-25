@@ -24,6 +24,14 @@ function mediaName(label: string) {
   return label;
 }
 
+function matchesMediaSelection(story: Story, selectedMedia: string[]) {
+  if (selectedMedia.length === 0) return true;
+  // The first source owns the displayed headline, excerpt and timestamp.
+  // Secondary cross-check sources must not make another publisher's article appear.
+  const primarySource = story.sources[0];
+  return !!primarySource && selectedMedia.includes(mediaName(primarySource.label));
+}
+
 function splitPublishedDate(value?: string) {
   if (!value) return { time: "", rest: "Dato ukendt" };
   const [time, ...rest] = value.split(" · ");
@@ -524,9 +532,7 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
             categoriesSelected.length === 0 ||
             categoriesSelected.includes(story.category) ||
             (categoriesSelected.includes(andersTopic) && isAndersWinnerskjoldStory(story));
-          const matchesMedia =
-            mediaSelected.length === 0 ||
-            story.sources.some((source) => mediaSelected.includes(mediaName(source.label)));
+          const matchesMedia = matchesMediaSelection(story, mediaSelected);
           return matchesCategory && matchesMedia;
         })
         .sort((a, b) => {
