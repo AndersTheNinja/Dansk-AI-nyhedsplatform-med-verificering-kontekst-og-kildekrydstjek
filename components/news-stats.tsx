@@ -71,7 +71,6 @@ export function NewsStats({ newsCount, visitorCount, error }: { newsCount: numbe
               </tr>)}</tbody>
             </table>
           </div>
-          <p className="newsStatsFootnote">I alt: artikler gemt på ØL.dk.</p>
         </>}
       </div>
   </div>;
