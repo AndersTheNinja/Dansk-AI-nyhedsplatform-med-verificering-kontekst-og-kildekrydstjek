@@ -2134,7 +2134,12 @@ export async function getLiveStories(options?: { fast?: boolean; limit?: number 
 
   if (!fast) {
     try {
-      await queuePreviewRepairs(illustratedStories.filter((story) => !hasEditorialPreview(story.summary, story.title)));
+      await queuePreviewRepairs(illustratedStories.filter((story) =>
+        !hasEditorialPreview(story.summary, story.title) ||
+        // Ingeniøren RSS often contains only the subtitle. Fetch the public
+        // opening paragraphs through the existing bounded repair queue.
+        (story.sources[0]?.label === "Ingeniøren" && story.summary.length < 180)
+      ));
     } catch (error) {
       console.error("Preview repair queue failed:", error);
     }
