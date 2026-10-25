@@ -6,7 +6,6 @@ type MediaCount = { source: string; last24h: number; total: number };
 const numberFormat = new Intl.NumberFormat("da-DK");
 
 export function NewsStats({ newsCount, visitorCount, error }: { newsCount: number | null; visitorCount: number | null; error: boolean }) {
-  const root = useRef<HTMLDivElement>(null);
   const toggle = useRef<HTMLButtonElement>(null);
   const panelId = useId();
   const [open, setOpen] = useState(false);
@@ -34,33 +33,32 @@ export function NewsStats({ newsCount, visitorCount, error }: { newsCount: numbe
     }
     refresh();
     const interval = window.setInterval(refresh, 60000);
-    function closeOutside(event: PointerEvent) {
-      if (event.target instanceof Node && !root.current?.contains(event.target)) setOpen(false);
-    }
     function closeOnEscape(event: KeyboardEvent) {
       if (event.key === "Escape") {
         setOpen(false);
         toggle.current?.focus();
       }
     }
-    document.addEventListener("pointerdown", closeOutside);
     document.addEventListener("keydown", closeOnEscape);
     return () => {
       controller.abort();
       window.clearInterval(interval);
-      document.removeEventListener("pointerdown", closeOutside);
       document.removeEventListener("keydown", closeOnEscape);
     };
   }, [open]);
 
-  return <div className="newsStatsLine">
-    <div className="newsStats" ref={root}>
+  return <div className="newsStats">
+    <div className="headerStatus">
+      <div className="liveStatusLine"><span className="liveDot" /> LIVE</div>
+      <div className="headerStats" id="news-count"><div className="newsStatsLine">
       <button type="button" ref={toggle} className="newsStatsToggle" aria-label="Vis artikelantal pr. medie" aria-expanded={open} aria-controls={panelId} onClick={() => setOpen(value => !value)}>
         {newsCount === null ? (error ? "Nyheder utilgængelige" : "Indlæser…") : `${numberFormat.format(newsCount)} nyheder`}
-        <span className="newsStatsChevron" aria-hidden="true">⌄</span>
+        <span className="newsStatsChevron" aria-hidden="true">▾</span>
       </button>
-      <div className="newsStatsPanel" id={panelId} hidden={!open}>
-        <div className="newsStatsTitle">Artikler pr. medie</div>
+      <span> / {visitorCount === null ? "–" : numberFormat.format(visitorCount)} pers.</span>
+      </div></div>
+    </div>
+    <div className="newsStatsPanel" id={panelId} hidden={!open}>
         {failed && <p className="newsStatsMessage" role="status">{media ? "Kunne ikke opdatere tallene. Prøver igen." : "Oversigten kunne ikke hentes. Luk og åbn for at prøve igen."}</p>}
         {!media && !failed && <p className="newsStatsMessage" role="status">Henter oversigt…</p>}
         {media && <>
@@ -76,7 +74,5 @@ export function NewsStats({ newsCount, visitorCount, error }: { newsCount: numbe
           <p className="newsStatsFootnote">I alt: artikler gemt på ØL.dk.</p>
         </>}
       </div>
-    </div>
-    <span> / {visitorCount === null ? "–" : numberFormat.format(visitorCount)} pers.</span>
   </div>;
 }

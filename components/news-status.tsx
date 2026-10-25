@@ -50,10 +50,5 @@ export function NewsStatus() {
     };
   }, []);
 
-  return <div className="headerStatus">
-    <div className="liveStatusLine"><span className="liveDot" /> LIVE</div>
-    <div className="headerStats" id="news-count">
-      <NewsStats newsCount={newsCount} visitorCount={visitorCount} error={error} />
-    </div>
-  </div>;
+  return <NewsStats newsCount={newsCount} visitorCount={visitorCount} error={error} />;
 }
