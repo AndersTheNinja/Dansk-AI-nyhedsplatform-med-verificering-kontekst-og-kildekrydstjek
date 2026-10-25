@@ -13,6 +13,18 @@ function load(fetch, env = {}) {
 }
 
 const item = { title: 'Aarhus åbner svømmehal ved havnen', description: 'Det oprindelige uddrag.', link: 'https://nyheder.tv2.dk/samfund/artikel', source: 'TV2.dk', category: 'Danmark', method: 'RSS', id: 'original' };
+test('saved snapshots discard placeholders and remove publisher footers and related-story links', () => {
+  const api = load();
+  const story = (source, summary) => ({ title: 'En nyhed', summary, sourceLabel: source, sources: [{ label: source, url: 'https://example.dk/article' }] });
+  const result = api.cleanNewsStories([
+    story('TechSavvy', 'En offentlig introduktion til en vigtig nyhed. Indlægget En nyhed blev først udgivet på TechSavvy .'),
+    story('MigogAarhus', 'Artiklen fortæller om en hændelse i Aarhus. Læs også: Et helt andet emne.'),
+    story('Stiften.dk', 'Der er endnu ingen selvstændig artikeltekst tilgængelig.')
+  ]);
+  assert.equal(result.length, 2);
+  assert.equal(result[0].summary, 'En offentlig introduktion til en vigtig nyhed.');
+  assert.equal(result[1].summary, 'Artiklen fortæller om en hændelse i Aarhus.');
+});
 test('publisher local timestamps resolve to Copenhagen time in summer and winter', () => {
   const api = load();
   assert.equal(api.parseNewsDate('2026-10-18 16:50:20').toISOString(), '2026-10-18T14:50:20.000Z');

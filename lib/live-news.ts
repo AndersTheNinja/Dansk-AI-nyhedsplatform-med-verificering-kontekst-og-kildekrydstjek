@@ -349,6 +349,7 @@ function collapseRepeatedOpening(value: string) {
 
 function cleanPreviewText(value = "", title = "") {
   const unescaped = String(value)
+    .replace(/\\"/g, '"')
     .replace(/\\u([0-9a-f]{4})/gi, (_, hex: string) => String.fromCharCode(parseInt(hex, 16)))
     .replace(/\\n|\\r|\\t/g, " ")
     .replace(/\\\//g, "/");
@@ -471,6 +472,11 @@ function cleanPreviewText(value = "", title = "") {
 function cleanPublisherTeaser(value: string, title: string, source: string) {
   if (/^TV2(?:\.dk)?\b/i.test(source)) return cleanTV2PhotoCaptions(value, title);
   let text = cleanPreviewText(value, title);
+  // WordPress publisher footers and related-story links are not article text.
+  if (/^(?:techsavvy|migogaarhus)\b/i.test(source)) {
+    text = text.replace(/\s*Indlægget\s+[\s\S]*?blev først udgivet på\s+TechSavvy\s*\.?\s*$/i, "")
+      .replace(/\s+(?:læs|se) også\s*:[\s\S]*$/i, "").trim();
+  }
   if (/^journalisten\b/i.test(source)) {
     text = text.replace(/\s*Indlægget\s+[\s\S]*?blev først udgivet på\s+Journalisten\s*\.?\s*$/i, "").trim();
     // WordPress includes the entire article in content:encoded. Show a short
@@ -1885,7 +1891,14 @@ async function fetchBorsenWebsite(): Promise<NewsItem[]> {
 function hasEditorialPreview(text: string, title = "") {
   const clean = cleanPreviewText(text, title);
   return clean.length >= 20 && !isBoilerplatePreview(clean) &&
-    !/ØL\.dk har endnu ikke kunnet hente et sikkert tekstuddrag/i.test(clean);
+    !/(?:ØL\.dk har endnu ikke kunnet hente et sikkert tekstuddrag|ingen selvstændig artikeltekst tilgængelig)/i.test(clean);
+}
+
+// Apply the same excerpt rules to stored snapshots and archive-only stories.
+export function cleanNewsStories(stories: Story[]): Story[] {
+  return stories.map((story) => ({ ...story,
+    summary: cleanPublisherTeaser(story.summary, story.title, story.sources[0]?.label || story.sourceLabel)
+  })).filter((story) => hasEditorialPreview(story.summary, story.title));
 }
 
 function applyPublisherPreviews(stories: Story[], value: unknown): Story[] {
@@ -1943,7 +1956,7 @@ function applyPublisherFeaturedImages(stories: Story[], value: unknown): Story[]
   });
 }
 
-async function addPublisherFeaturedImages(stories: Story[]): Promise<Story[]> {
+export async function addPublisherFeaturedImages(stories: Story[]): Promise<Story[]> {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_PUBLISHABLE_KEY;
   if (!url || !key) return stories;
@@ -2136,9 +2149,8 @@ export async function getLiveStories(options?: { fast?: boolean; limit?: number 
     try {
       await queuePreviewRepairs(illustratedStories.filter((story) =>
         !hasEditorialPreview(story.summary, story.title) ||
-        // Ingeniøren RSS often contains only the subtitle. Fetch the public
-        // opening paragraphs through the existing bounded repair queue.
-        (story.sources[0]?.label === "Ingeniøren" && story.summary.length < 180)
+        // A valid but short RSS subtitle can still omit the public introduction.
+        story.summary.length < 180
       ));
     } catch (error) {
       console.error("Preview repair queue failed:", error);
