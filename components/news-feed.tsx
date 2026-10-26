@@ -358,7 +358,7 @@ function StoryCard({ story }: { story: Story }) {
               referrerPolicy="no-referrer"
               onError={() => setArticleImageFailed(true)}
             />
-            {photoCredit && <div className="storyPhotoCredit">Foto: {photoCredit}</div>}
+            {<div className="storyPhotoCredit">{photoCredit ? `Foto: ${photoCredit}` : `Billedkilde: ${story.sourceLabel}`}</div>}
           </div>
         )}
 
