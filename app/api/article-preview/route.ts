@@ -13,6 +13,17 @@ function clean(value: string) {
     .replace(/&(?:nbsp|amp|quot|apos|lt|gt);/gi,(v)=>({"&nbsp;":" ","&amp;":"&","&quot;":'"',"&apos;":"'","&lt;":"<","&gt;":">"}[v.toLowerCase()]||v))
     .replace(/\\n|\\t/g," ").replace(/\s+/g," ").trim();
 }
+function editorial(html:string) {
+  return html
+    .replace(/<(?:script|style|noscript|svg|figure|figcaption|aside|nav|header|footer)\b[^>]*>[\s\S]*?<\/(?:script|style|noscript|svg|figure|figcaption|aside|nav|header|footer)>/gi," ")
+    .replace(/<([a-z][\w-]*)\b[^>]*(?:class|data-testid)=["'][^"']*(?:caption|photo-credit|related-articles|related-stories|recommended|advert|paywall|newsletter)[^"']*["'][^>]*>[\s\S]*?<\/\1\s*>/gi," ");
+}
+function editorialParagraphs(html:string) {
+ const paragraphs=Array.from(html.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi))
+  .map(match=>clean(match[1]||""))
+  .filter(text=>text.length>=35 && !/^(?:Læs også|Læs mere|Annonce|Foto:|Abonnér|Tilmeld nyhedsbrev)/i.test(text));
+ return paragraphs.join(" ");
+}
 function jsonBody(html:string) {
  const match=html.match(/"articleBody"\s*:\s*"((?:\\.|[^"\\])*)"/i);
  if(!match)return "";
@@ -40,8 +51,11 @@ export async function POST(request:Request) {
   // Only an article-scoped body or explicitly identified articleBody is safe.
   const bodyText=jsonBody(html);
   const article=html.match(/<article\b[^>]*>([\s\S]*?)<\/article>/i)?.[1]||"";
-  const articleText=article?clean(article):"";
-  const selected=bodyText.length>=120?bodyText:articleText.length>=120?articleText:"";
+  const scoped=article?editorial(article):"";
+  const paragraphs=scoped?editorialParagraphs(scoped):"";
+  // Prefer articleBody where available. Otherwise use only editorial paragraphs
+  // inside the article element, never generic navigation/main page text.
+  const selected=bodyText.length>=120?bodyText:paragraphs.length>=120?paragraphs:"";
   if(!selected)return NextResponse.json({excerpt:null,hasMore:null});
   const words=selected.split(/\s+/).filter(Boolean);
   return NextResponse.json({excerpt:words.slice(0,100).join(" "),hasMore:words.length>100,wordCount:words.length},{headers:{"Cache-Control":"private, max-age=900"}});
