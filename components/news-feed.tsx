@@ -100,7 +100,13 @@ function StoryCard({ story }: { story: Story }) {
         .then(response=>response.ok?response.json():null)
         .then(data=>{
           if(typeof data?.excerpt==="string"&&data.excerpt.trim()&&typeof data?.hasMore==="boolean"){
-            setArticlePreview({text:data.excerpt,hasMore:data.hasMore});
+            const fetchedWords=data.excerpt.trim().split(/\s+/).length;
+            const feedWords=story.summary.trim().split(/\s+/).filter(Boolean).length;
+            // A short partial article extract must not hide a longer publisher feed.
+            // Preserve the longer confirmed source text until full article text is available.
+            if(data.hasMore || fetchedWords>=feedWords){
+              setArticlePreview({text:data.excerpt,hasMore:data.hasMore});
+            }
           }
         }).catch(()=>{});
     },{rootMargin:"250px 0px"});
