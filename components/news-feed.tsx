@@ -79,6 +79,7 @@ function StoryCard({ story }: { story: Story }) {
   const [textOpen, setTextOpen] = useState(false);
   const [resolvedImageUrl, setResolvedImageUrl] = useState<string | null>(story.imageUrl || null);
   const [imageLookupAttempted, setImageLookupAttempted] = useState(false);
+  const [photoCredit, setPhotoCredit] = useState<string | null>(null);
   const [articleImageFailed, setArticleImageFailed] = useState(false);
   const [summaryHasOverflow, setSummaryHasOverflow] = useState(false);
   const [factOpen, setFactOpen] = useState(false);
@@ -148,7 +149,7 @@ function StoryCard({ story }: { story: Story }) {
   // Fetch a publisher-provided preview image only if the story is opened and
   // the news feed did not already supply one. Do not guess an image by keyword.
   useEffect(() => {
-    if (!textOpen || resolvedImageUrl || imageLookupAttempted) return;
+    if (!textOpen || imageLookupAttempted) return;
     const articleUrl = story.sources[0]?.url;
     if (!articleUrl) return;
     setImageLookupAttempted(true);
@@ -160,7 +161,10 @@ function StoryCard({ story }: { story: Story }) {
     })
       .then((response) => response.ok ? response.json() : null)
       .then((data) => {
-        if (typeof data?.imageUrl === "string") {
+        if (typeof data?.photoCredit === "string" && (!resolvedImageUrl || data?.imageUrl === resolvedImageUrl)) {
+          setPhotoCredit(data.photoCredit);
+        }
+        if (typeof data?.imageUrl === "string" && !resolvedImageUrl) {
           setResolvedImageUrl(data.imageUrl);
           setArticleImageFailed(false);
         }
@@ -354,6 +358,7 @@ function StoryCard({ story }: { story: Story }) {
               referrerPolicy="no-referrer"
               onError={() => setArticleImageFailed(true)}
             />
+            {photoCredit && <div className="storyPhotoCredit">Foto: {photoCredit}</div>}
           </div>
         )}
 
