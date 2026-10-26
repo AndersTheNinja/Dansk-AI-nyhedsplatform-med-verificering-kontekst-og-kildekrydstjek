@@ -61,7 +61,14 @@ function JokeCard({ index }: { index: number }) {
   );
 }
 
+// Keep the publisher's original available excerpt, capped at 100 words.
+function originalExcerpt(value: string) {
+  const words = value.trim().split(/\s+/).filter(Boolean);
+  return { text: words.slice(0, 100).join(" "), hasMore: words.length > 100 };
+}
+
 function StoryCard({ story }: { story: Story }) {
+  const excerpt = originalExcerpt(story.summary);
   const ref = useRef<HTMLElement | null>(null);
   const summaryTextRef = useRef<HTMLParagraphElement | null>(null);
    const [subscriptionRequired, setSubscriptionRequired] = useState<boolean | null>(null);
@@ -136,7 +143,7 @@ function StoryCard({ story }: { story: Story }) {
       observer.disconnect();
       window.removeEventListener("resize", measure);
     };
-  }, [story.summary, resolvedImageUrl, articleImageFailed, textOpen]);
+  }, [excerpt.text, resolvedImageUrl, articleImageFailed, textOpen]);
 
   // Fetch a publisher-provided preview image only if the story is opened and
   // the news feed did not already supply one. Do not guess an image by keyword.
@@ -321,7 +328,7 @@ function StoryCard({ story }: { story: Story }) {
             aria-expanded={summaryHasOverflow || textOpen ? textOpen : undefined}
             title={summaryHasOverflow || textOpen ? (textOpen ? "Tryk for at vise mindre" : "Tryk for at vise hele teksten") : undefined}
           >
-            {story.summary}
+            {excerpt.text}
           </p>
           {(summaryHasOverflow || textOpen) && (
             <button
@@ -351,14 +358,14 @@ function StoryCard({ story }: { story: Story }) {
         )}
 
         <div className="scoreLine">
-          <button
+          {excerpt.hasMore && <button
             type="button"
             className="aiSummaryButton"
             onClick={toggleSummary}
             aria-expanded={summaryOpen}
           >
             <span className="actionLinkText">Resumé</span><span className={`summaryChevron ${summaryOpen ? "open" : ""}`}>▾</span>
-          </button>
+          </button>}
           <button
             type="button"
             className="aiCheckLink"
