@@ -53,14 +53,14 @@ export async function POST(request:Request) {
   // Børsen, Politiken and Berlingske may wrap the editorial body in
   // different containers. Accept only article-scoped text: no page-wide
   // paragraph scraping, which could include recommendations.
-  const article=html.match(/<article\\b[^>]*>([\\s\\S]*?)<\\/article>/i)?.[1]||"";
+  const article=html.match(/<article\b[^>]*>([\s\S]*?)<\/article>/i)?.[1]||"";
   const scoped=article?editorial(article):"";
   const paragraphs=scoped?editorialParagraphs(scoped):"";
-  const publisher=url.hostname.replace(/^www\\./,"");
+  const publisher=url.hostname.replace(/^www\./,"");
   const restrictedPublisher=["borsen.dk","politiken.dk","berlingske.dk"].includes(publisher);
   // For these sites reject a body that appears to consist mainly of
   // paywall/navigation prompts rather than actual article paragraphs.
-  const suspicious=/\\b(?:bliv abonnent|opret abonnement|log ind for at læse|få fuld adgang|mest læste artikler)\\b/i;
+  const suspicious=/\b(?:bliv abonnent|opret abonnement|log ind for at læse|få fuld adgang|mest læste artikler)\b/i;
   const cleanedBody=restrictedPublisher&&suspicious.test(bodyText.slice(0,220))?"":bodyText;
   const cleanedParagraphs=restrictedPublisher&&suspicious.test(paragraphs.slice(0,220))?"":paragraphs;
   // Prefer articleBody where available. Otherwise use only editorial paragraphs
