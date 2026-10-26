@@ -36,14 +36,10 @@ function photoCredit(html: string) {
     const match = html.match(/(?:alt|title)\s*=\s*["'](?:Foto|Fotograf|Photo|Photo credit|Billede)\s*:\s*([^"']{2,180})["']/i);
     if (match) value = match[1];
   }
-  if (!value) {
-    const captions = html.match(/<figcaption\b[^>]*>[\s\S]*?<\/figcaption>/gi) || [];
-    for (const caption of captions) {
-      const plain = caption.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
-      const match = plain.match(/(?:Foto|Fotograf|Photo credit|Billede)\s*:\s*(.{2,120})/i);
-      if (match) { value = match[1]; break; }
-    }
-  }
+  // Do not take the first arbitrary figcaption: news pages often contain
+  // recommendations and multiple images with different photographers.
+  // If there is no explicit page-level credit, the client labels the publisher
+  // as the image source rather than attributing another photo to this image.
   if (!value) return "";
   const cleaned = value
     .split(/["']\s*(?:src|srcset|sizes|width|height|loading|class|style|data-[\w-]+)\s*=/i)[0]
