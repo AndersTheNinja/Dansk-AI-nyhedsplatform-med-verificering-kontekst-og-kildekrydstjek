@@ -68,7 +68,9 @@ function originalExcerpt(value: string) {
 }
 
 function StoryCard({ story }: { story: Story }) {
-  const excerpt = originalExcerpt(story.summary);
+  const feedExcerpt = originalExcerpt(story.summary);
+  const [articlePreview, setArticlePreview] = useState<{text:string;hasMore:boolean}|null>(null);
+  const excerpt = articlePreview ? {text:articlePreview.text,hasMore:articlePreview.hasMore} : feedExcerpt;
   const ref = useRef<HTMLElement | null>(null);
   const summaryTextRef = useRef<HTMLParagraphElement | null>(null);
    const [subscriptionRequired, setSubscriptionRequired] = useState<boolean | null>(null);
@@ -86,6 +88,25 @@ function StoryCard({ story }: { story: Story }) {
   const [factLoading, setFactLoading] = useState(false);
   const [factCheck, setFactCheck] = useState<FactResult | null>(null);
   const [factError, setFactError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const node=ref.current;
+    const articleUrl=story.sources[0]?.url;
+    if(!node||!articleUrl)return;
+    const observer=new IntersectionObserver((entries)=>{
+      if(!entries.some(entry=>entry.isIntersecting))return;
+      observer.disconnect();
+      fetch("/api/article-preview",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({url:articleUrl,title:story.title})})
+        .then(response=>response.ok?response.json():null)
+        .then(data=>{
+          if(typeof data?.excerpt==="string"&&data.excerpt.trim()&&typeof data?.hasMore==="boolean"){
+            setArticlePreview({text:data.excerpt,hasMore:data.hasMore});
+          }
+        }).catch(()=>{});
+    },{rootMargin:"250px 0px"});
+    observer.observe(node);
+    return()=>observer.disconnect();
+  },[story.id,story.title,story.sources]);
 
   useEffect(() => {
     const node = ref.current;
