@@ -175,7 +175,7 @@ export async function POST(req: NextRequest) {
     const title = String(body.title ?? "").slice(0, 500);
     const feedText = String(body.feedText ?? "").slice(0, 2500);
     let articleText = "";
-    let basis = "det frit tilgængelige artikeluddrag";
+    let basis = "Overskrift og tilgængeligt uddrag – ikke hele artiklen";
     let articleFetched = false;
 
     try {
@@ -197,7 +197,7 @@ export async function POST(req: NextRequest) {
 
         if (!paywall && extracted.length >= 500) {
           articleText = extracted;
-          basis = "frit tilgængelig artikeltekst";
+          basis = "Artikeltekst hentet fra mediet – det er ikke verificeret, at hele artiklen er tilgængelig";
           articleFetched = true;
         }
       }
@@ -209,7 +209,7 @@ export async function POST(req: NextRequest) {
       const fallbackText = [title, feedText].filter(Boolean).join(". ").trim();
       if (fallbackText.length >= 40) {
         articleText = fallbackText;
-        basis = "overskrift og frit tilgængeligt artikeluddrag";
+        basis = "Overskrift og tilgængeligt uddrag – ikke hele artiklen";
       }
     }
 
