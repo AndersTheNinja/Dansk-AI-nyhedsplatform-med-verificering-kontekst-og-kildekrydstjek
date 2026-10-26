@@ -23,6 +23,21 @@ function metadata(html: string, name: string) {
   return "";
 }
 
+function photoCredit(html: string) {
+  // Only use explicit photographer/agency credit supplied by the publisher.
+  const metaNames = ["image:credit", "og:image:credit", "twitter:image:credit", "photo:credit"];
+  let value = metaNames.map((name) => metadata(html, name)).find(Boolean) || "";
+  if (!value) {
+    const match = html.match(/"(?:creditText|photoCredit|photographer)"\s*:\s*"([^"\\]{2,180})"/i);
+    if (match) value = match[1];
+  }
+  if (!value) {
+    const match = html.match(/(?:Foto|Fotograf|Photo|Photo credit|Billede)\s*:\s*([^<\n]{2,120})/i);
+    if (match) value = match[1].replace(/&amp;/gi, "&");
+  }
+  return value.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim().slice(0, 120);
+}
+
 function titleMatches(expected: string, actual: string) {
   const tokens = (value: string) => new Set(
     value.toLocaleLowerCase("da-DK")
@@ -84,7 +99,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ imageUrl: null });
     }
 
-    return NextResponse.json({ imageUrl: image.toString() }, {
+    return NextResponse.json({ imageUrl: image.toString(), photoCredit: photoCredit(html) || null }, {
       headers: { "Cache-Control": "private, max-age=900" }
     });
   } catch {
