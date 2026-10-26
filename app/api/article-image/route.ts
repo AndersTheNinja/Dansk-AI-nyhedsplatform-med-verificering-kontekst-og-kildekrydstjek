@@ -24,7 +24,7 @@ function metadata(html: string, name: string) {
 }
 
 function photoCredit(html: string) {
-  // Only use explicit photographer/agency credit supplied by the publisher.
+  // Use only explicit publisher credit. Never include adjacent HTML attributes.
   const metaNames = ["image:credit", "og:image:credit", "twitter:image:credit", "photo:credit"];
   let value = metaNames.map((name) => metadata(html, name)).find(Boolean) || "";
   if (!value) {
@@ -32,10 +32,31 @@ function photoCredit(html: string) {
     if (match) value = match[1];
   }
   if (!value) {
-    const match = html.match(/(?:Foto|Fotograf|Photo|Photo credit|Billede)\s*:\s*([^<\n]{2,120})/i);
-    if (match) value = match[1].replace(/&amp;/gi, "&");
+    // Prefer the credit inside an image's alt/title attribute or a caption.
+    const match = html.match(/(?:alt|title)\s*=\s*["'](?:Foto|Fotograf|Photo|Photo credit|Billede)\s*:\s*([^"']{2,180})["']/i);
+    if (match) value = match[1];
   }
-  return value.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim().slice(0, 120);
+  if (!value) {
+    const captions = html.match(/<figcaption\b[^>]*>[\s\S]*?<\/figcaption>/gi) || [];
+    for (const caption of captions) {
+      const plain = caption.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+      const match = plain.match(/(?:Foto|Fotograf|Photo credit|Billede)\s*:\s*(.{2,120})/i);
+      if (match) { value = match[1]; break; }
+    }
+  }
+  if (!value) return "";
+  const cleaned = value
+    .split(/["']\s*(?:src|srcset|sizes|width|height|loading|class|style|data-[\w-]+)\s*=/i)[0]
+    .split(/\s+https?:\/\/|\s+src\s*=/i)[0]
+    .replace(/&amp;/gi, "&").replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/<[^>]*>/g, "")
+    .replace(/^\s*(?:Foto|Fotograf|Photo credit)\s*:\s*/i, "")
+    .replace(/["']+\s*$/, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!cleaned || /(?:src\s*=|https?:\/\/|<|>)/i.test(cleaned)) return "";
+  return cleaned.slice(0, 120);
 }
 
 function titleMatches(expected: string, actual: string) {
