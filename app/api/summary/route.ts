@@ -193,7 +193,9 @@ export async function POST(req: NextRequest) {
       if (articleResponse.ok) {
         const html = await articleResponse.text();
         const paywall = looksLikePaywall(html);
-        const extracted = extractArticleText(html).slice(0, 14000);
+        const fullExtracted = extractArticleText(html);
+        articleTruncated = fullExtracted.length > 14000;
+        const extracted = fullExtracted.slice(0, 14000);
 
         if (!paywall && extracted.length >= 500) {
           articleText = extracted;
@@ -367,6 +369,8 @@ ${parsedSummary.summary}`,
         return NextResponse.json({
           ...parsedSummary,
           basis,
+          basisType,
+          articleTruncated,
           model: usedModel
         });
       } catch (error) {
