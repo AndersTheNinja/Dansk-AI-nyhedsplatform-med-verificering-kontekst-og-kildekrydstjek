@@ -213,7 +213,7 @@ function StoryCard({ story }: { story: Story }) {
       return;
     }
 
-    const cacheKey = `kontekst-summary-v1:${story.id}`;
+    const cacheKey = `kontekst-summary-v2:${story.id}`;
     try {
       const cached = sessionStorage.getItem(cacheKey);
       if (cached) {
@@ -433,7 +433,7 @@ function StoryCard({ story }: { story: Story }) {
                   </ul>
                 )}
                 <div className="aiSummaryFoot">
-                  Resumé baseret på {aiSummary.basis || "frit tilgængelig tekst"}.
+                  Grundlag: {aiSummary.basis || "Tilgængelig tekst – omfang ikke verificeret"}.
                 </div>
               </>
             )}
