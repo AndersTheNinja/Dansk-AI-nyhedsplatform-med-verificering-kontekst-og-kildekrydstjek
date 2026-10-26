@@ -76,7 +76,7 @@ function StoryCard({ story }: { story: Story }) {
    const [subscriptionRequired, setSubscriptionRequired] = useState<boolean | null>(null);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [summaryLoading, setSummaryLoading] = useState(false);
-  const [aiSummary, setAiSummary] = useState<{ summary: string; bullets: string[]; basis?: string } | null>(null);
+  const [aiSummary, setAiSummary] = useState<{ summary: string; bullets: string[]; basis?: string; basisType?: "article_text" | "excerpt"; articleTruncated?: boolean } | null>(null);
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [textOpen, setTextOpen] = useState(false);
   const [resolvedImageUrl, setResolvedImageUrl] = useState<string | null>(story.imageUrl || null);
@@ -433,7 +433,7 @@ function StoryCard({ story }: { story: Story }) {
                   </ul>
                 )}
                 <div className="aiSummaryFoot">
-                  Grundlag: {aiSummary.basis || "Tilgængelig tekst – omfang ikke verificeret"}.
+                  Grundlag: {aiSummary.basis || "tilgængelig tekst – omfang ikke verificeret"}.{aiSummary.basisType === "excerpt" ? " Hele artiklen er ikke verificeret." : ""}
                 </div>
               </>
             )}
