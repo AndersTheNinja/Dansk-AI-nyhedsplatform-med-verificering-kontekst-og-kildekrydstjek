@@ -30,14 +30,20 @@ function jsonBody(html:string) {
  try{return clean(JSON.parse('"'+match[1]+'"'));}catch{return "";}
 }
 function titleMatches(title:string,html:string) {
- const actual=html.match(/<meta\b[^>]*(?:property|name)=["']og:title["'][^>]*content=["']([^"']+)/i)?.[1] ||
- html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i)?.[1] || "";
+ const tags=html.match(/<meta\b[^>]*>/gi)||[];
+ const ogTitle=tags.map(tag=>{
+  const identity=tag.match(/(?:property|name)\s*=\s*["']([^"']+)["']/i)?.[1]?.toLowerCase();
+  return identity==="og:title"||identity==="twitter:title"
+   ? tag.match(/\bcontent\s*=\s*["']([^"']+)["']/i)?.[1]||"" : "";
+ }).find(Boolean);
+ const actual=ogTitle || html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i)?.[1] || "";
  const tokenize=(s:string)=>new Set(clean(s).toLocaleLowerCase("da-DK").replace(/[^a-z0-9æøå]+/g," ").split(/\s+/).filter(x=>x.length>=4));
  const expected=tokenize(title),received=tokenize(actual);
  if(!expected.size||!received.size)return false;
  const matching=[...expected].filter(x=>received.has(x)).length;
  return matching>=Math.min(2,expected.size)&&matching/Math.min(expected.size,received.size)>=0.6;
 }
+
 export async function POST(request:Request) {
  try {
   const body=await request.json();
