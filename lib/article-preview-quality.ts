@@ -58,3 +58,21 @@ export function previewWordCount(value: string): {excerpt: string; hasMore: bool
 
   return { excerpt, hasMore: count > 100, wordCount: count };
 }
+
+/** Remove publisher UI added after genuine editorial content. */
+export function stripPublisherBoilerplate(value: string): string {
+  const patterns = [
+    /(?:^|\s+)Da du er ved at tilmelde dig en gratis prøve\b/i,
+    /(?:^|\s+)Angiver du Ingeniøren som foretrukken kilde\b/i,
+    /(?:^|\s+)ved at vælge et eller flere emner der interesserer dig\b/i,
+    /(?:^|\s+)Google vise vores artikler højere oppe i dine søgeresultater\b/i,
+    /(?:^|\s+)Opret et personligt gavelink\b/i,
+    /(?:^|\s+)Log ind for at følge\b/i
+  ];
+  let end=value.length;
+  for(const pattern of patterns) {
+    const found=pattern.exec(value);
+    if(found && found.index<end) end=found.index;
+  }
+  return value.slice(0,end).trim();
+}
