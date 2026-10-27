@@ -23,11 +23,38 @@ export function isEditorialParagraph(value: string): boolean {
   return !/^(?:læs også|læs mere|se også|annonce|foto:|fotograf:|abonnér|nyhedsbrev|tilmeld|relaterede artikler)(?:\s|:|$)/i.test(text);
 }
 
+// A teaser must end on a sentence boundary rather than after word 100.
+// If the source itself ends in an unfinished sentence, use its last completed
+// sentence instead of displaying a fragment as finished journalism.
 export function previewWordCount(value: string): {excerpt: string; hasMore: boolean; wordCount: number} {
-  const words = value.trim().split(/\s+/).filter(Boolean);
-  return {
-    excerpt: words.slice(0, 100).join(" "),
-    hasMore: words.length > 100,
-    wordCount: words.length
-  };
+  const normalized = value.replace(/\s+/g, " ").trim();
+  const words = normalized ? normalized.split(" ") : [];
+  const count = words.length;
+  if (!count) return { excerpt: "", hasMore: false, wordCount: 0 };
+
+  const sentences = new Intl.Segmenter("da", { granularity: "sentence" }).segment(normalized);
+  let usedWords = 0;
+  let lastCompleted = "";
+  let firstCompletedAfter100 = "";
+
+  for (const sentence of sentences) {
+    const segment = sentence.segment.trim();
+    usedWords += segment ? segment.split(/\s+/).length : 0;
+    // Preserve punctuation from the publisher; never invent a full stop.
+    if (!/[.!?](?:["'»”’)\]]*)$/.test(segment)) continue;
+    const completed = normalized.slice(0, sentence.index + sentence.segment.length).trim();
+    lastCompleted = completed;
+    if (usedWords >= 100) {
+      firstCompletedAfter100 = completed;
+      break;
+    }
+  }
+
+  // A complete sentence just after 100 words is better than a broken one.
+  // If none exists, fall back to the last already-completed sentence.
+  // No reliable boundary at all: explicitly mark the source as incomplete.
+  const excerpt = firstCompletedAfter100 || lastCompleted ||
+    (count > 100 ? words.slice(0, 100).join(" ") + " …" : normalized);
+
+  return { excerpt, hasMore: count > 100, wordCount: count };
 }
