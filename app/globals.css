@@ -285,3 +285,8 @@ button{font:inherit}
 .factTopDivider{border-top:1px solid #e1e5e6;margin:7px 0 3px}
 .chatGptMark{display:inline-block;font-size:15px;line-height:1;color:var(--teal-dark);margin-left:3px}
 .factPanel .factConclusion{border-left-width:1px}
+
+/* Plain article discussion link, matching the existing read-more icon. */
+.factPanel .chatGptDiscuss{display:inline-flex;align-items:center;gap:5px;margin:2px 0 0;padding:0;border:0;border-radius:0;background:transparent;color:var(--teal-dark);font:700 11px Arial,sans-serif;text-decoration:underline;text-underline-offset:2px}
+.factPanel .chatGptDiscuss:hover{border:0;background:transparent;text-decoration:underline}
+.chatGptTransferNote{font:10px/1.4 Arial,sans-serif!important;color:#858f94!important;margin:3px 0 10px!important}
