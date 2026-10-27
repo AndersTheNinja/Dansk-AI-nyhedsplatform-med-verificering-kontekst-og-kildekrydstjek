@@ -405,7 +405,7 @@ function StoryCard({ story }: { story: Story }) {
             onClick={toggleFactCheck}
             aria-expanded={factOpen}
           >
-            <span className="actionLinkText">Faktatjek</span><span className={`summaryChevron ${factOpen ? "open" : ""}`}>▾</span>
+            <span className="actionLinkText">AI-analyse</span><span className={`summaryChevron ${factOpen ? "open" : ""}`}>▾</span>
           </button>
           {story.sources[0] && (
             <a className="readMore" href={story.sources[0].url} target="_blank" rel="noreferrer">
@@ -443,14 +443,25 @@ function StoryCard({ story }: { story: Story }) {
 
         <div className={`aiSummaryPanel factPanel ${factOpen ? "open" : ""}`}>
           <div className="aiSummaryInner">
-            <div className="aiSummaryHeader">Faktatjek</div>
+            <div className="aiSummaryHeader">AI-analyse</div>
+            <a
+                              className="chatGptDiscuss"
+                              href={`https://chatgpt.com/?q=${encodeURIComponent(
+                                `Jeg vil gerne diskutere denne nyhed, jeg har fundet på ØL.dk:\n\n${story.title}\n\nØL.dk / originalkilde: ${story.sources[0]?.url || ""}\n\nNyhedstekst/resumé: ${aiSummary?.summary || story.summary}\n\nHjælp mig med at forstå sagen, argumenterne fra de forskellige sider og hvor stærkt dokumentationen står.`
+                              )}`}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              Diskuter artiklen med ChatGPT <span className="chatGptMark" aria-hidden="true">✳</span>
+                            </a>
+            <div className="factTopDivider" aria-hidden="true" />
             {factLoading && <p className="aiSummaryStatus" role="status">Søger efter eksterne kilder og tjekker påstandene…</p>}
             {factError && <p className="aiSummaryError">{factError}</p>}
             {factCheck && (
               <>
                 <section className="factSection">
                   <div className="factSectionHeading">
-                    <span>Neutralitet</span>
+                    <span>Tekstens neutralitets-score:</span>
                     <strong>{factCheck.neutrality.score == null ? "Ikke vurderet" : `${factCheck.neutrality.score}/100`}</strong>
                   </div>
                   {factCheck.neutrality.score != null ? <>
@@ -462,7 +473,7 @@ function StoryCard({ story }: { story: Story }) {
 
                 <section className="factSection">
                   <div className="factSectionHeading">
-                    <span>Eksterne kilder</span>
+                    <span>Antal eksterne kilder:</span>
                     <strong>{factCheck.otherMedia.count}</strong>
                   </div>
                   {factCheck.otherMedia.names.length > 0 && (
@@ -510,16 +521,7 @@ function StoryCard({ story }: { story: Story }) {
                   </div>
                 </section>
 
-                <a
-                  className="chatGptDiscuss"
-                  href={`https://chatgpt.com/?q=${encodeURIComponent(
-                    `Jeg vil gerne diskutere denne nyhed, jeg har fundet på ØL.dk:\n\n${story.title}\n\nØL.dk / originalkilde: ${story.sources[0]?.url || ""}\n\nNyhedstekst/resumé: ${aiSummary?.summary || story.summary}\n\nHjælp mig med at forstå sagen, argumenterne fra de forskellige sider og hvor stærkt dokumentationen står.`
-                  )}`}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Diskutér nyheden med ChatGPT <span aria-hidden="true">↗</span>
-                </a>
+
 
                 <div className="aiSummaryFoot">
                   Vurderingen kan ændre sig, når der kommer nye oplysninger.
