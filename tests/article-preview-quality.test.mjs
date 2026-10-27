@@ -31,14 +31,34 @@ test("skip image credits, recommendations, and short navigation fragments", () =
  }
 });
 
-test("a 100-word article excerpt only permits summary for 101+ words", () => {
- const exactly100 = Array.from({length:100},(_,i)=>"ord"+i).join(" ");
+test("article excerpts preserve at least 100 words and end at the next full stop", () => {
+ const first99=Array.from({length:99},(_,i)=>"ord"+i).join(" ");
+ const exactly100=first99+" ord99";
  const a=previewWordCount(exactly100);
  assert.equal(a.wordCount,100);
  assert.equal(a.hasMore,false);
- assert.equal(a.excerpt.split(" ").length,100);
- const b=previewWordCount(exactly100+" sidste");
- assert.equal(b.wordCount,101);
+ assert.equal(a.excerpt,exactly100);
+
+ const article=first99+" ord99 fortsætter kl. 13.54 med 800.000 kr. i en vigtig sag. Næste sætning udelades.";
+ const b=previewWordCount(article);
  assert.equal(b.hasMore,true);
- assert.equal(b.excerpt, a.excerpt);
+ assert.equal(b.excerpt,first99+" ord99 fortsætter kl. 13.54 med 800.000 kr. i en vigtig sag.");
+ assert.ok(b.excerpt.split(" ").length>100);
+});
+
+test("excerpt includes a sentence ending on word 100", () => {
+ const first99=Array.from({length:99},(_,i)=>"ord"+i).join(" ");
+ const result=previewWordCount(first99+" færdig. Dette skal ikke med.");
+ assert.equal(result.excerpt,first99+" færdig.");
+ assert.equal(result.hasMore,true);
+});
+
+test("excerpt does not stop at an earlier sentence or cut if none follows word 100", () => {
+ const first90=Array.from({length:89},(_,i)=>"ord"+i).join(" ");
+ const article=first90+" slut. "+Array.from({length:14},(_,i)=>"fortsættelse"+i).join(" ")+" rigtig slutning. Resten skjules.";
+ const result=previewWordCount(article);
+ assert.ok(result.excerpt.endsWith("rigtig slutning."));
+ assert.doesNotMatch(result.excerpt,/Resten skjules/);
+ const withoutEnding=Array.from({length:112},(_,i)=>"ord"+i).join(" ");
+ assert.equal(previewWordCount(withoutEnding).excerpt,withoutEnding);
 });
