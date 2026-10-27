@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { hasPublisherInterfaceText, isEditorialParagraph, previewWordCount } from "@/lib/article-preview-quality";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,7 @@ function editorial(html:string) {
 function editorialParagraphs(html:string) {
  const paragraphs=Array.from(html.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi))
   .map(match=>clean(match[1]||""))
-  .filter(text=>text.length>=35 && !/^(?:Læs også|Læs mere|Annonce|Foto:|Abonnér|Tilmeld nyhedsbrev)/i.test(text));
+  .filter(isEditorialParagraph);
  return paragraphs.join(" ");
 }
 function jsonBody(html:string) {
@@ -67,13 +68,16 @@ export async function POST(request:Request) {
   // For these sites reject a body that appears to consist mainly of
   // paywall/navigation prompts rather than actual article paragraphs.
   const suspicious=/\b(?:bliv abonnent|opret abonnement|log ind for at læse|få fuld adgang|mest læste artikler)\b/i;
-  const cleanedBody=restrictedPublisher&&suspicious.test(bodyText.slice(0,220))?"":bodyText;
-  const cleanedParagraphs=restrictedPublisher&&suspicious.test(paragraphs.slice(0,220))?"":paragraphs;
+  // Some publishers inject account widgets into articleBody itself; do not
+  // treat a contaminated JSON-LD body as genuine editorial article text.
+  const cleanedBody=(hasPublisherInterfaceText(bodyText) ||
+    (restrictedPublisher && suspicious.test(bodyText.slice(0,220)))) ? "" : bodyText;
+  const cleanedParagraphs=(hasPublisherInterfaceText(paragraphs) ||
+    (restrictedPublisher && suspicious.test(paragraphs.slice(0,220)))) ? "" : paragraphs;
   // Prefer articleBody where available. Otherwise use only editorial paragraphs
   // inside the article element, never generic navigation/main page text.
   const selected=cleanedBody.length>=120?cleanedBody:cleanedParagraphs.length>=120?cleanedParagraphs:"";
   if(!selected)return NextResponse.json({excerpt:null,hasMore:null});
-  const words=selected.split(/\s+/).filter(Boolean);
-  return NextResponse.json({excerpt:words.slice(0,100).join(" "),hasMore:words.length>100,wordCount:words.length},{headers:{"Cache-Control":"private, max-age=900"}});
+  return NextResponse.json(previewWordCount(selected),{headers:{"Cache-Control":"private, max-age=900"}});
  }catch{return NextResponse.json({excerpt:null,hasMore:null});}
 }
