@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { hasPublisherInterfaceText, isEditorialParagraph } from "@/lib/article-preview-quality";
+import { hasPublisherInterfaceText, isEditorialParagraph, previewWordCount } from "@/lib/article-preview-quality";
 
 export const dynamic = "force-dynamic";
 
@@ -78,7 +78,6 @@ export async function POST(request:Request) {
   // inside the article element, never generic navigation/main page text.
   const selected=cleanedBody.length>=120?cleanedBody:cleanedParagraphs.length>=120?cleanedParagraphs:"";
   if(!selected)return NextResponse.json({excerpt:null,hasMore:null});
-  const words=selected.split(/\s+/).filter(Boolean);
-  return NextResponse.json({excerpt:words.slice(0,100).join(" "),hasMore:words.length>100,wordCount:words.length},{headers:{"Cache-Control":"private, max-age=900"}});
+  return NextResponse.json(previewWordCount(selected),{headers:{"Cache-Control":"private, max-age=900"}});
  }catch{return NextResponse.json({excerpt:null,hasMore:null});}
 }
