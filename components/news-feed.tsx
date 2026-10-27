@@ -75,6 +75,7 @@ function StoryCard({ story }: { story: Story }) {
   const ref = useRef<HTMLElement | null>(null);
   const summaryTextRef = useRef<HTMLParagraphElement | null>(null);
    const [subscriptionRequired, setSubscriptionRequired] = useState<boolean | null>(null);
+   const checkedAccessUrl = useRef<string | null>(null);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [aiSummary, setAiSummary] = useState<{ summary: string; bullets: string[]; basis?: string; basisType?: "article_text" | "excerpt"; articleTruncated?: boolean } | null>(null);
@@ -117,16 +118,17 @@ function StoryCard({ story }: { story: Story }) {
 
   useEffect(() => {
     const node = ref.current;
-    if (!node || subscriptionRequired !== null) return;
+    const articleUrl = story.sources[0]?.url;
+    if (!node || !articleUrl || checkedAccessUrl.current === articleUrl) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
         if (!entries.some((entry) => entry.isIntersecting)) return;
         observer.disconnect();
 
-        const articleUrl = story.sources[0]?.url;
-        if (!articleUrl) return;
-
+        // Do not repeatedly request an article whose access is unknown.
+        checkedAccessUrl.current = articleUrl;
+        setSubscriptionRequired(null);
         fetch("/api/access", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -134,6 +136,7 @@ function StoryCard({ story }: { story: Story }) {
         })
           .then((response) => response.ok ? response.json() : null)
           .then((result) => {
+            if (checkedAccessUrl.current !== articleUrl) return;
             if (result && typeof result.requiresSubscription === "boolean") {
               setSubscriptionRequired(result.requiresSubscription);
             }
@@ -145,7 +148,7 @@ function StoryCard({ story }: { story: Story }) {
 
     observer.observe(node);
     return () => observer.disconnect();
-  }, [story, subscriptionRequired]);
+  }, [story.sources]);
 
   useEffect(() => {
     const node = summaryTextRef.current;

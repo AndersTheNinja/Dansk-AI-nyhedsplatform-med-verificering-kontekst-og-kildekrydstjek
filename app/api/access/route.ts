@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { classifyArticleAccess } from "@/lib/article-access";
 
 const ALLOWED_HOSTS = new Set([
   "dr.dk","www.dr.dk","politiken.dk","www.politiken.dk","version2.dk","www.version2.dk",
@@ -9,24 +10,6 @@ const ALLOWED_HOSTS = new Set([
   "stiften.dk","www.stiften.dk","migogaarhus.dk","www.migogaarhus.dk",
   "tv2.dk","www.tv2.dk","nyheder.tv2.dk"
 ]);
-
-function looksLikePaywall(html: string) {
-  const sample = html.slice(0, 400000).toLowerCase();
-  return [
-    /"isaccessibleforfree"\s*:\s*false/,
-    /data-paywall/,
-    /class=["'][^"']*paywall[^"']*["']/,
-    /kun for abonnenter/,
-    /kræver abonnement/,
-    /log ind for at læse videre/,
-    /bliv abonnent for at læse/,
-    /læs videre med abonnement/,
-    /abonnentindhold/,
-    /subscriber[-_ ]only/,
-    /premium[-_ ]content/,
-    /"paywall"\s*:\s*true/
-  ].some((pattern) => pattern.test(sample));
-}
 
 export async function POST(req: NextRequest) {
   const { url } = await req.json();
@@ -42,11 +25,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ requiresSubscription: null }, { status: 400 });
   }
 
-  // Børsens almindelige artikelunivers kræver abonnement.
-  if (/^(www\.)?borsen\.dk$/i.test(parsed.hostname)) {
-    return NextResponse.json({ requiresSubscription: true, basis: "publisher-rule" });
-  }
-
   try {
     const response = await fetch(parsed.toString(), {
       redirect: "follow",
@@ -59,7 +37,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (!response.ok) return NextResponse.json({ requiresSubscription: null });
-    return NextResponse.json({ requiresSubscription: looksLikePaywall(await response.text()) });
+    return NextResponse.json(classifyArticleAccess(await response.text(), parsed.toString()));
   } catch {
     return NextResponse.json({ requiresSubscription: null });
   }
