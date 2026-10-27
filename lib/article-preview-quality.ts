@@ -20,7 +20,7 @@ export function hasPublisherInterfaceText(value: string): boolean {
 export function isEditorialParagraph(value: string): boolean {
   const text = value.trim();
   if (text.length < 35 || hasPublisherInterfaceText(text)) return false;
-  return !/^(?:læs også|læs mere|se også|annonce|foto:|fotograf:|abonnér|nyhedsbrev|tilmeld|relaterede artikler)\b/i.test(text);
+  return !/^(?:læs også|læs mere|se også|annonce|foto:|fotograf:|abonnér|nyhedsbrev|tilmeld|relaterede artikler)(?:\s|:|$)/i.test(text);
 }
 
 export function previewWordCount(value: string): {excerpt: string; hasMore: boolean; wordCount: number} {
