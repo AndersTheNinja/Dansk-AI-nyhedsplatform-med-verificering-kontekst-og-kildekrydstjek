@@ -1,4 +1,5 @@
 import { XMLParser } from "fast-xml-parser";
+import { isGenericArticleImage } from "@/lib/article-image-quality";
 import type { Story } from "@/lib/stories";
 import { persistStories, queuePreviewRepairs } from "@/lib/news-store";
 
@@ -1948,11 +1949,11 @@ function applyPublisherFeaturedImages(stories: Story[], value: unknown): Story[]
     } catch {}
   }
   return stories.map((story) => {
-    if (story.imageUrl) return story;
+    if (story.imageUrl && !isGenericArticleImage(story.imageUrl, story.title, story.sources[0]?.label || story.sourceLabel)) return story;
     const lead = story.sources[0];
     if (!lead) return story;
     const image = images.get(`${lead.label}:${canonical(lead.url)}`);
-    return image && similarity(story.title, image.title) >= 0.6 ? { ...story, imageUrl: image.imageUrl } : story;
+    return image && similarity(story.title, image.title) >= 0.6 && !isGenericArticleImage(image.imageUrl, story.title, lead.label) ? { ...story, imageUrl: image.imageUrl } : story;
   });
 }
 
@@ -2113,7 +2114,7 @@ export async function getLiveStories(options?: { fast?: boolean; limit?: number 
       sourceMethod: lead.method,
       summary,
       mentions,
-      imageUrl: lead.imageUrl,
+      imageUrl: lead.imageUrl && !isGenericArticleImage(lead.imageUrl, lead.title, lead.source) ? lead.imageUrl : undefined,
       why: categoryWhy(lead.category),
       verification: hasCrossCheck ? "nuance" : "unverified",
       verificationText: hasCrossCheck
