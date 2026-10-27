@@ -453,8 +453,9 @@ function StoryCard({ story }: { story: Story }) {
                               target="_blank"
                               rel="noreferrer"
                             >
-                              Diskuter artiklen med ChatGPT <span className="chatGptMark" aria-hidden="true">✳</span>
+                              Diskuter artiklen med ChatGPT <span className="externalArrow" aria-hidden="true"><svg viewBox="0 0 16 16" focusable="false"><path d="M6 3H3.75A1.75 1.75 0 0 0 2 4.75v7.5A1.75 1.75 0 0 0 3.75 14h7.5A1.75 1.75 0 0 0 13 12.25V10" /><path d="M9 2h5v5" /><path d="M14 2 7.5 8.5" /></svg></span>
                             </a>
+            <p className="chatGptTransferNote">Artiklens tekst overføres til ChatGPT</p>
             <div className="factTopDivider" aria-hidden="true" />
             {factLoading && <p className="aiSummaryStatus" role="status">Søger efter eksterne kilder og tjekker påstandene…</p>}
             {factError && <p className="aiSummaryError">{factError}</p>}
