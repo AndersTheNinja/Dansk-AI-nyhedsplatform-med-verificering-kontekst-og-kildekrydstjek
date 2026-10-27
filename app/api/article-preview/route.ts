@@ -10,7 +10,7 @@ function clean(value: string) {
     .replace(/<[^>]+>/g," ")
     .replace(/&#x([0-9a-f]+);/gi,(_,n:string)=>String.fromCodePoint(parseInt(n,16)))
     .replace(/&#(\d+);/g,(_,n:string)=>String.fromCodePoint(parseInt(n,10)))
-    .replace(/&(?:nbsp|amp|quot|apos|lt|gt);/gi,(v)=>({"&nbsp;":" ","&amp;":"&","&quot;":'"',"&apos;":"'","&lt;":"<","&gt;":">"}[v.toLowerCase()]||v))
+    .replace(/&(?:nbsp|amp|quot|apos|lt|gt);/gi,(v)=>{ const entities: Record<string,string> = {"&nbsp;":" ","&amp;":"&","&quot;":'"',"&apos;":"'","&lt;":"<","&gt;":">"}; return entities[v.toLowerCase()]||v; })
     .replace(/\\n|\\t/g," ").replace(/\s+/g," ").trim();
 }
 function editorial(html:string) {
