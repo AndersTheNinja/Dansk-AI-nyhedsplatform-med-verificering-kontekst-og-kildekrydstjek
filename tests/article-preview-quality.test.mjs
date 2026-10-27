@@ -76,3 +76,11 @@ test("source with no full sentence is marked as incomplete, not given fake punct
  assert.equal(out.hasMore,true);
  assert.equal(out.excerpt.endsWith("…"),true);
 });
+
+test("remove Ingeniøren standard subscription and preference copy after article", () => {
+ const editorial="Tipper du de danske myndigheder om landmænd, der dyrker ulovligt helt ned til vandløb, så sker der ingenting. Det er nemlig en helt fast praksis på området. Og det har været kommunikeret ud til landets kommuner gennem 12 år.";
+ const noisy=editorial+" Da du er ved at tilmelde dig en gratis prøve beder vi dig hjælpe os med at gøre vores indhold mere relevant for dig, ved at vælge et eller flere emner der interesserer dig. Angiver du Ingeniøren som foretrukken kilde vil Google vise vores artikler højere oppe i dine søgeresultater.";
+ const result=previewWordCount(noisy);
+ assert.equal(result.excerpt, editorial);
+ assert.equal(result.excerpt.includes("prøve"),false);
+});

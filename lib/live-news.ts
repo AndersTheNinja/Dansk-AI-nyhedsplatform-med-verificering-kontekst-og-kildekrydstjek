@@ -1,5 +1,6 @@
 import { XMLParser } from "fast-xml-parser";
 import { isGenericArticleImage } from "@/lib/article-image-quality";
+import { stripPublisherBoilerplate } from "@/lib/article-preview-quality";
 import type { Story } from "@/lib/stories";
 import { persistStories, queuePreviewRepairs } from "@/lib/news-store";
 
@@ -467,7 +468,7 @@ function cleanPreviewText(value = "", title = "") {
   }
 
   text = collapseRepeatedOpening(text);
-  return text.replace(/\s+/g, " ").trim();
+  return stripPublisherBoilerplate(text.replace(/\s+/g, " ").trim());
 }
 
 function cleanPublisherTeaser(value: string, title: string, source: string) {

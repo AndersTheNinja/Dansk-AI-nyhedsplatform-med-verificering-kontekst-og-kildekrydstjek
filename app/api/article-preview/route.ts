@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { hasPublisherInterfaceText, isEditorialParagraph, previewWordCount } from "@/lib/article-preview-quality";
+import { hasPublisherInterfaceText, isEditorialParagraph, previewWordCount, stripPublisherBoilerplate } from "@/lib/article-preview-quality";
 
 export const dynamic = "force-dynamic";
 
@@ -76,7 +76,7 @@ export async function POST(request:Request) {
     (restrictedPublisher && suspicious.test(paragraphs.slice(0,220)))) ? "" : paragraphs;
   // Prefer articleBody where available. Otherwise use only editorial paragraphs
   // inside the article element, never generic navigation/main page text.
-  const selected=cleanedBody.length>=120?cleanedBody:cleanedParagraphs.length>=120?cleanedParagraphs:"";
+  const selected=stripPublisherBoilerplate(cleanedBody.length>=120?cleanedBody:cleanedParagraphs.length>=120?cleanedParagraphs:"");
   if(!selected)return NextResponse.json({excerpt:null,hasMore:null});
   return NextResponse.json(previewWordCount(selected),{headers:{"Cache-Control":"private, max-age=900"}});
  }catch{return NextResponse.json({excerpt:null,hasMore:null});}

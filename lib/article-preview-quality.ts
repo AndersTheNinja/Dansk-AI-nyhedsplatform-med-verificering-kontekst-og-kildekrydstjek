@@ -27,7 +27,7 @@ export function isEditorialParagraph(value: string): boolean {
 // If the source itself ends in an unfinished sentence, use its last completed
 // sentence instead of displaying a fragment as finished journalism.
 export function previewWordCount(value: string): {excerpt: string; hasMore: boolean; wordCount: number} {
-  const normalized = value.replace(/\s+/g, " ").trim();
+  const normalized = stripPublisherBoilerplate(value.replace(/\s+/g, " ").trim());
   const words = normalized ? normalized.split(" ") : [];
   const count = words.length;
   if (!count) return { excerpt: "", hasMore: false, wordCount: 0 };
@@ -57,4 +57,22 @@ export function previewWordCount(value: string): {excerpt: string; hasMore: bool
     (count > 100 ? words.slice(0, 100).join(" ") + " …" : normalized);
 
   return { excerpt, hasMore: count > 100, wordCount: count };
+}
+
+/** Remove publisher UI added after genuine editorial content. */
+export function stripPublisherBoilerplate(value: string): string {
+  const patterns = [
+    /(?:^|\s+)Da du er ved at tilmelde dig en gratis prøve\b/i,
+    /(?:^|\s+)Angiver du Ingeniøren som foretrukken kilde\b/i,
+    /(?:^|\s+)ved at vælge et eller flere emner der interesserer dig\b/i,
+    /(?:^|\s+)Google vise vores artikler højere oppe i dine søgeresultater\b/i,
+    /(?:^|\s+)Opret et personligt gavelink\b/i,
+    /(?:^|\s+)Log ind for at følge\b/i
+  ];
+  let end=value.length;
+  for(const pattern of patterns) {
+    const found=pattern.exec(value);
+    if(found && found.index<end) end=found.index;
+  }
+  return value.slice(0,end).trim();
 }
