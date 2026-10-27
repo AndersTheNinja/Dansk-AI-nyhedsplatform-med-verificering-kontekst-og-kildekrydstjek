@@ -175,10 +175,14 @@ function StoryCard({ story }: { story: Story }) {
     };
   }, [excerpt.text, resolvedImageUrl, articleImageFailed, textOpen]);
 
-  // Fetch a publisher-provided preview image only if the story is opened and
-  // the news feed did not already supply one. Do not guess an image by keyword.
+  // Discover publisher images for short RSS teasers as they enter the viewport.
   useEffect(() => {
-    if (!textOpen || imageLookupAttempted) return;
+    if (imageLookupAttempted || resolvedImageUrl) return;
+    const node = ref.current;
+    if (!node) return;
+    const observer = new IntersectionObserver(entries => {
+      if (!entries.some(entry => entry.isIntersecting)) return;
+      observer.disconnect();
     const articleUrl = story.sources[0]?.url;
     if (!articleUrl) return;
     setImageLookupAttempted(true);
@@ -199,7 +203,10 @@ function StoryCard({ story }: { story: Story }) {
         }
       })
       .catch(() => {});
-  }, [textOpen, resolvedImageUrl, imageLookupAttempted, story.sources, story.title]);
+    }, {rootMargin:"200px 0px"});
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [resolvedImageUrl, imageLookupAttempted, story.sources, story.title, story.sourceLabel]);
 
   async function toggleSummary() {
     const nextOpen = !summaryOpen;
