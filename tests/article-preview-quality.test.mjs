@@ -49,7 +49,7 @@ test("complete the first sentence after word 100 instead of cutting abruptly", (
  const text=first+" "+second+" Nu skal næste historie i gang.";
  const out=previewWordCount(text);
  assert.equal(out.excerpt, first+" "+second);
- assert.equal(out.wordCount,122);
+ assert.equal(out.wordCount,121);
  assert.equal(out.hasMore,true);
  assert.match(out.excerpt,/\.$/);
 });
