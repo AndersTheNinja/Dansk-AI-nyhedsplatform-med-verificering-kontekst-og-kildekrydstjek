@@ -27,7 +27,7 @@ export function isEditorialParagraph(value: string): boolean {
 // If the source itself ends in an unfinished sentence, use its last completed
 // sentence instead of displaying a fragment as finished journalism.
 export function previewWordCount(value: string): {excerpt: string; hasMore: boolean; wordCount: number} {
-  const normalized = value.replace(/\s+/g, " ").trim();
+  const normalized = stripPublisherBoilerplate(value.replace(/\s+/g, " ").trim());
   const words = normalized ? normalized.split(" ") : [];
   const count = words.length;
   if (!count) return { excerpt: "", hasMore: false, wordCount: 0 };
