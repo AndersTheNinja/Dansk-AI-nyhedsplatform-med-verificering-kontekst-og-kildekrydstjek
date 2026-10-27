@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Story } from "@/lib/stories";
 import type { FactResult } from "@/lib/factcheck";
+import { hasPublisherInterfaceText } from "@/lib/article-preview-quality";
 
 const categoryLabel: Record<string,string> = {
   "AI/Tech": "AI",
@@ -99,7 +100,7 @@ function StoryCard({ story }: { story: Story }) {
       fetch("/api/article-preview",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({url:articleUrl,title:story.title})})
         .then(response=>response.ok?response.json():null)
         .then(data=>{
-          if(typeof data?.excerpt==="string"&&data.excerpt.trim()&&typeof data?.hasMore==="boolean"){
+          if(typeof data?.excerpt==="string"&&data.excerpt.trim()&&typeof data?.hasMore==="boolean"&& !hasPublisherInterfaceText(data.excerpt)){
             const fetchedWords=data.excerpt.trim().split(/\s+/).length;
             const feedWords=story.summary.trim().split(/\s+/).filter(Boolean).length;
             // A short partial article extract must not hide a longer publisher feed.
