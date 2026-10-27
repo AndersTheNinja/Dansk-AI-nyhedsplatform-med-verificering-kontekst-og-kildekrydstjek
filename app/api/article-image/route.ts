@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isGenericArticleImage } from "@/lib/article-image-quality";
 
 export const dynamic = "force-dynamic";
 
@@ -116,7 +117,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ imageUrl: null });
     }
 
-    return NextResponse.json({ imageUrl: image.toString(), photoCredit: photoCredit(html) || null }, {
+    const imageDescription = metadata(html, "og:image:alt") || metadata(html, "twitter:image:alt");
+    if (isGenericArticleImage(image.toString(), expectedTitle, page.hostname.replace(/^www\./,"").replace(/\.dk$/,"") === "dr" ? "DR" : page.hostname, imageDescription)) return NextResponse.json({ imageUrl: null });
+    return NextResponse.json({ imageUrl: image.toString(), imageDescription, photoCredit: photoCredit(html) || null }, {
       headers: { "Cache-Control": "private, max-age=900" }
     });
   } catch {
