@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { Story } from "@/lib/stories";
 import type { FactResult } from "@/lib/factcheck";
 import { hasPublisherInterfaceText, previewWordCount } from "@/lib/article-preview-quality";
+import { isGenericArticleImage } from "@/lib/article-image-quality";
 
 const categoryLabel: Record<string,string> = {
   "AI/Tech": "AI",
@@ -80,7 +81,7 @@ function StoryCard({ story }: { story: Story }) {
   const [aiSummary, setAiSummary] = useState<{ summary: string; bullets: string[]; basis?: string; basisType?: "article_text" | "excerpt"; articleTruncated?: boolean } | null>(null);
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [textOpen, setTextOpen] = useState(false);
-  const [resolvedImageUrl, setResolvedImageUrl] = useState<string | null>(story.imageUrl || null);
+  const [resolvedImageUrl, setResolvedImageUrl] = useState<string | null>(story.imageUrl && !isGenericArticleImage(story.imageUrl, story.title, story.sources[0]?.label || story.sourceLabel) ? story.imageUrl : null);
   const [imageLookupAttempted, setImageLookupAttempted] = useState(false);
   const [photoCredit, setPhotoCredit] = useState<string | null>(null);
   const [articleImageFailed, setArticleImageFailed] = useState(false);
@@ -192,7 +193,7 @@ function StoryCard({ story }: { story: Story }) {
         if (typeof data?.photoCredit === "string" && (!resolvedImageUrl || data?.imageUrl === resolvedImageUrl)) {
           setPhotoCredit(data.photoCredit);
         }
-        if (typeof data?.imageUrl === "string" && !resolvedImageUrl) {
+        if (typeof data?.imageUrl === "string" && !resolvedImageUrl && !isGenericArticleImage(data.imageUrl, story.title, story.sources[0]?.label || story.sourceLabel, data.imageDescription || "")) {
           setResolvedImageUrl(data.imageUrl);
           setArticleImageFailed(false);
         }
