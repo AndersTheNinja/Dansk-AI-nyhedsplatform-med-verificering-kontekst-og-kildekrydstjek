@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Story } from "@/lib/stories";
 import type { FactResult } from "@/lib/factcheck";
-import { hasPublisherInterfaceText } from "@/lib/article-preview-quality";
+import { hasPublisherInterfaceText, previewWordCount } from "@/lib/article-preview-quality";
 
 const categoryLabel: Record<string,string> = {
   "AI/Tech": "AI",
@@ -62,10 +62,10 @@ function JokeCard({ index }: { index: number }) {
   );
 }
 
-// Keep the publisher's original available excerpt, capped at 100 words.
+// Show at least 100 words, ending on a complete sentence when available.
 function originalExcerpt(value: string) {
-  const words = value.trim().split(/\s+/).filter(Boolean);
-  return { text: words.slice(0, 100).join(" "), hasMore: words.length > 100 };
+  const { excerpt, hasMore } = previewWordCount(value);
+  return { text: excerpt, hasMore };
 }
 
 function StoryCard({ story }: { story: Story }) {
