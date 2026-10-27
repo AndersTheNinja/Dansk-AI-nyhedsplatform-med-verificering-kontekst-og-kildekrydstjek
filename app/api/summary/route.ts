@@ -175,7 +175,9 @@ export async function POST(req: NextRequest) {
     const title = String(body.title ?? "").slice(0, 500);
     const feedText = String(body.feedText ?? "").slice(0, 2500);
     let articleText = "";
-    let basis = "det frit tilgængelige artikeluddrag";
+    let basis = "overskrift og tilgængeligt uddrag";
+    let basisType: "article_text" | "excerpt" = "excerpt";
+    let articleTruncated = false;
     let articleFetched = false;
 
     try {
@@ -193,11 +195,16 @@ export async function POST(req: NextRequest) {
       if (articleResponse.ok) {
         const html = await articleResponse.text();
         const paywall = looksLikePaywall(html);
-        const extracted = extractArticleText(html).slice(0, 14000);
+        const fullExtracted = extractArticleText(html);
+        articleTruncated = fullExtracted.length > 14000;
+        const extracted = fullExtracted.slice(0, 14000);
 
         if (!paywall && extracted.length >= 500) {
           articleText = extracted;
-          basis = "frit tilgængelig artikeltekst";
+          basisType = "article_text";
+          basis = articleTruncated
+            ? "uddrag af hentet artikeltekst (maks. 14.000 tegn)"
+            : "hentet artikeltekst (hele artiklen er ikke nødvendigvis tilgængelig)";
           articleFetched = true;
         }
       }
@@ -209,7 +216,9 @@ export async function POST(req: NextRequest) {
       const fallbackText = [title, feedText].filter(Boolean).join(". ").trim();
       if (fallbackText.length >= 40) {
         articleText = fallbackText;
-        basis = "overskrift og frit tilgængeligt artikeluddrag";
+        basis = "overskrift og tilgængeligt uddrag";
+        basisType = "excerpt";
+        articleTruncated = false;
       }
     }
 
@@ -367,6 +376,8 @@ ${parsedSummary.summary}`,
         return NextResponse.json({
           ...parsedSummary,
           basis,
+          basisType,
+          articleTruncated,
           model: usedModel
         });
       } catch (error) {

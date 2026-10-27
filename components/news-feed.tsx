@@ -76,7 +76,7 @@ function StoryCard({ story }: { story: Story }) {
    const [subscriptionRequired, setSubscriptionRequired] = useState<boolean | null>(null);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [summaryLoading, setSummaryLoading] = useState(false);
-  const [aiSummary, setAiSummary] = useState<{ summary: string; bullets: string[]; basis?: string } | null>(null);
+  const [aiSummary, setAiSummary] = useState<{ summary: string; bullets: string[]; basis?: string; basisType?: "article_text" | "excerpt"; articleTruncated?: boolean } | null>(null);
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [textOpen, setTextOpen] = useState(false);
   const [resolvedImageUrl, setResolvedImageUrl] = useState<string | null>(story.imageUrl || null);
@@ -100,7 +100,13 @@ function StoryCard({ story }: { story: Story }) {
         .then(response=>response.ok?response.json():null)
         .then(data=>{
           if(typeof data?.excerpt==="string"&&data.excerpt.trim()&&typeof data?.hasMore==="boolean"){
-            setArticlePreview({text:data.excerpt,hasMore:data.hasMore});
+            const fetchedWords=data.excerpt.trim().split(/\s+/).length;
+            const feedWords=story.summary.trim().split(/\s+/).filter(Boolean).length;
+            // A short partial article extract must not hide a longer publisher feed.
+            // Preserve the longer confirmed source text until full article text is available.
+            if(data.hasMore || fetchedWords>=feedWords){
+              setArticlePreview({text:data.excerpt,hasMore:data.hasMore});
+            }
           }
         }).catch(()=>{});
     },{rootMargin:"250px 0px"});
@@ -207,7 +213,7 @@ function StoryCard({ story }: { story: Story }) {
       return;
     }
 
-    const cacheKey = `kontekst-summary-v1:${story.id}`;
+    const cacheKey = `kontekst-summary-v2:${story.id}`;
     try {
       const cached = sessionStorage.getItem(cacheKey);
       if (cached) {
@@ -427,7 +433,7 @@ function StoryCard({ story }: { story: Story }) {
                   </ul>
                 )}
                 <div className="aiSummaryFoot">
-                  Resumé baseret på {aiSummary.basis || "frit tilgængelig tekst"}.
+                  Grundlag: {aiSummary.basis || "tilgængelig tekst – omfang ikke verificeret"}.{aiSummary.basisType === "excerpt" ? " Hele artiklen er ikke verificeret." : ""}
                 </div>
               </>
             )}
