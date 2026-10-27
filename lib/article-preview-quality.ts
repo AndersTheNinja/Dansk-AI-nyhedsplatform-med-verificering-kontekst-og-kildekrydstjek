@@ -22,3 +22,12 @@ export function isEditorialParagraph(value: string): boolean {
   if (text.length < 35 || hasPublisherInterfaceText(text)) return false;
   return !/^(?:læs også|læs mere|se også|annonce|foto:|fotograf:|abonnér|nyhedsbrev|tilmeld|relaterede artikler)\b/i.test(text);
 }
+
+export function previewWordCount(value: string): {excerpt: string; hasMore: boolean; wordCount: number} {
+  const words = value.trim().split(/\s+/).filter(Boolean);
+  return {
+    excerpt: words.slice(0, 100).join(" "),
+    hasMore: words.length > 100,
+    wordCount: words.length
+  };
+}
