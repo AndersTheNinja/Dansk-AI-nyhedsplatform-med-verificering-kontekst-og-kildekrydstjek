@@ -31,14 +31,48 @@ test("skip image credits, recommendations, and short navigation fragments", () =
  }
 });
 
-test("a 100-word article excerpt only permits summary for 101+ words", () => {
- const exactly100 = Array.from({length:100},(_,i)=>"ord"+i).join(" ");
+test("the summary button becomes eligible only when the source exceeds 100 words", () => {
+ const exactly100 = Array.from({length:100},(_,i)=>"ord"+i).join(" ")+".";
  const a=previewWordCount(exactly100);
  assert.equal(a.wordCount,100);
  assert.equal(a.hasMore,false);
  assert.equal(a.excerpt.split(" ").length,100);
- const b=previewWordCount(exactly100+" sidste");
- assert.equal(b.wordCount,101);
+ const b=previewWordCount(exactly100+" Nu skal");
+ assert.equal(b.wordCount,102);
  assert.equal(b.hasMore,true);
- assert.equal(b.excerpt, a.excerpt);
+ assert.equal(b.excerpt,exactly100);
+});
+
+test("complete the first sentence after word 100 instead of cutting abruptly", () => {
+ const first=Array.from({length:80},(_,i)=>"ord"+i).join(" ")+".";
+ const second=Array.from({length:35},(_,i)=>"fortsættelse"+i).join(" ")+".";
+ const text=first+" "+second+" Nu skal næste historie i gang.";
+ const out=previewWordCount(text);
+ assert.equal(out.excerpt, first+" "+second);
+ assert.equal(out.wordCount,122);
+ assert.equal(out.hasMore,true);
+ assert.match(out.excerpt,/\.$/);
+});
+
+test("use the last complete sentence if the source ends mid-sentence", () => {
+ const text="Vi starter dagens overblik med en tur ned ad Frederiksgade. "+
+ "Der er gang i den, når det kommer til take-away, men også i byens restaurationsliv generelt. Nu skal";
+ const out=previewWordCount(text);
+ assert.equal(out.excerpt.endsWith("restaurationsliv generelt."),true);
+ assert.equal(out.excerpt.includes("Nu skal"),false);
+});
+
+test("do not treat abbreviations and bare URLs as full sentences", () => {
+ const text="Du kan læse historien på stiften.dk/spoerg og følge udviklingen i Aarhus. "+
+ Array.from({length:95},(_,i)=>"ord"+i).join(" ")+" og nu slutter sætningen.";
+ const out=previewWordCount(text);
+ assert.equal(out.excerpt.endsWith("sætningen."),true);
+ assert.equal(out.excerpt.includes("stiften.dk/spoerg"),true);
+});
+
+test("source with no full sentence is marked as incomplete, not given fake punctuation", () => {
+ const text=Array.from({length:130},(_,i)=>"ord"+i).join(" ");
+ const out=previewWordCount(text);
+ assert.equal(out.hasMore,true);
+ assert.equal(out.excerpt.endsWith("…"),true);
 });
