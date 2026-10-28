@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { hasPublisherInterfaceText, isEditorialParagraph, previewWordCount, stripPublisherBoilerplate } from "@/lib/article-preview-quality";
+import { hasPublisherInterfaceText, isEditorialParagraph, joinArticleParagraphs, previewWordCount, stripPublisherBoilerplate } from "@/lib/article-preview-quality";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +23,7 @@ function editorialParagraphs(html:string) {
  const paragraphs=Array.from(html.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi))
   .map(match=>clean(match[1]||""))
   .filter(isEditorialParagraph);
- return paragraphs.join(" ");
+ return joinArticleParagraphs(paragraphs);
 }
 function jsonBody(html:string) {
  const match=html.match(/"articleBody"\s*:\s*"((?:\\.|[^"\\])*)"/i);

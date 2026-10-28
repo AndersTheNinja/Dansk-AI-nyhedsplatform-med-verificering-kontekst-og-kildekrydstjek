@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { hasPublisherInterfaceText, isEditorialParagraph, previewWordCount } from "../lib/article-preview-quality.ts";
+import { hasPublisherInterfaceText, isEditorialParagraph, joinArticleParagraphs, previewWordCount, repairMissingSentenceStops } from "../lib/article-preview-quality.ts";
 
 const bad = [
   "Opret et personligt gavelink til nogen, du synes skal læse denne artikel.",
@@ -83,4 +83,32 @@ test("remove Ingeniøren standard subscription and preference copy after article
  const result=previewWordCount(noisy);
  assert.equal(result.excerpt, editorial);
  assert.equal(result.excerpt.includes("prøve"),false);
+});
+
+test("TV2 article screenshot: missing stop before capitalized Især is restored", () => {
+ const original="Jeg tror aldrig før, man har oplevet så stor begejstring Især i de delstater, hvor der er mest spænding om udfaldet ved midtvejsvalget, viser tallene, at der er højere valgdeltagelse.";
+ const expected="Jeg tror aldrig før, man har oplevet så stor begejstring. Især i de delstater, hvor der er mest spænding om udfaldet ved midtvejsvalget, viser tallene, at der er højere valgdeltagelse.";
+ assert.equal(repairMissingSentenceStops(original),expected);
+ assert.equal(previewWordCount(original).excerpt,expected);
+});
+
+test("restore only clear sentence openers, not capitals inside names", () => {
+ const original="Det skriver New York Times og DR Nyheder. Især i Florida er køerne lange. USA's præsident sagde, at det især er vigtigt.";
+ assert.equal(repairMissingSentenceStops(original),original);
+ assert.equal(repairMissingSentenceStops("Vi så stor fremgang Samtidig voksede interessen."),"Vi så stor fremgang. Samtidig voksede interessen.");
+ assert.equal(repairMissingSentenceStops("Det skete i København Især blev det bemærket."),"Det skete i København Især blev det bemærket.");
+ assert.equal(repairMissingSentenceStops("Det var især svært for dem."),"Det var især svært for dem.");
+});
+
+test("preserve punctuation between verified separate HTML article paragraphs", () => {
+ const parts=["Jeg har aldrig set så stor begejstring","Især i de delstater, hvor valget bliver tæt.", "Det fremgår af de nye tal!"];
+ assert.equal(joinArticleParagraphs(parts),
+ "Jeg har aldrig set så stor begejstring. Især i de delstater, hvor valget bliver tæt. Det fremgår af de nye tal!");
+ assert.equal(joinArticleParagraphs(["Tallet var 48.", "Her er forklaringen."]), "Tallet var 48. Her er forklaringen.");
+});
+
+test("do not invent punctuation between lower-case continuations or after colons", () => {
+ assert.equal(joinArticleParagraphs(["Ifølge rapporten", "er forholdene ændret"]), "Ifølge rapporten er forholdene ændret");
+ assert.equal(joinArticleParagraphs(["Ministeriet oplyser:", "Det bliver undersøgt."]), "Ministeriet oplyser: Det bliver undersøgt.");
+ assert.equal(joinArticleParagraphs(["", "En enkelt sætning"]), "En enkelt sætning");
 });
