@@ -2,7 +2,7 @@
 // Use the article's own access metadata and keep uncertain cases unlabelled.
 export type AccessResult = {
   requiresSubscription: boolean | null;
-  basis: "article-jsonld" | "explicit-paywall" | "unknown";
+  basis: "article-jsonld" | "article-meta" | "article-gate" | "explicit-paywall" | "unknown";
 };
 
 function declaredAccess(value: unknown): boolean | null {
@@ -79,6 +79,60 @@ export function accessFromArticleJsonLd(html: string, requestedUrl: URL): boolea
   return null;
 }
 
+
+function attribute(tag: string, name: string): string {
+  const pattern = new RegExp("(?:^|\\s)" + name + "\\s*=\\s*([\"'])(.*?)\\1", "i");
+  return pattern.exec(tag)?.[2]?.trim() || "";
+}
+
+/**
+ * Publisher article-level meta markers (e.g. article:content_tier=locked).
+ * Trust only metadata with a matching canonical URL for the requested story.
+ */
+export function accessFromArticleMeta(html: string, requestedUrl: URL): boolean | null {
+  const head = /<head\b[^>]*>([\s\S]*?)<\/head\s*>/i.exec(html)?.[1];
+  if (!head) return null;
+
+  const metas = Array.from(head.matchAll(/<meta\b[^>]*>/gi), match => match[0]);
+  const links = Array.from(head.matchAll(/<link\b[^>]*>/gi), match => match[0]);
+  const references = [
+    ...links.filter(link => /\bcanonical\b/i.test(attribute(link, "rel"))).map(link => attribute(link, "href")),
+    ...metas.filter(meta => attribute(meta, "property").toLowerCase() === "og:url").map(meta => attribute(meta, "content"))
+  ].filter(Boolean);
+  const requestedPath = requestedUrl.pathname.replace(/\/+$/, "") || "/";
+  if (!references.length || !references.some(ref => canonicalPath(ref, requestedUrl) === requestedPath)) return null;
+
+  let paid = false, free = false;
+  for (const meta of metas) {
+    const kind = (attribute(meta, "property") || attribute(meta, "name") || attribute(meta, "itemprop")).toLowerCase();
+    const value = attribute(meta, "content").toLowerCase();
+    if (kind === "article:content_tier" || kind === "article:content-tier") {
+      if (["locked", "subscriber", "subscription", "premium", "paid"].includes(value)) paid = true;
+      if (value === "free") free = true;
+      // "metered" does not establish the current visitor's access.
+    }
+    if (kind === "isaccessibleforfree" && (value === "true" || value === "false")) {
+      if (value === "false") paid = true;
+      else free = true;
+    }
+    if ((kind === "article:paywall" || kind === "paywall") &&
+        ["true", "locked", "subscriber", "subscription"].includes(value)) paid = true;
+  }
+  // Conflicting publisher metadata cannot establish free access.
+  return paid && free ? null : paid ? true : free ? false : null;
+}
+
+/** Paywall gates within an article are more specific than global marketing. */
+export function accessFromArticleGate(html: string): boolean | null {
+  const article = /<article\b[^>]*>([\s\S]*?)<\/article\s*>/i.exec(html);
+  if (!article) return null;
+  const scoped = article[0].slice(0, 250000);
+  const marker = /<(?:div|section|aside|article)\b[^>]*(?:data-(?:paywall|paywall-state|article-paywall|access-status|content-tier)\s*=\s*["'](?:true|locked|subscriber|subscription|premium|paid)["']|(?:class|data-testid)\s*=\s*["'][^"']*(?:article-paywall|paywall-gate|subscription-wall|premium-gate|article-subscription)[^"']*["'])[^>]*>/i;
+  const textGate = /(?:for at læse (?:resten af )?artiklen (?:skal du|kræves)|bliv abonnent for at læse videre|log ind for at læse videre|læs videre med abonnement)/i;
+  if (marker.test(scoped) || textGate.test(scoped)) return true;
+  return null;
+}
+
 const explicitPaywall = [
   /(?:log ind|login) for at læse videre/i,
   /bliv abonnent for at læse/i,
@@ -90,15 +144,21 @@ const explicitPaywall = [
 
 export function classifyArticleAccess(html: string, url: URL): AccessResult {
   const article = accessFromArticleJsonLd(html, url);
-  // Use a limited set of explicit signals; generic marketing widgets alone
-  // can be present even when the requested article is free.
-  const paywallSignal = explicitPaywall.some(re => re.test(html.slice(0, 400000)));
+  const meta = accessFromArticleMeta(html, url);
+  const gate = accessFromArticleGate(html);
+  // A global paywall advertisement can describe a *different* article.
+  // If there is an article element, only trust scoped gates within that article.
+  const hasArticle = /<article\b/i.test(html);
+  const paywallSignal = !hasArticle && explicitPaywall.some(re => re.test(html.slice(0, 400000)));
+
+  const paid = article === true || meta === true || gate === true || paywallSignal;
+  const free = article === false || meta === false;
+  if (paid && free) return { requiresSubscription: null, basis: "unknown" };
   if (article === true) return { requiresSubscription: true, basis: "article-jsonld" };
-  if (article === false && !paywallSignal) return { requiresSubscription: false, basis: "article-jsonld" };
-  if (article === false && paywallSignal) {
-    // Conflicting page signals: don't claim the article is free.
-    return { requiresSubscription: null, basis: "unknown" };
-  }
+  if (meta === true) return { requiresSubscription: true, basis: "article-meta" };
+  if (gate === true) return { requiresSubscription: true, basis: "article-gate" };
   if (paywallSignal) return { requiresSubscription: true, basis: "explicit-paywall" };
+  if (article === false) return { requiresSubscription: false, basis: "article-jsonld" };
+  if (meta === false) return { requiresSubscription: false, basis: "article-meta" };
   return { requiresSubscription: null, basis: "unknown" };
 }
