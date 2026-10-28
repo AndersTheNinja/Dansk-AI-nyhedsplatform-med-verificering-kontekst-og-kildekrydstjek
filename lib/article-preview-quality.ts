@@ -28,12 +28,12 @@ export function isEditorialParagraph(value: string): boolean {
  * their punctuation: "stor begejstring Især i de delstater".
  *
  * Only repair a small group of unambiguous uppercase sentence openers after
- * a lower-case word or number. Do not insert periods at every capital letter:
+ * a lower-case word (not a capitalized name). Do not insert periods at every capital letter:
  * that would corrupt names, abbreviations and direct quotations.
  */
 export function repairMissingSentenceStops(value: string): string {
   return value.replace(
-    /([\p{Ll}\p{N}»”’])(\s+)(?=(?:Især|Samtidig|Desuden|Derudover|Alligevel|Imidlertid|Derfor|Til gengæld|I øvrigt)\b)/gu,
+    /(?<![\p{L}\p{M}])([\p{Ll}][\p{L}\p{M}’'-]*)(\s+)(?=(?:Især|Samtidig|Desuden|Derudover|Alligevel|Imidlertid|Derfor|Til gengæld|I øvrigt)\b)/gu,
     "$1.$2"
   );
 }
