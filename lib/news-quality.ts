@@ -34,3 +34,48 @@ export function auditNewsStories(stories: Story[], now = Date.now()): QualityRep
  }
  return { checked: stories.length, issueCounts: counts, examples };
 }
+
+
+/** Apply only deterministic, reversible display-level fixes. Do not invent text or images. */
+export function repairNewsStories(stories: Story[]): { stories: Story[]; repairs: Record<string,number> } {
+ const repairs={ boilerplate:0,genericImage:0,duplicate:0 };
+ const seen=new Set<string>();
+ const result:Story[]=[];
+ const cutPatterns=[
+   /(?:^|\s+)da du er ved at tilmelde dig en gratis prøve\b/i,
+   /(?:^|\s+)angiver du ingeniøren som foretrukken kilde\b/i,
+   /(?:^|\s+)opret et personligt gavelink\b/i,
+   /(?:^|\s+)log ind for at følge\b/i,
+   /(?:^|\s+)kunne ikke generere link\b/i,
+   /(?:^|\s+)bliv abonnent for at læse videre\b/i
+ ];
+ for(const story of stories){
+   const source=story.sources?.[0];
+   let key="";
+   if(source?.url){
+     try { const u=new URL(source.url); key=u.hostname.toLowerCase()+u.pathname.replace(/\/$/,"").toLowerCase(); }
+     catch { key=""; }
+   }
+   // Only deduplicate confident same-URL items; leave distinct coverage intact.
+   if(key && seen.has(key)){repairs.duplicate++;continue;}
+   if(key)seen.add(key);
+   let summary=story.summary || "";
+   for(const pattern of cutPatterns){
+     const match=pattern.exec(summary);
+     if(match && match.index>0 && match.index<summary.length){
+       summary=summary.slice(0,match.index).trim();
+     }
+   }
+   if(summary!==story.summary && summary.length>20)repairs.boilerplate++;
+   else summary=story.summary;
+   let imageUrl=story.imageUrl;
+   if(imageUrl){
+     try {
+       const path=decodeURIComponent(new URL(imageUrl).pathname);
+       if(genericPicture.test(path)){imageUrl=undefined;repairs.genericImage++;}
+     }catch{imageUrl=undefined;repairs.genericImage++;}
+   }
+   result.push({...story,summary,imageUrl});
+ }
+ return {stories:result,repairs};
+}

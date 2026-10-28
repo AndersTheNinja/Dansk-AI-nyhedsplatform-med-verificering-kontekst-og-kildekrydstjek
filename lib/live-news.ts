@@ -1,5 +1,6 @@
 import { XMLParser } from "fast-xml-parser";
 import { isGenericArticleImage } from "@/lib/article-image-quality";
+import { repairNewsStories } from "@/lib/news-quality";
 import { stripPublisherBoilerplate } from "@/lib/article-preview-quality";
 import type { Story } from "@/lib/stories";
 import { persistStories, queuePreviewRepairs } from "@/lib/news-store";
@@ -1898,9 +1899,11 @@ function hasEditorialPreview(text: string, title = "") {
 
 // Apply the same excerpt rules to stored snapshots and archive-only stories.
 export function cleanNewsStories(stories: Story[]): Story[] {
-  return stories.map((story) => ({ ...story,
+  const cleaned=stories.map((story) => ({ ...story,
     summary: cleanPublisherTeaser(story.summary, story.title, story.sources[0]?.label || story.sourceLabel)
   })).filter((story) => hasEditorialPreview(story.summary, story.title));
+  // Same conservative repairs for stored snapshots and freshly collected news.
+  return repairNewsStories(cleaned).stories;
 }
 
 function applyPublisherPreviews(stories: Story[], value: unknown): Story[] {

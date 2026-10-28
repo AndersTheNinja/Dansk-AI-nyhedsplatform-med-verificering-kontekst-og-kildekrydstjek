@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { auditNewsStories } from "../lib/news-quality.ts";
+import { auditNewsStories, repairNewsStories } from "../lib/news-quality.ts";
 const base = {
  id:"a",title:"Nyhed om DNA og kriminalsag",sourceLabel:"DR",published:"I dag",
  publishedAt:"2026-10-27T12:00:00.000Z",
@@ -24,4 +24,22 @@ test("detects future timestamp and generic imagery without dropping stories",()=
  assert.equal(report.issueCounts.future_date,1);
  assert.equal(report.issueCounts.generic_image,1);
  assert.equal(report.checked,1);
+});
+test("repair removes trailing publisher signup text but keeps editorial paragraph",()=>{
+ const clean="Her er nyheden. Den indeholder oplysninger fra artiklen og bygger på publiceret tekst.";
+ const contaminated=clean+" Da du er ved at tilmelde dig en gratis prøve beder vi dig vælge interesser.";
+ const result=repairNewsStories([{...base,summary:contaminated}]);
+ assert.equal(result.stories[0].summary,clean);
+ assert.equal(result.repairs.boilerplate,1);
+});
+test("repair discards only duplicate URLs and generic pictures, not short stories",()=>{
+ const short={...base,id:"short",summary:"Kort nyhed.",imageUrl:"https://cdn.dr.dk/default.jpg"};
+ const duplicate={...short,id:"duplicate",summary:"Andet uddrag"};
+ const different={...short,id:"separate",sources:[{label:"DR",url:"https://www.dr.dk/nyheder/other"}]};
+ const out=repairNewsStories([short,duplicate,different]);
+ assert.equal(out.stories.length,2);
+ assert.equal(out.stories[0].summary,"Kort nyhed.");
+ assert.equal(out.stories[0].imageUrl,undefined);
+ assert.equal(out.repairs.duplicate,1);
+ assert.equal(out.repairs.genericImage,2);
 });
