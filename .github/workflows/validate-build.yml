@@ -20,4 +20,5 @@ jobs:
       - run: node --experimental-strip-types --test tests/article-image-quality.test.mjs
       - run: node --experimental-strip-types --test tests/news-quality.test.mjs
       - run: node --experimental-strip-types --test tests/article-enrichment-metrics.test.mjs
+      - run: node --test tests/tv2-feed.test.mjs
       - run: npm run build
