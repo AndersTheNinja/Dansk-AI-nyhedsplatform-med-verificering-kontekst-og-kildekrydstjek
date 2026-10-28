@@ -1,11 +1,12 @@
 import type { Story } from "./stories";
-import { hasPublisherInterfaceText, stripPublisherBoilerplate } from "./article-preview-quality";
-import { isGenericArticleImage } from "./article-image-quality";
+
 
 export type QualityIssue = "short_text" | "publisher_ui" | "generic_image" | "missing_image" | "invalid_date" | "future_date" | "duplicate";
 export type QualityFinding = { id: string; source: string; issues: QualityIssue[] };
 export type QualityReport = { checked: number; issueCounts: Record<QualityIssue, number>; examples: QualityFinding[] };
 
+const uiPattern = /\b(?:opret et personligt gavelink|log ind for at følge|gratis prøve beder vi dig|angiver du ingeniøren som foretrukken kilde|kunne ikke generere link|bliv abonnent for at læse videre)\b/i;
+const genericPicture = /(?:^|[-_\/.])(?:default|placeholder|fallback|generic|standard|nyhedsgrafik|verdenskort|jordklode|logo|favicon)(?:[-_\/.]|$)/i;
 const issueTypes: QualityIssue[] = ["short_text","publisher_ui","generic_image","missing_image","invalid_date","future_date","duplicate"];
 export function auditNewsStories(stories: Story[], now = Date.now()): QualityReport {
  const counts = Object.fromEntries(issueTypes.map(key => [key,0])) as Record<QualityIssue,number>;
@@ -17,9 +18,9 @@ export function auditNewsStories(stories: Story[], now = Date.now()): QualityRep
   const primary = story.sources?.[0];
   const source = primary?.label || story.sourceLabel || "";
   if (text.split(/\s+/).filter(Boolean).length < 25) issues.push("short_text");
-  if (hasPublisherInterfaceText(text) || stripPublisherBoilerplate(text) !== text) issues.push("publisher_ui");
+  if (uiPattern.test(text)) issues.push("publisher_ui");
   if (!story.imageUrl) issues.push("missing_image");
-  else if (isGenericArticleImage(story.imageUrl,story.title,source)) issues.push("generic_image");
+  else { try { if (genericPicture.test(decodeURIComponent(new URL(story.imageUrl).pathname))) issues.push("generic_image"); } catch { issues.push("generic_image"); } }
   const timestamp = story.publishedAt ? Date.parse(story.publishedAt) : NaN;
   if (!Number.isFinite(timestamp)) issues.push("invalid_date");
   else if (timestamp > now + 15*60_000) issues.push("future_date");
