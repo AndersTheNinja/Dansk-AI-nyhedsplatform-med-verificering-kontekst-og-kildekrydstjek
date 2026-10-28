@@ -52,7 +52,7 @@ export function accessFromArticleJsonLd(html: string, requestedUrl: URL): boolea
     if (!node || typeof node !== "object") return null;
     const record = node as Record<string, unknown>;
     const types = Array.isArray(record["@type"]) ? record["@type"] : [record["@type"]];
-    const article = types.some(type => typeof type === "string" && /(?:NewsArticle|Article|ReportageNewsArticle)$/i.test(type));
+    const article = types.some(type => typeof type === "string" && /(?:Article|BlogPosting|WebPage)$/i.test(type));
     if (article) {
       const references = [
         getReference(record["@id"]),
@@ -149,7 +149,10 @@ export function classifyArticleAccess(html: string, url: URL): AccessResult {
   // A global paywall advertisement can describe a *different* article.
   // If there is an article element, only trust scoped gates within that article.
   const hasArticle = /<article\b/i.test(html);
-  const paywallSignal = !hasArticle && explicitPaywall.some(re => re.test(html.slice(0, 400000)));
+  const articleHtml = hasArticle ? (/<article\b[^>]*>([\s\S]*?)<\/article\s*>/i.exec(html)?.[0] || "") : "";
+  const paywallSignal = explicitPaywall.some(re =>
+    re.test(hasArticle ? articleHtml.slice(0, 250000) : html.slice(0, 400000))
+  );
 
   const paid = article === true || meta === true || gate === true || paywallSignal;
   const free = article === false || meta === false;
