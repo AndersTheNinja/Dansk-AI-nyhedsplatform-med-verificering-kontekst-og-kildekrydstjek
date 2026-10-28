@@ -41,44 +41,45 @@ function paywalledSection(parts: unknown): boolean {
 export function accessFromArticleJsonLd(html: string, requestedUrl: URL): boolean | null {
   const expected = requestedUrl.pathname.replace(/\/+$/, "") || "/";
   const scripts = Array.from(html.matchAll(/<script\b(?=[^>]*\btype\s*=\s*["']application\/ld\+json["'])[^>]*>([\s\S]*?)<\/script\s*>/gi));
-  const visit = (node: unknown): boolean | null => {
+  const matchedArticles: boolean[] = [];
+  const matchedPages: boolean[] = [];
+
+  const visit = (node: unknown): void => {
     if (Array.isArray(node)) {
-      for (const child of node) {
-        const result = visit(child);
-        if (result !== null) return result;
-      }
-      return null;
+      for (const child of node) visit(child);
+      return;
     }
-    if (!node || typeof node !== "object") return null;
+    if (!node || typeof node !== "object") return;
     const record = node as Record<string, unknown>;
     const types = Array.isArray(record["@type"]) ? record["@type"] : [record["@type"]];
-    const article = types.some(type => typeof type === "string" && /(?:Article|BlogPosting|WebPage)$/i.test(type));
-    if (article) {
+    const article = types.some(type => typeof type === "string" && /(?:Article|BlogPosting)$/i.test(type));
+    const webPage = types.some(type => typeof type === "string" && /WebPage$/i.test(type));
+    if (article || webPage) {
       const references = [
         getReference(record["@id"]),
         getReference(record.url),
         getReference(record.mainEntityOfPage)
       ].filter(Boolean);
       if (references.some(ref => canonicalPath(ref, requestedUrl) === expected)) {
-        // Article-level partial paywalls override a freely readable teaser.
-        if (paywalledSection(record.hasPart)) return true;
-        return declaredAccess(record.isAccessibleForFree);
+        const status = paywalledSection(record.hasPart)
+          ? true
+          : declaredAccess(record.isAccessibleForFree);
+        if (status !== null) (article ? matchedArticles : matchedPages).push(status);
       }
     }
-    // Support @graph but don't attribute another article's access to this one.
-    const graph = record["@graph"];
-    if (graph && typeof graph === "object") return visit(graph);
-    return null;
+    // Traverse only the schema graph and explicit main entity, never arbitrary
+    // embedded recommendations or generic site subscription banners.
+    if (record["@graph"]) visit(record["@graph"]);
+    if (record.mainEntity && typeof record.mainEntity === "object") visit(record.mainEntity);
   };
   for (const script of scripts) {
-    try {
-      const result = visit(JSON.parse(script[1]));
-      if (result !== null) return result;
-    } catch {}
+    try { visit(JSON.parse(script[1])); } catch {}
   }
-  return null;
+  // The specific NewsArticle takes precedence over a more generic WebPage.
+  const relevant = matchedArticles.length ? matchedArticles : matchedPages;
+  if (!relevant.length || (relevant.includes(true) && relevant.includes(false))) return null;
+  return relevant[0];
 }
-
 
 function attribute(tag: string, name: string): string {
   const pattern = new RegExp("(?:^|\\s)" + name + "\\s*=\\s*([\"'])(.*?)\\1", "i");
