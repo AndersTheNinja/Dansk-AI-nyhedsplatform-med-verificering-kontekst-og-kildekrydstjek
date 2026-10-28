@@ -1474,6 +1474,11 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
     if (explicitPageTitle && !articleTitleMatchesPage(item.title, html)) {
       return item;
     }
+    // For short articles, accept replacement content only if the actual
+    // publisher page identifies the very same story.
+    if (item.description.trim().length < 180 && !explicitPageTitle) {
+      return item;
+    }
 
     // JFM/Stiften renders the actual article body from a separate async endpoint.
     // The RSS description can be empty even for a freely available article, so
@@ -2077,9 +2082,14 @@ export async function getLiveStories(options?: { fast?: boolean; limit?: number 
       // Stiften and Computerworld frequently publish short RSS teasers while
       // additional article text is available on the article page. Always attempt
       // enrichment for those publishers, even outside the general request budget.
+      const shortText = entry.lead.description.trim().length < 180 ||
+        isBoilerplatePreview(entry.lead.description);
+      // Prioritize retrying short or contaminated excerpts beyond the normal
+      // enrichment budget, without fetching every story on every cycle.
       if (!alwaysEnrich && (
-        (entry.lead.description.length >= 340 && !isBoilerplatePreview(entry.lead.description) && entry.lead.imageUrl) ||
-        index >= 220
+        index >= (shortText ? 350 : 220) ||
+        (!shortText && entry.lead.description.length >= 340 &&
+         !isBoilerplatePreview(entry.lead.description) && entry.lead.imageUrl)
       )) return entry;
 
       return { ...entry, lead: await enrichPreview(entry.lead) };
