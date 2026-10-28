@@ -41,11 +41,29 @@ export async function POST(req: NextRequest) {
       signal: AbortSignal.timeout(6000)
     });
 
-    if (!response.ok) return NextResponse.json({ requiresSubscription: null });
-    const html = await response.text();
-    // Never infer "gratis" merely because a paywall is not visible.
-    // Classify against metadata for this very article, or leave unknown.
-    return NextResponse.json(classifyArticleAccess(html, parsed));
+    if (!response.ok || !/(?:text\/html|application\/xhtml\+xml)/i.test(response.headers.get("content-type") || "")) {
+      return NextResponse.json({ requiresSubscription: null });
+    }
+    // A redirect to a login page, front page or another article must not
+    // transfer that page's access status to the originally requested story.
+    const finalUrl = new URL(response.url);
+    const sameSite = finalUrl.hostname.replace(/^www\./i, "") === parsed.hostname.replace(/^www\./i, "");
+    const samePath = finalUrl.pathname.replace(/\/+$/, "") === parsed.pathname.replace(/\/+$/, "");
+    if (!sameSite || !samePath) return NextResponse.json({ requiresSubscription: null });
+
+    const html = (await response.text()).slice(0, 750000);
+    const result = classifyArticleAccess(html, parsed);
+    // Sample anonymous source-level evidence for later accuracy improvements.
+    // Do not log URLs, titles, article text or visitor details.
+    const sample = [...parsed.pathname].reduce((n, ch) => (n * 31 + ch.charCodeAt(0)) >>> 0, 0) % 16;
+    if (sample === 0) {
+      console.info("ØL.dk access evidence", JSON.stringify({
+        publisher: parsed.hostname.replace(/^www\./i, ""),
+        access: result.requiresSubscription === null ? "unknown" : result.requiresSubscription ? "abb" : "free",
+        basis: result.basis
+      }));
+    }
+    return NextResponse.json(result);
   } catch {
     return NextResponse.json({ requiresSubscription: null });
   }
