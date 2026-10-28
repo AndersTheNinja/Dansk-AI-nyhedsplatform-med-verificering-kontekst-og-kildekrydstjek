@@ -1,6 +1,7 @@
 import { XMLParser } from "fast-xml-parser";
 import { isGenericArticleImage } from "@/lib/article-image-quality";
 import { repairNewsStories } from "@/lib/news-quality";
+import { measureArticleEnrichment } from "@/lib/article-enrichment-metrics";
 import { stripPublisherBoilerplate } from "@/lib/article-preview-quality";
 import type { Story } from "@/lib/stories";
 import { persistStories, queuePreviewRepairs } from "@/lib/news-store";
@@ -2065,6 +2066,7 @@ export async function getLiveStories(options?: { fast?: boolean; limit?: number 
     })
     .slice(0, fast ? Math.max(20, options?.limit || 20) : 1500);
 
+  let articlePageAttempts = 0;
   // Only fetch article pages for stories whose RSS/web teaser is too short.
   // This also works for subscriber articles because we only use public metadata/teasers.
   const enrichedSelected = fast
@@ -2092,9 +2094,26 @@ export async function getLiveStories(options?: { fast?: boolean; limit?: number 
          !isBoilerplatePreview(entry.lead.description) && entry.lead.imageUrl)
       )) return entry;
 
+      articlePageAttempts++;
       return { ...entry, lead: await enrichPreview(entry.lead) };
     })
   );
+
+  if (!fast) {
+    // Compare each lead before/after article-page retrieval, using precisely
+    // the same publisher teaser cleaning shown in the feed.
+    const metricEntries = (entries: typeof selected) => entries.map(({ lead }) => ({
+      lead: {
+        source: lead.source,
+        description: cleanPublisherTeaser(lead.description, lead.title, lead.source)
+      }
+    }));
+    console.info("ØL.dk article enrichment metrics", JSON.stringify(
+      measureArticleEnrichment(
+        metricEntries(selected), metricEntries(enrichedSelected), articlePageAttempts
+      )
+    ));
+  }
 
   const stories = enrichedSelected.map((entry, index) => {
     const { lead, sources } = entry;
