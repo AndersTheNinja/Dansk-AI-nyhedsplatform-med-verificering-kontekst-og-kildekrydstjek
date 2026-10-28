@@ -23,11 +23,39 @@ export function isEditorialParagraph(value: string): boolean {
   return !/^(?:læs også|læs mere|se også|annonce|foto:|fotograf:|abonnér|nyhedsbrev|tilmeld|relaterede artikler)(?:\s|:|$)/i.test(text);
 }
 
+/**
+ * Some publisher exports flatten consecutive sentences/paragraphs without
+ * their punctuation: "stor begejstring Især i de delstater".
+ *
+ * Only repair a small group of unambiguous uppercase sentence openers after
+ * a lower-case word or number. Do not insert periods at every capital letter:
+ * that would corrupt names, abbreviations and direct quotations.
+ */
+export function repairMissingSentenceStops(value: string): string {
+  return value.replace(
+    /([\p{Ll}\p{N}»”’])(\s+)(?=(?:Især|Samtidig|Desuden|Derudover|Alligevel|Imidlertid|Derfor|Til gengæld|I øvrigt)\b)/gu,
+    "$1.$2"
+  );
+}
+
+/** Preserve HTML paragraph boundaries that would otherwise be collapsed. */
+export function joinArticleParagraphs(paragraphs: string[]): string {
+  const items = paragraphs.map(text => text.trim()).filter(Boolean);
+  return items.map((paragraph, index) => {
+    if (index === items.length - 1) return paragraph;
+    // Don't invent a stop before a lower-case continuation, headings or
+    // punctuation already present. A clear new paragraph can be a new sentence.
+    const next = items[index + 1];
+    if (!/^[A-ZÆØÅ]/u.test(next) || /[.!?…:;,-](?:["'»”’)\]]*)$/u.test(paragraph)) return paragraph;
+    return /[\p{Ll}\p{N}»”’]$/u.test(paragraph) ? paragraph + "." : paragraph;
+  }).join(" ");
+}
+
 // A teaser must end on a sentence boundary rather than after word 100.
 // If the source itself ends in an unfinished sentence, use its last completed
 // sentence instead of displaying a fragment as finished journalism.
 export function previewWordCount(value: string): {excerpt: string; hasMore: boolean; wordCount: number} {
-  const normalized = stripPublisherBoilerplate(value.replace(/\s+/g, " ").trim());
+  const normalized = repairMissingSentenceStops(stripPublisherBoilerplate(value.replace(/\s+/g, " ").trim()));
   const words = normalized ? normalized.split(" ") : [];
   const count = words.length;
   if (!count) return { excerpt: "", hasMore: false, wordCount: 0 };
