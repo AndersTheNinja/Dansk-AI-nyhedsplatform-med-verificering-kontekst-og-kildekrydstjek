@@ -122,3 +122,29 @@ test("attribute order and og:url canonical identity supported", () => {
  '<meta content="premium" name="article:content_tier"></head>';
  assert.equal(classifyArticleAccess(html,url).requiresSubscription,true);
 });
+
+
+test("matching paywalled NewsArticle overrides free WebPage metadata",()=>{
+ const url=new URL("https://www.berlingske.dk/indland/en-nyhed");
+ const html=ld([
+   {"@type":"WebPage","url":url.toString(),"isAccessibleForFree":true},
+   news(url.toString(),false)
+ ]);
+ assert.deepEqual(classifyArticleAccess(html,url),{requiresSubscription:true,basis:"article-jsonld"});
+});
+test("WebPage-only access metadata for exact same page can be used",()=>{
+ const url=new URL("https://www.berlingske.dk/indland/en-nyhed");
+ const html=ld([{"@type":"WebPage","@id":url.toString(),"isAccessibleForFree":false}]);
+ assert.equal(classifyArticleAccess(html,url).requiresSubscription,true);
+});
+test("conflicting NewsArticle access declarations do not claim gratis",()=>{
+ const url=new URL("https://www.berlingske.dk/indland/en-nyhed");
+ const html=ld([news(url.toString(),true),news(url.toString(),false)]);
+ assert.equal(classifyArticleAccess(html,url).requiresSubscription,null);
+});
+test("other-story paywall messaging inside recommendations stays unknown",()=>{
+ const url=new URL("https://www.berlingske.dk/indland/en-nyhed");
+ const html=withHead(url.toString(), "",
+ '<article><h1>Historien</h1><p>Almindelig artikeltekst</p></article><section class="more-news">Bliv abonnent for at læse videre</section>');
+ assert.equal(classifyArticleAccess(html,url).requiresSubscription,null);
+});
