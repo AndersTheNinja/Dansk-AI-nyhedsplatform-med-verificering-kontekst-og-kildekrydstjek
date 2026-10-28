@@ -155,12 +155,9 @@ const feeds: FeedConfig[] = [
   },
   {
     name: "TV2.dk",
-    url: "https://feeds.tv2.dk/nyhederne_seneste/rss",
-    category: "Danmark"
-  },
-  {
-    name: "TV2.dk",
-    url: "https://tv2.dk/rss/seneste.xml",
+    // The two legacy TV2 feed URLs fail in production (including HTTP 404).
+    // This feed is actively verified by RSS reader services.
+    url: "https://feeds.services.tv2.dk/api/feeds/nyheder/rss",
     category: "Danmark"
   },
   {
