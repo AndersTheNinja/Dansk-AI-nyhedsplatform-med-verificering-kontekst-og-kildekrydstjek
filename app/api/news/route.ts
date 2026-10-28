@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { unstable_cache } from "next/cache";
+import { auditNewsStories } from "@/lib/news-quality";
 import { getLiveStories, cleanNewsStories, addPublisherFeaturedImages } from "@/lib/live-news";
 import { getAndersWinnerskjoldArchiveStories, getVisibleArchiveCount, getNewsSnapshot, queuePreviewRepairs } from "@/lib/news-store";
 
@@ -55,6 +56,11 @@ export async function GET(req: NextRequest) {
       const bt = b.publishedAt ? Date.parse(b.publishedAt) : 0;
       return bt - at;
     });
+    // Scheduled ingestion logs a bounded quality report without blocking or
+    // silently deleting valid news with missing pictures or short RSS text.
+    if (isCollector) {
+      console.info("ØL.dk quality audit", JSON.stringify(auditNewsStories(stories)));
+    }
     const totalCount = await getVisibleArchiveCount();
     const limit = Number.isFinite(requestedLimit) && requestedLimit > 0
       ? Math.min(Math.floor(requestedLimit), stories.length)
