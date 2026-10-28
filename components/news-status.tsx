@@ -10,16 +10,15 @@ export function NewsStatus() {
 
   useEffect(() => {
     const controller = new AbortController();
-    async function refreshCount() {
-      try {
-        const response = await fetch("/api/news?limit=1", { signal: controller.signal });
-        if (!response.ok) throw new Error("News count unavailable");
-        const data = await response.json();
-        if (typeof data.totalCount !== "number") throw new Error("Invalid news count");
-        setNewsCount(data.totalCount);
-        setError(false);
-      } catch { if (!controller.signal.aborted) setError(true); }
+    // Reuse the feed response rather than sending a third /api/news request
+    // during the critical first paint. Also refresh count with each feed update.
+    function onNewsLoaded(event: Event) {
+      const count = (event as CustomEvent<{ totalCount?: number }>).detail?.totalCount;
+      if (typeof count !== "number" || !Number.isFinite(count)) return;
+      setNewsCount(count);
+      setError(false);
     }
+    window.addEventListener("oel-news-loaded", onNewsLoaded);
     let visitorId: string;
     try {
       visitorId = sessionStorage.getItem("oel-presence-id") || crypto.randomUUID();
@@ -36,15 +35,13 @@ export function NewsStatus() {
         if (typeof data.count === "number") setVisitorCount(data.count);
       } catch {}
     }
-    refreshCount();
     pingPresence();
-    const newsInterval = window.setInterval(refreshCount, 60000);
     const presenceInterval = window.setInterval(pingPresence, 30000);
     const onVisibility = () => { if (document.visibilityState === "visible") pingPresence(); };
     document.addEventListener("visibilitychange", onVisibility);
     return () => {
       controller.abort();
-      window.clearInterval(newsInterval);
+      window.removeEventListener("oel-news-loaded", onNewsLoaded);
       window.clearInterval(presenceInterval);
       document.removeEventListener("visibilitychange", onVisibility);
     };
