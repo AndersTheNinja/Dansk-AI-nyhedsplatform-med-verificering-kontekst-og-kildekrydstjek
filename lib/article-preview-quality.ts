@@ -17,8 +17,68 @@ const publisherInterfacePatterns = [
   /\bComputerworld skriver om nye teknologier, hardware, software\b/i
 ];
 
+
+/**
+ * Publisher-independent site/about text. Keep these deliberately specific:
+ * a normal news story can also contain the words "nyheder" and "medie".
+ */
+const genericPublisherAboutPatterns = [
+  /(?:^|\s+)[\p{Lu}][\p{L}\p{N}.-]*(?:\s+[\p{L}\p{N}.-]+){0,3}\s+er\s+(?:dit|din|vores)\s+(?:medie|avis|nyhedssite|nyhedskilde|nyhedsportal)\b/iu,
+  /(?:^|\s+)Her (?:finder|læser|får) du (?:de |alle |vores )?(?:seneste )?(?:nyheder|artikler|analyser)\s+(?:om|fra|og)\b/i,
+  /(?:^|\s+)Hold dig opdateret (?:med|på) (?:de |alle )?(?:seneste )?(?:nyheder|artikler|analyser)\b/i,
+  /(?:^|\s+)Velkommen til [^.!?]{0,70}\b(?:nyheder|artikler|analyser)\b/i
+];
+
+/** Normalize public, non-personal description text for same-publisher comparison. */
+export function publisherDescriptionKey(source: string, description: string): string {
+  return source.trim().toLocaleLowerCase("da-DK") + "\u0001" +
+    description.replace(/\s+/g, " ").trim().toLocaleLowerCase("da-DK");
+}
+
+type SourceTeaser = { source: string; title: string; description: string };
+
+/**
+ * Same long text on three clearly unrelated headlines from the SAME publisher
+ * is very likely feed/site-wide boilerplate, whatever the publisher is called.
+ * Require distinct headline vocabularies to avoid rejecting story updates.
+ */
+export function repeatedPublisherDescriptionKeys(items: SourceTeaser[]): Set<string> {
+  const groups = new Map<string, Set<string>>();
+  for (const item of items) {
+    const description = item.description.replace(/\s+/g, " ").trim();
+    if (description.length < 80 || description.split(/\s+/).length < 12 || !item.source.trim()) continue;
+    const title = item.title.toLocaleLowerCase("da-DK")
+      .replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+    if (!title) continue;
+    const key = publisherDescriptionKey(item.source, description);
+    if (!groups.has(key)) groups.set(key, new Set());
+    groups.get(key)!.add(title);
+  }
+
+  const suspicious = new Set<string>();
+  for (const [key, titles] of groups) {
+    if (titles.size < 3) continue;
+    const unrelated: Set<string>[] = [];
+    for (const title of titles) {
+      const terms = new Set(title.split(" ").filter(word => word.length >= 4));
+      if (terms.size < 2) continue;
+      const isUnrelated = unrelated.every(existing => {
+        const shared = [...terms].filter(word => existing.has(word)).length;
+        return shared / Math.max(1, Math.min(terms.size, existing.size)) < 0.4;
+      });
+      if (isUnrelated) unrelated.push(terms);
+      if (unrelated.length >= 3) {
+        suspicious.add(key);
+        break;
+      }
+    }
+  }
+  return suspicious;
+}
+
 export function hasPublisherInterfaceText(value: string): boolean {
-  return publisherInterfacePatterns.some(pattern => pattern.test(value));
+  return publisherInterfacePatterns.some(pattern => pattern.test(value)) ||
+    genericPublisherAboutPatterns.some(pattern => pattern.test(value));
 }
 
 export function isEditorialParagraph(value: string): boolean {
@@ -110,7 +170,7 @@ export function stripPublisherBoilerplate(value: string): string {
     /(?:^|\s+)Computerworld skriver om nye teknologier, hardware, software\b/i
   ];
   let end=value.length;
-  for(const pattern of patterns) {
+  for(const pattern of [...patterns, ...genericPublisherAboutPatterns]) {
     const found=pattern.exec(value);
     if(found && found.index<end) end=found.index;
   }
