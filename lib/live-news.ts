@@ -74,6 +74,12 @@ const feeds: FeedConfig[] = [
     category: "AI/Tech"
   },
   {
+    name: "Y.dk",
+    // Official RSS linked from the newly launched Danish news medium.
+    url: "https://y.dk/rss",
+    category: "Danmark"
+  },
+  {
     name: "Altinget",
     url: "https://www.altinget.dk/christiansborg/rss.aspx",
     category: "Danmark"
