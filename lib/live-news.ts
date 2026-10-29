@@ -3,6 +3,7 @@ import { isGenericArticleImage } from "@/lib/article-image-quality";
 import { repairNewsStories } from "@/lib/news-quality";
 import { measureArticleEnrichment } from "@/lib/article-enrichment-metrics";
 import { hasPublisherInterfaceText, publisherDescriptionKey, repeatedPublisherDescriptionKeys, repairMissingSentenceStops, stripPublisherBoilerplate } from "@/lib/article-preview-quality";
+import { extractYPublicArticlePreview } from "@/lib/y-article-preview";
 import type { Story } from "@/lib/stories";
 import { persistStories, queuePreviewRepairs } from "@/lib/news-store";
 
@@ -1536,6 +1537,7 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
     const isPolitiken = /(?:^|\.)politiken\.dk$/i.test(hostname);
     const isDr = /(?:^|\.)dr\.dk$/i.test(hostname);
     const isComputerworld = /(?:^|\.)computerworld\.dk$/i.test(hostname);
+    const isY = /(?:^|\.)y\.dk$/i.test(hostname);
     const metadataOnly = /(?:^|\.)(?:ing|version2|nordjyske)\.dk$/i.test(hostname);
     const trustedStiftenAsyncPreview = isStiften
       ? extractJfmAsyncArticleText(stiftenAsyncHtml, item.title)
@@ -1583,6 +1585,14 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
             ]
               .filter((text) => text && !isBoilerplatePreview(text))
               .sort((a, b) => previewQuality(b) - previewQuality(a))[0] || ""
+        : isY
+          ? [
+              extractYPublicArticlePreview(html, item.title, item.description),
+              extractArticleBodyFromJson(html, item.title, item.description),
+              extractScopedArticlePreview(html, item.title, item.description),
+              extractMetadataPreview(html)
+            ].filter((text) => text && !isBoilerplatePreview(text))
+             .sort((a, b) => previewQuality(b) - previewQuality(a))[0] || ""
         : metadataOnly
           ? extractMetadataPreview(html)
           : extractPublicPreview(html, item.title, item.description);
