@@ -175,12 +175,16 @@ button{font:inherit}
 @media(max-width:780px){.textSizeBox{display:none}}
 
 
-/* A compact and clear loading indicator replaces the grey empty cards. */
-.newsLoadingState{min-height:160px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:var(--muted);font:13px/1.5 Arial,sans-serif}
-.newsLoadingSpinner{display:block;width:36px;height:36px;border:3px solid #dce9e9;border-top-color:var(--teal);border-radius:50%;animation:oelNewsSpin .8s linear infinite}
+/* Branded ØL.dk loading animation: CSS only, no images, fonts or requests. */
+.newsLoadingState{min-height:160px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:13px;color:var(--muted);font:13px/1.5 Arial,sans-serif}
+.newsLoadingBrand{display:flex;flex-direction:column;align-items:center;gap:10px}
+.newsLoadingBrandLogo{display:grid;place-items:center;width:66px;height:60px;background:var(--teal);border-radius:10px;color:#fff;font:700 27px/1 Arial,sans-serif;letter-spacing:-.03em;animation:oelBrandPulse 1.55s ease-in-out infinite;transform-origin:center}
+.newsLoadingProgressTrack{display:block;position:relative;width:66px;height:3px;background:#d9e7e8;overflow:hidden;border-radius:3px}
+.newsLoadingProgressBar{display:block;position:absolute;top:0;bottom:0;left:0;width:38%;border-radius:3px;background:var(--teal);animation:oelBrandProgress 1.55s ease-in-out infinite}
 .newsLoadingText{text-align:center}
-@keyframes oelNewsSpin{to{transform:rotate(360deg)}}
-@media(prefers-reduced-motion:reduce){.newsLoadingSpinner{animation:none;border-top-color:var(--teal)}}
+@keyframes oelBrandPulse{0%,100%{opacity:.82;transform:scale(.96)}50%{opacity:1;transform:scale(1.04)}}
+@keyframes oelBrandProgress{0%{transform:translateX(-105%)}100%{transform:translateX(270%)}}
+@media(prefers-reduced-motion:reduce){.newsLoadingBrandLogo,.newsLoadingProgressBar{animation:none}.newsLoadingBrandLogo{opacity:1;transform:none}.newsLoadingProgressBar{transform:none;width:55%}}
 .newsLoadMore{padding:18px 0;text-align:center;font:11px Arial,sans-serif;color:#8a949a}
 .newsLoadError{padding:18px 0;font:12px/1.5 Arial,sans-serif;color:#7f473f}
 

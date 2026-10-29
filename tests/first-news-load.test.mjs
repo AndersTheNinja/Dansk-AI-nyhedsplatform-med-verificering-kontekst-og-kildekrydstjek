@@ -36,3 +36,18 @@ test("initial view does not issue a redundant third news-count fetch",()=>{
  assert.match(status, /addEventListener\("oel-news-loaded"/);
  assert.doesNotMatch(status, /fetch\("\/api\/news\?limit=1"/);
 });
+
+
+test("loading uses the ØL brand with a progress line, not the generic spinner",()=>{
+ const loader=readFileSync(new URL("../components/news-loader.tsx",import.meta.url),"utf8");
+ const css=readFileSync(new URL("../app/globals.css",import.meta.url),"utf8");
+ assert.match(loader, /newsLoadingBrandLogo">ØL<\/span>/);
+ assert.match(loader, /className="newsLoadingProgressBar"/);
+ assert.match(loader, /role="status" aria-live="polite"/);
+ assert.match(loader, /Henter de seneste nyheder…/);
+ assert.doesNotMatch(loader, /newsLoadingSpinner/);
+ assert.match(css, /@keyframes oelBrandPulse/);
+ assert.match(css, /@keyframes oelBrandProgress/);
+ assert.match(css, /@media\(prefers-reduced-motion:reduce\)/);
+ assert.doesNotMatch(css, /@keyframes oelNewsSpin/);
+});
