@@ -112,3 +112,18 @@ test("do not invent punctuation between lower-case continuations or after colons
  assert.equal(joinArticleParagraphs(["Ministeriet oplyser:", "Det bliver undersøgt."]), "Ministeriet oplyser: Det bliver undersøgt.");
  assert.equal(joinArticleParagraphs(["", "En enkelt sætning"]), "En enkelt sætning");
 });
+
+
+test("DR article: no stray spaces before punctuation in article excerpts", () => {
+ const original="De siger en række kampagnemedarbejdere til New York Times . Og hvis det er sandt, kan det skade tilliden.";
+ const expected="De siger en række kampagnemedarbejdere til New York Times. Og hvis det er sandt, kan det skade tilliden.";
+ assert.equal(repairMissingSentenceStops(original), expected);
+ assert.equal(previewWordCount(original).excerpt, expected);
+ assert.equal(repairMissingSentenceStops(expected), expected);
+});
+
+test("punctuation cleanup leaves proper names, quotation dashes and ordinary dates intact", () => {
+ const source="Den 3. november udtaler Trine Maria Ilsøe. - Beskidte tricks er set før, siger hun!";
+ assert.equal(repairMissingSentenceStops(source), source);
+ assert.equal(repairMissingSentenceStops("Hvem ? Svar : ja !"), "Hvem? Svar: ja!");
+});
