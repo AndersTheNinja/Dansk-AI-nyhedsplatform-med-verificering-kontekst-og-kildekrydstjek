@@ -10,7 +10,7 @@ const allowedHosts = new Set([
   "berlingske.dk", "www.berlingske.dk", "journalisten.dk", "www.journalisten.dk",
   "altinget.dk", "www.altinget.dk", "version2.dk", "www.version2.dk",
   "ing.dk", "www.ing.dk", "computerworld.dk", "www.computerworld.dk",
-  "techsavvy.media", "www.techsavvy.media"
+  "techsavvy.media", "www.techsavvy.media", "y.dk", "www.y.dk"
 ]);
 
 function metadata(html: string, name: string) {
