@@ -2,7 +2,7 @@ import { XMLParser } from "fast-xml-parser";
 import { isGenericArticleImage } from "@/lib/article-image-quality";
 import { repairNewsStories } from "@/lib/news-quality";
 import { measureArticleEnrichment } from "@/lib/article-enrichment-metrics";
-import { hasPublisherInterfaceText, repairMissingSentenceStops, stripPublisherBoilerplate } from "@/lib/article-preview-quality";
+import { hasPublisherInterfaceText, publisherDescriptionKey, repeatedPublisherDescriptionKeys, repairMissingSentenceStops, stripPublisherBoilerplate } from "@/lib/article-preview-quality";
 import type { Story } from "@/lib/stories";
 import { persistStories, queuePreviewRepairs } from "@/lib/news-store";
 
@@ -1904,9 +1904,18 @@ function hasEditorialPreview(text: string, title = "") {
 
 // Apply the same excerpt rules to stored snapshots and archive-only stories.
 export function cleanNewsStories(stories: Story[]): Story[] {
-  const cleaned=stories.map((story) => ({ ...story,
+  const normalized = stories.map((story) => ({ ...story,
     summary: cleanPublisherTeaser(story.summary, story.title, story.sources[0]?.label || story.sourceLabel)
-  })).filter((story) => hasEditorialPreview(story.summary, story.title));
+  }));
+  // Apply the same cross-headline check to older, precomputed snapshots.
+  const repeated = repeatedPublisherDescriptionKeys(normalized.map((story) => ({
+    source: story.sources[0]?.label || story.sourceLabel,
+    title: story.title,
+    description: story.summary
+  })));
+  const cleaned = normalized.filter((story) =>
+    !repeated.has(publisherDescriptionKey(story.sources[0]?.label || story.sourceLabel, story.summary))
+  ).filter((story) => hasEditorialPreview(story.summary, story.title));
   // Same conservative repairs for stored snapshots and freshly collected news.
   return repairNewsStories(cleaned).stories;
 }
@@ -2016,8 +2025,18 @@ export async function getLiveStories(options?: { fast?: boolean; limit?: number 
 
   if (!fetched.length) return [];
 
+  // Site-wide RSS descriptions can look like a long, informative teaser.
+  // Detect them when the same publisher uses identical text for three
+  // unrelated headlines, regardless of the media brand.
+  const repeatedFeedDescriptions = repeatedPublisherDescriptionKeys(fetched);
+  const editorialFetched = fetched.map((item) =>
+    repeatedFeedDescriptions.has(publisherDescriptionKey(item.source, item.description))
+      ? { ...item, description: "" }
+      : item
+  );
+
   const clusters: NewsItem[][] = [];
-  for (const item of fetched) {
+  for (const item of editorialFetched) {
     const match = clusters.find(
       (cluster) => cluster[0] && sameStory(cluster[0], item)
     );
@@ -2114,6 +2133,9 @@ export async function getLiveStories(options?: { fast?: boolean; limit?: number 
     ));
   }
 
+  const repeatedEnrichedDescriptions = repeatedPublisherDescriptionKeys(
+    enrichedSelected.map((entry) => entry.lead)
+  );
   const stories = enrichedSelected.map((entry, index) => {
     const { lead, sources } = entry;
     const hasCrossCheck = sources.length >= 2;
@@ -2122,7 +2144,9 @@ export async function getLiveStories(options?: { fast?: boolean; limit?: number 
     // Apply the same final safeguards to every source, including RSS-only items:
     // photo credits are not article text, and the headline must not repeat at
     // the beginning of the teaser.
-    const cleanDescription = cleanPublisherTeaser(lead.description, lead.title, lead.source);
+    const cleanDescription = repeatedEnrichedDescriptions.has(
+      publisherDescriptionKey(lead.source, lead.description)
+    ) ? "" : cleanPublisherTeaser(lead.description, lead.title, lead.source);
     const mentionHaystack = `${lead.title} ${cleanDescription}`;
     const mentions = Array.from(new Set([
       ...(lead.mentions || []),
