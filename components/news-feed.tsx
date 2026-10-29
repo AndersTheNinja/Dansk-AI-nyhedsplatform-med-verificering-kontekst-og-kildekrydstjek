@@ -98,7 +98,7 @@ function StoryCard({ story }: { story: Story }) {
     const observer=new IntersectionObserver((entries)=>{
       if(!entries.some(entry=>entry.isIntersecting))return;
       observer.disconnect();
-      fetch("/api/article-preview",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({url:articleUrl,title:story.title})})
+      fetch("/api/article-preview",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({url:articleUrl,title:story.title,intro:story.summary})})
         .then(response=>response.ok?response.json():null)
         .then(data=>{
           if(typeof data?.excerpt==="string"&&data.excerpt.trim()&&typeof data?.hasMore==="boolean"&& !hasPublisherInterfaceText(data.excerpt)){
@@ -383,6 +383,11 @@ function StoryCard({ story }: { story: Story }) {
             </button>
           )}
         </div>
+        {story.sources[0]?.label === "Y.dk" && excerpt.text.trim().split(/\s+/).filter(Boolean).length < 60 && (
+          <p className="storyShortSourceNote">
+            Kort introduktion fra Y.dk. Den fulde artikel findes via "Læs mere".
+          </p>
+        )}
 
         {textOpen && resolvedImageUrl && !articleImageFailed && (
           <div className="storyArticleImageWrap">
