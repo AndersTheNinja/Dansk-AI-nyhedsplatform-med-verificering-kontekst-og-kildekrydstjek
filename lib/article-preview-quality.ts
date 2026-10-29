@@ -10,7 +10,11 @@ const publisherInterfacePatterns = [
   /\blog ind for at læse videre\b/i,
   /\bbliv abonnent for at læse videre\b/i,
   /\bfå ubegrænset adgang til\b/i,
-  /\btilmeld dig (?:vores|mit) nyhedsbrev\b/i
+  /\btilmeld dig (?:vores|mit) nyhedsbrev\b/i,
+  // Publisher-wide RSS/about descriptions, not the body of any individual story.
+  /\bNyheder, analyser, viden, blogs og debat om it\b/i,
+  /\bComputerworld er dit medie om det digitale Danmark\b/i,
+  /\bComputerworld skriver om nye teknologier, hardware, software\b/i
 ];
 
 export function hasPublisherInterfaceText(value: string): boolean {
@@ -100,7 +104,10 @@ export function stripPublisherBoilerplate(value: string): string {
     /(?:^|\s+)ved at vælge et eller flere emner der interesserer dig\b/i,
     /(?:^|\s+)Google vise vores artikler højere oppe i dine søgeresultater\b/i,
     /(?:^|\s+)Opret et personligt gavelink\b/i,
-    /(?:^|\s+)Log ind for at følge\b/i
+    /(?:^|\s+)Log ind for at følge\b/i,
+    /(?:^|\s+)Nyheder, analyser, viden, blogs og debat om it\b/i,
+    /(?:^|\s+)Computerworld er dit medie om det digitale Danmark\b/i,
+    /(?:^|\s+)Computerworld skriver om nye teknologier, hardware, software\b/i
   ];
   let end=value.length;
   for(const pattern of patterns) {
