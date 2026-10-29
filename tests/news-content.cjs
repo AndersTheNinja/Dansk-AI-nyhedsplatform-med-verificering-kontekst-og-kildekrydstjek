@@ -7,7 +7,18 @@ const ts = require('typescript');
 function load(fetch, env = {}) {
   const source = fs.readFileSync('lib/live-news.ts', 'utf8') + '\nexport { addPublisherFeaturedImages, extractMetaContent, hasEditorialPreview, applyPublisherPreviews, applyPublisherFeaturedImages, mergeBerlingskeWebsiteText, parseBerlingskeWebArticle, fetchBerlingskeWebsite, fetchFeed, enrichTV2Item, enrichBorsenItem, parseNewsDate, enrichPreview, extractScopedArticlePreview, articleMentionText, extractPublicPreview, extractPublishedDateFromHtml, extractArticleBodyFromJson, isFresh, cleanPublisherTeaser };';
   const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
-  const context = { exports: {}, process: { env }, fetch, AbortSignal, URL, console, require: (id) => id === 'fast-xml-parser' ? require(id) : { persistStories: async () => {}, queuePreviewRepairs: async () => {} } };
+  const context = { exports: {}, process: { env }, fetch, AbortSignal, URL, console, require: (id) => {
+    if (id === 'fast-xml-parser') return require(id);
+    if (id === '@/lib/news-store') return { persistStories: async () => {}, queuePreviewRepairs: async () => {} };
+    if (['@/lib/article-image-quality', '@/lib/news-quality', '@/lib/article-enrichment-metrics', '@/lib/article-preview-quality'].includes(id)) {
+      const helperSource = fs.readFileSync(id.replace('@/', '') + '.ts', 'utf8');
+      const helperCompiled = ts.transpileModule(helperSource, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
+      const helperContext = { exports: {}, URL };
+      vm.runInNewContext(helperCompiled, helperContext);
+      return helperContext.exports;
+    }
+    throw new Error('Unexpected test dependency: ' + id);
+  } };
   vm.runInNewContext(compiled, context);
   return context.exports;
 }
@@ -15,7 +26,7 @@ function load(fetch, env = {}) {
 const item = { title: 'Aarhus åbner svømmehal ved havnen', description: 'Det oprindelige uddrag.', link: 'https://nyheder.tv2.dk/samfund/artikel', source: 'TV2.dk', category: 'Danmark', method: 'RSS', id: 'original' };
 test('saved snapshots discard placeholders and remove publisher footers and related-story links', () => {
   const api = load();
-  const story = (source, summary) => ({ title: 'En nyhed', summary, sourceLabel: source, sources: [{ label: source, url: 'https://example.dk/article' }] });
+  const story = (source, summary) => ({ title: 'En nyhed', summary, sourceLabel: source, sources: [{ label: source, url: 'https://example.dk/article/' + encodeURIComponent(source) }] });
   const result = api.cleanNewsStories([
     story('TechSavvy', 'En offentlig introduktion til en vigtig nyhed. Indlægget En nyhed blev først udgivet på TechSavvy .'),
     story('MigogAarhus', 'Artiklen fortæller om en hændelse i Aarhus. Læs også: Et helt andet emne.'),
