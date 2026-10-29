@@ -5,7 +5,7 @@ export type QualityIssue = "short_text" | "publisher_ui" | "generic_image" | "mi
 export type QualityFinding = { id: string; source: string; issues: QualityIssue[] };
 export type QualityReport = { checked: number; issueCounts: Record<QualityIssue, number>; examples: QualityFinding[] };
 
-const uiPattern = /\b(?:opret et personligt gavelink|log ind for at følge|gratis prøve beder vi dig|angiver du ingeniøren som foretrukken kilde|kunne ikke generere link|bliv abonnent for at læse videre)\b/i;
+const uiPattern = /\b(?:opret et personligt gavelink|log ind for at følge|gratis prøve beder vi dig|angiver du ingeniøren som foretrukken kilde|kunne ikke generere link|bliv abonnent for at læse videre|nyheder, analyser, viden, blogs og debat om it|computerworld er dit medie om det digitale danmark|computerworld skriver om nye teknologier, hardware, software)\b/i;
 const genericPicture = /(?:^|[-_\/.])(?:default|placeholder|fallback|generic|standard|nyhedsgrafik|verdenskort|jordklode|logo|favicon)(?:[-_\/.]|$)/i;
 const issueTypes: QualityIssue[] = ["short_text","publisher_ui","generic_image","missing_image","invalid_date","future_date","duplicate"];
 export function auditNewsStories(stories: Story[], now = Date.now()): QualityReport {

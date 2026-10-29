@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { hasPublisherInterfaceText, isEditorialParagraph, joinArticleParagraphs, previewWordCount, repairMissingSentenceStops } from "../lib/article-preview-quality.ts";
+import { hasPublisherInterfaceText, isEditorialParagraph, joinArticleParagraphs, previewWordCount, repairMissingSentenceStops, stripPublisherBoilerplate } from "../lib/article-preview-quality.ts";
 
 const bad = [
   "Opret et personligt gavelink til nogen, du synes skal læse denne artikel.",
@@ -126,4 +126,32 @@ test("punctuation cleanup leaves proper names, quotation dashes and ordinary dat
  const source="Den 3. november udtaler Trine Maria Ilsøe. - Beskidte tricks er set før, siger hun!";
  assert.equal(repairMissingSentenceStops(source), source);
  assert.equal(repairMissingSentenceStops("Hvem ? Svar : ja !"), "Hvem? Svar: ja!");
+});
+
+
+const computerworldAboutText = "Nyheder, analyser, viden, blogs og debat om it. Computerworld er dit medie om det digitale Danmark. Computerworld skriver om nye teknologier, hardware, software, informationssamfundet, internettet, it-branchen, telebranchen, it-ledelse, it-strategi, forretnings-it, it-job og meget mere.";
+
+test("Computerworld site-wide RSS description is not article text", () => {
+ assert.equal(hasPublisherInterfaceText(computerworldAboutText), true);
+ assert.equal(isEditorialParagraph(computerworldAboutText), false);
+ assert.equal(stripPublisherBoilerplate(computerworldAboutText), "");
+ assert.equal(previewWordCount(computerworldAboutText).excerpt, "");
+ assert.equal(previewWordCount(computerworldAboutText).wordCount, 0);
+});
+
+test("keep article text before unrelated Computerworld publisher blurb", () => {
+ const intro = "Der er opdaget en tydelig ridse i en foldbar telefon få dage efter lanceringen.";
+ assert.equal(stripPublisherBoilerplate(intro+" "+computerworldAboutText),intro);
+});
+
+test("do not reject genuinely editorial Computerworld article descriptions", () => {
+ const article = "Få dage efter lanceringen klager nogle brugere over en tydelig ridse på skærmen af en foldbar telefon. Producenten undersøger nu anmeldelserne.";
+ assert.equal(hasPublisherInterfaceText(article), false);
+ assert.equal(previewWordCount(article).excerpt,article);
+});
+
+test("detect publisher-site description even without its leading sentence", () => {
+ const middle = "Computerworld er dit medie om det digitale Danmark. Computerworld skriver om nye teknologier, hardware, software og meget mere.";
+ assert.equal(isEditorialParagraph(middle),false);
+ assert.equal(stripPublisherBoilerplate(middle),"");
 });

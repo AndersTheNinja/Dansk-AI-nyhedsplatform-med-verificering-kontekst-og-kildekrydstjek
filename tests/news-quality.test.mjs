@@ -43,3 +43,12 @@ test("repair discards only duplicate URLs and generic pictures, not short storie
  assert.equal(out.repairs.duplicate,1);
  assert.equal(out.repairs.genericImage,2);
 });
+
+
+test("quality audit flags Computerworld site description in a real news headline",()=>{
+ const generic="Nyheder, analyser, viden, blogs og debat om it. Computerworld er dit medie om det digitale Danmark. Computerworld skriver om nye teknologier, hardware, software, informationssamfundet, internettet, it-branchen, telebranchen, it-ledelse, it-strategi, forretnings-it, it-job og meget mere.";
+ const bad={...base,id:"computerworld-generic",title:"Få dage efter lancering: Brugere klager over tydelig ridse i foldbar iPhone",sourceLabel:"Computerworld",summary:generic,sources:[{label:"Computerworld",url:"https://www.computerworld.dk/art/999"}]};
+ const report=auditNewsStories([bad],Date.parse("2026-10-28T00:00:00Z"));
+ assert.equal(report.issueCounts.publisher_ui,1);
+ assert.equal(report.examples[0].source,"Computerworld");
+});
