@@ -13,7 +13,7 @@ function load(fetch, env = {}) {
     if (['@/lib/article-image-quality', '@/lib/news-quality', '@/lib/article-enrichment-metrics', '@/lib/article-preview-quality'].includes(id)) {
       const helperSource = fs.readFileSync(id.replace('@/', '') + '.ts', 'utf8');
       const helperCompiled = ts.transpileModule(helperSource, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
-      const helperContext = { exports: {} };
+      const helperContext = { exports: {}, URL };
       vm.runInNewContext(helperCompiled, helperContext);
       return helperContext.exports;
     }
