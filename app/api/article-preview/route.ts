@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { hasPublisherInterfaceText, isEditorialParagraph, joinArticleParagraphs, previewWordCount, stripPublisherBoilerplate } from "@/lib/article-preview-quality";
+import { extractYPublicArticlePreview } from "@/lib/y-article-preview";
 
 export const dynamic = "force-dynamic";
 
@@ -50,6 +51,7 @@ export async function POST(request:Request) {
   const body=await request.json();
   const url=new URL(String(body?.url||""));
   const title=String(body?.title||"").slice(0,300);
+  const rssIntro=String(body?.intro||"").slice(0,1500);
   if(url.protocol!=="https:"||!hosts.has(url.hostname)||url.username||url.password||title.length<8)return NextResponse.json({excerpt:null,hasMore:null},{status:400});
   const response=await fetch(url.toString(),{redirect:"follow",next:{revalidate:900},headers:{"Accept":"text/html,application/xhtml+xml","User-Agent":"Mozilla/5.0 (compatible; OEL.dk/1.0)"},signal:AbortSignal.timeout(4500)});
   if(!response.ok||!(response.headers.get("content-type")||"").includes("text/html"))return NextResponse.json({excerpt:null,hasMore:null});
@@ -76,7 +78,13 @@ export async function POST(request:Request) {
     (restrictedPublisher && suspicious.test(paragraphs.slice(0,220)))) ? "" : paragraphs;
   // Prefer articleBody where available. Otherwise use only editorial paragraphs
   // inside the article element, never generic navigation/main page text.
-  const selected=stripPublisherBoilerplate(cleanedBody.length>=120?cleanedBody:cleanedParagraphs.length>=120?cleanedParagraphs:"");
+  const yPublic = publisher === "y.dk" ? extractYPublicArticlePreview(html, title, rssIntro) : "";
+  // Use the longest proven article-specific public copy, never page-wide
+  // navigation or an invented continuation to a short RSS description.
+  const candidates=[cleanedBody, cleanedParagraphs, yPublic]
+    .filter(text => text.length >= 120 && !hasPublisherInterfaceText(text))
+    .sort((a,b)=>b.length-a.length);
+  const selected=stripPublisherBoilerplate(candidates[0]||"");
   if(!selected)return NextResponse.json({excerpt:null,hasMore:null});
   return NextResponse.json(previewWordCount(selected),{headers:{"Cache-Control":"private, max-age=900"}});
  }catch{return NextResponse.json({excerpt:null,hasMore:null});}
