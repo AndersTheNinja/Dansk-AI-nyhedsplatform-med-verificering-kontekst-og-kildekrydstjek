@@ -43,3 +43,20 @@ test("the on-demand endpoint uses the actual RSS intro and marks short Y copy",(
  assert.match(card,/Kort introduktion fra Y\.dk/);
  assert.match(live,/extractYPublicArticlePreview\(html, item\.title, item\.description\)/);
 });
+
+test("Y photo-credit metadata is excluded while editorial agency mentions remain",()=>{
+ const editorial="Reuters oplyser, at fotografen har dokumenteret begivenhederne, og at redaktionen fortsat undersøger sagen.";
+ const html=page(title,[intro,second]).replace("<p>"+second+"</p>",
+   '<p class="label-mono text-text-photo">Axel Schmidt / Reuters / Ritzau Scanpix</p>'+
+   "<p>"+editorial+"</p><p>"+second+"</p>");
+ const result=extractYPublicArticlePreview(html,title,intro);
+ assert.doesNotMatch(result,/Axel Schmidt|Ritzau Scanpix/);
+ assert.ok(result.includes(editorial));
+ assert.ok(result.includes(second));
+});
+
+test("photo credit alone cannot turn an RSS intro into expanded article text",()=>{
+ const html=page(title,[intro]).replace("</article>",
+   "<p class='label-mono text-text-photo'>En fotografs navn / Et billedbureau / En billedleverandør med langt navn</p></article>");
+ assert.equal(extractYPublicArticlePreview(html,title,intro),"");
+});
