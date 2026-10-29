@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { hasPublisherInterfaceText, isEditorialParagraph, joinArticleParagraphs, previewWordCount, repairMissingSentenceStops, stripPublisherBoilerplate } from "../lib/article-preview-quality.ts";
+import { hasPublisherInterfaceText, isEditorialParagraph, joinArticleParagraphs, previewWordCount, publisherDescriptionKey, repeatedPublisherDescriptionKeys, repairMissingSentenceStops, stripPublisherBoilerplate } from "../lib/article-preview-quality.ts";
 
 const bad = [
   "Opret et personligt gavelink til nogen, du synes skal læse denne artikel.",
@@ -154,4 +154,74 @@ test("detect publisher-site description even without its leading sentence", () =
  const middle = "Computerworld er dit medie om det digitale Danmark. Computerworld skriver om nye teknologier, hardware, software og meget mere.";
  assert.equal(isEditorialParagraph(middle),false);
  assert.equal(stripPublisherBoilerplate(middle),"");
+});
+
+
+test("site/about copy from any publisher is rejected while true article intros survive", () => {
+ const generic = [
+  "Berlingske er din avis for nyheder om Danmark og verden. Her får du overblikket.",
+  "Her finder du de seneste nyheder fra Danmark og udlandet, sport og erhverv.",
+  "Hold dig opdateret med de seneste analyser fra politik og erhverv hos os.",
+  "Velkommen til Danmarks nyhedssite med artikler, analyser og debat."
+ ];
+ for (const text of generic) {
+  assert.equal(hasPublisherInterfaceText(text), true, text);
+  assert.equal(stripPublisherBoilerplate(text), "", text);
+  assert.equal(isEditorialParagraph(text), false, text);
+ }
+ const news = [
+  "Berlingske skriver, at den nye direktør tiltræder stillingen i november.",
+  "Et medie skriver om nye regler for elbiler, som træder i kraft næste år.",
+  "De seneste nyheder fra Ukraine handler om forhandlingerne mellem landene."
+ ];
+ for (const text of news) {
+  assert.equal(hasPublisherInterfaceText(text), false, text);
+  assert.equal(stripPublisherBoilerplate(text), text, text);
+ }
+});
+
+test("same generic description on three unrelated stories from the same unknown publisher is rejected", () => {
+ const source = "NytMedie.dk";
+ const description = "Vi dækker de store begivenheder og giver læserne nyheder, perspektiver, debat og baggrund fra både indland, erhverv og udland. Følg os hver dag.";
+ const entries = [
+  {source,title:"Regeringen præsenterer finanslov for næste år",description},
+  {source,title:"Ny software ændrer arbejdsdagen i danske virksomheder",description},
+  {source,title:"Stort jordskælv ryster regionen tidligt om morgenen",description}
+ ];
+ const key = publisherDescriptionKey(source, description);
+ assert.equal(repeatedPublisherDescriptionKeys(entries).has(key), true);
+ // Same rules independently for other publishers, including future feeds.
+ assert.equal(repeatedPublisherDescriptionKeys(entries.map(item=>({...item,source:"DR"}))).has(publisherDescriptionKey("DR",description)),true);
+});
+
+test("do not mistake same teaser on one developing story for publisher boilerplate", () => {
+ const source="Politiken";
+ const description="Den nye rapport om renten viser, at den økonomiske udvikling i Danmark fortsat er usikker. Økonomer diskuterer nu centralbankens beslutning.";
+ const titles=[
+   "Nationalbanken hæver renten efter ny rapport",
+   "Ny rapport: Nationalbanken hæver renten",
+   "Renten hæves ifølge ny rapport fra Nationalbanken",
+   "Eksperter vurderer ny rapport om renten"
+ ];
+ const entries=titles.map(title=>({source,title,description}));
+ assert.equal(repeatedPublisherDescriptionKeys(entries).size,0);
+});
+
+test("repeated publisher descriptions never combine across different publishers", () => {
+ const description="Nyheder og analyser fra danske medier giver indsigt i samfundets udvikling, økonomi, sport og kultur og kan læses på nyhedssider verden over.";
+ const entries=[
+  {source:"DR",title:"Klimakrise forværres",description},
+  {source:"Berlingske",title:"Bank får ny direktør",description},
+  {source:"Version2",title:"Robot udvikles på universitet",description}
+ ];
+ assert.equal(repeatedPublisherDescriptionKeys(entries).size,0);
+});
+
+test("different legitimate descriptions for different stories are never removed", () => {
+ const entries=[
+  {source:"DR",title:"Statsministeren møder nye ministre",description:"Regeringen præsenterede onsdag en række nye initiativer i forbindelse med det kommende folketingsår."},
+  {source:"DR",title:"Et stort fly forsinket i Aalborg",description:"Afgangene er sat på pause efter en teknisk fejl på et fly i lufthavnen torsdag morgen."},
+  {source:"DR",title:"Kommunen får ny direktør",description:"Bestyrelsen har besluttet at udpege en ny leder, som skal begynde til januar."}
+ ];
+ assert.equal(repeatedPublisherDescriptionKeys(entries).size,0);
 });
