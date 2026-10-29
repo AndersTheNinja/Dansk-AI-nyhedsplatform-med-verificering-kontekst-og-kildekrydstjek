@@ -94,7 +94,12 @@ export function NewsLoader() {
           Seneste nyheder <span className="sectionTitleNote">(indlæses nu).</span>
         </div>
         <div className="newsLoadingState" role="status" aria-live="polite">
-          <span className="newsLoadingSpinner" aria-hidden="true" />
+          <span className="newsLoadingBrand" aria-hidden="true">
+            <span className="newsLoadingBrandLogo">ØL</span>
+            <span className="newsLoadingProgressTrack">
+              <span className="newsLoadingProgressBar" />
+            </span>
+          </span>
           <span className="newsLoadingText">Henter de seneste nyheder…</span>
         </div>
       </section>
