@@ -24,4 +24,5 @@ jobs:
       - run: node --experimental-strip-types --test tests/article-access.test.mjs
       - run: node --experimental-strip-types --test tests/first-news-load.test.mjs
       - run: node --test tests/y-dk-feed.test.mjs
+      - run: node --experimental-strip-types --test tests/y-public-article.test.mjs
       - run: npm run build
