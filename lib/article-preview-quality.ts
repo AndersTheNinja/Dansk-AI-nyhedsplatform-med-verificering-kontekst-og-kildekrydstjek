@@ -32,7 +32,12 @@ export function isEditorialParagraph(value: string): boolean {
  * that would corrupt names, abbreviations and direct quotations.
  */
 export function repairMissingSentenceStops(value: string): string {
-  return value.replace(
+  // HTML/RSS flattening can separate a period from the preceding word:
+  // "New York Times . Og" must display as "New York Times. Og".
+  // Danish punctuation is attached to the word before it; don't otherwise
+  // rewrite publisher quotes or guess sentence boundaries around names.
+  const punctuationJoined = value.replace(/[ \t\u00a0]+(?=[.,!?;:])/g, "");
+  return punctuationJoined.replace(
     /(?<![\p{L}\p{M}])([\p{Ll}][\p{L}\p{M}’'-]*)(\s+)(?=(?:Især|Samtidig|Desuden|Derudover|Alligevel|Imidlertid|Derfor|Til gengæld|I øvrigt)\b)/gu,
     "$1.$2"
   );
