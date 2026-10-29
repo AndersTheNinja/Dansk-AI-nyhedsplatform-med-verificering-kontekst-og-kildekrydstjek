@@ -3,7 +3,7 @@ import { hasPublisherInterfaceText, isEditorialParagraph, joinArticleParagraphs,
 
 export const dynamic = "force-dynamic";
 
-const hosts = new Set(["dr.dk","www.dr.dk","politiken.dk","www.politiken.dk","borsen.dk","www.borsen.dk","stiften.dk","www.stiften.dk","migogaarhus.dk","www.migogaarhus.dk","tv2.dk","www.tv2.dk","nyheder.tv2.dk","berlingske.dk","www.berlingske.dk","journalisten.dk","www.journalisten.dk","altinget.dk","www.altinget.dk","version2.dk","www.version2.dk","ing.dk","www.ing.dk","computerworld.dk","www.computerworld.dk","techsavvy.media","www.techsavvy.media"]);
+const hosts = new Set(["dr.dk","www.dr.dk","politiken.dk","www.politiken.dk","borsen.dk","www.borsen.dk","stiften.dk","www.stiften.dk","migogaarhus.dk","www.migogaarhus.dk","tv2.dk","www.tv2.dk","nyheder.tv2.dk","berlingske.dk","www.berlingske.dk","journalisten.dk","www.journalisten.dk","altinget.dk","www.altinget.dk","version2.dk","www.version2.dk","ing.dk","www.ing.dk","computerworld.dk","www.computerworld.dk","techsavvy.media","www.techsavvy.media","y.dk","www.y.dk"]);
 
 function clean(value: string) {
   return value.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi," ")
