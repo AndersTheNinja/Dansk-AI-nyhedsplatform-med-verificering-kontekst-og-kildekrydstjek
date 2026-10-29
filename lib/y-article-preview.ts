@@ -44,6 +44,13 @@ export function extractYPublicArticlePreview(html: string, title: string, rssInt
   if (recommendation?.index !== undefined) article = article.slice(0, recommendation.index);
   article = article.replace(/<(?:script|style|noscript|nav|aside|footer)\b[^>]*>[\s\S]*?<\/(?:script|style|noscript|nav|aside|footer)\s*>/gi, " ");
   const paragraphs = [...article.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p\s*>/gi)]
+    // Y explicitly marks photo-credit paragraphs; exclude metadata before
+    // counting/selecting editorial paragraphs. Do not guess from names/text.
+    .filter(match => {
+      const openingTag = match[0].slice(0, match[0].indexOf(">") + 1);
+      const classes = /\bclass\s*=\s*(["'])([\s\S]*?)\1/i.exec(openingTag)?.[2] || "";
+      return !classes.split(/\s+/).includes("text-text-photo");
+    })
     .map(match => visibleText(match[1]))
     .filter(text => text.length >= 30 && !hasPublisherInterfaceText(text));
   const start = paragraphs.findIndex(text =>
