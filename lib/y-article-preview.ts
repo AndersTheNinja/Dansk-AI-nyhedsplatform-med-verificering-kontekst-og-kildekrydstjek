@@ -1,4 +1,4 @@
-import { hasPublisherInterfaceText, joinArticleParagraphs } from "./article-preview-quality";
+import { hasPublisherInterfaceText, joinArticleParagraphs } from "./article-preview-quality.ts";
 
 function visibleText(value: string): string {
   const decoded = value.replace(/<[^>]*>/g, " ").replace(/&(?:nbsp|amp|quot|apos|lt|gt);/gi, match => ({
