@@ -2,7 +2,7 @@ import { XMLParser } from "fast-xml-parser";
 import { isGenericArticleImage } from "@/lib/article-image-quality";
 import { repairNewsStories } from "@/lib/news-quality";
 import { measureArticleEnrichment } from "@/lib/article-enrichment-metrics";
-import { repairMissingSentenceStops, stripPublisherBoilerplate } from "@/lib/article-preview-quality";
+import { hasPublisherInterfaceText, repairMissingSentenceStops, stripPublisherBoilerplate } from "@/lib/article-preview-quality";
 import type { Story } from "@/lib/stories";
 import { persistStories, queuePreviewRepairs } from "@/lib/news-store";
 
@@ -541,6 +541,8 @@ function cleanTV2PhotoCaptions(value: string, title: string) {
 function isBoilerplatePreview(value: string) {
   const text = value.toLowerCase();
   if (!text.trim()) return true;
+  // Reject publisher-wide RSS and home-page descriptions, including cached ones.
+  if (hasPublisherInterfaceText(text)) return true;
 
   const junkSignals = [
     "du kan modtage notifikationer",
