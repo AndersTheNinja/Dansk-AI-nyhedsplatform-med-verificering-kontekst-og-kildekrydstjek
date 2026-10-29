@@ -26,7 +26,7 @@ function load(fetch, env = {}) {
 const item = { title: 'Aarhus åbner svømmehal ved havnen', description: 'Det oprindelige uddrag.', link: 'https://nyheder.tv2.dk/samfund/artikel', source: 'TV2.dk', category: 'Danmark', method: 'RSS', id: 'original' };
 test('saved snapshots discard placeholders and remove publisher footers and related-story links', () => {
   const api = load();
-  const story = (source, summary) => ({ title: 'En nyhed', summary, sourceLabel: source, sources: [{ label: source, url: 'https://example.dk/article' }] });
+  const story = (source, summary) => ({ title: 'En nyhed', summary, sourceLabel: source, sources: [{ label: source, url: 'https://example.dk/article/' + encodeURIComponent(source) }] });
   const result = api.cleanNewsStories([
     story('TechSavvy', 'En offentlig introduktion til en vigtig nyhed. Indlægget En nyhed blev først udgivet på TechSavvy .'),
     story('MigogAarhus', 'Artiklen fortæller om en hændelse i Aarhus. Læs også: Et helt andet emne.'),
