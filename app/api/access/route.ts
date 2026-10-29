@@ -3,7 +3,7 @@ import { classifyArticleAccess } from "@/lib/article-access";
 
 const ALLOWED_HOSTS = new Set([
   "dr.dk","www.dr.dk","politiken.dk","www.politiken.dk","version2.dk","www.version2.dk",
-  "ing.dk","www.ing.dk","computerworld.dk","www.computerworld.dk","techsavvy.media","www.techsavvy.media",
+  "ing.dk","www.ing.dk","computerworld.dk","www.computerworld.dk","techsavvy.media","www.techsavvy.media","y.dk","www.y.dk",
   "altinget.dk","www.altinget.dk","nordjyske.dk","www.nordjyske.dk","fyens.dk","www.fyens.dk",
   "jv.dk","www.jv.dk","hsfo.dk","www.hsfo.dk","frdb.dk","www.frdb.dk","journalisten.dk","www.journalisten.dk",
   "berlingske.dk","www.berlingske.dk","borsen.dk","www.borsen.dk",
