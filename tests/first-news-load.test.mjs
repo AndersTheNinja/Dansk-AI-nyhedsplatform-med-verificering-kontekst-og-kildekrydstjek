@@ -46,8 +46,22 @@ test("loading uses the ØL brand with a progress line, not the generic spinner",
  assert.match(loader, /role="status" aria-live="polite"/);
  assert.match(loader, /Henter de seneste nyheder…/);
  assert.doesNotMatch(loader, /newsLoadingSpinner/);
- assert.match(css, /@keyframes oelBrandPulse/);
- assert.match(css, /@keyframes oelBrandProgress/);
+ assert.match(loader, /className="newsLoadingEmblem"/);
+ assert.match(loader, /className="newsLoadingOrbit"/);
+ assert.match(css, /@keyframes oelLoadingHalo/);
+ assert.match(css, /@keyframes oelLoadingGleam/);
+ assert.match(css, /@keyframes oelLoadingFlow/);
  assert.match(css, /@media\(prefers-reduced-motion:reduce\)/);
- assert.doesNotMatch(css, /@keyframes oelNewsSpin/);
+ assert.match(css, /\.newsLoadingBrandLogo::after\{display:none\}/);
+ assert.doesNotMatch(css, /@keyframes oelNewsSpin|@keyframes oelBrandPulse|@keyframes oelBrandProgress/);
+});
+
+test("premium loading animation adds no scripts, assets or progress claim",()=>{
+ const loader=readFileSync(new URL("../components/news-loader.tsx",import.meta.url),"utf8");
+ const css=readFileSync(new URL("../app/globals.css",import.meta.url),"utf8");
+ const segment=css.slice(css.indexOf("/* ØL.dk loading signature"),css.indexOf(".newsLoadMore{"));
+ assert.match(segment,/transform:translateX/);
+ assert.doesNotMatch(segment,/@import|url\(|backdrop-filter:/i);
+ assert.match(loader, /<span className="newsLoadingBrand" aria-hidden="true">/);
+ assert.doesNotMatch(loader, /progressbar|aria-valuenow|aria-valuemax/);
 });
