@@ -95,7 +95,10 @@ export function NewsLoader() {
         </div>
         <div className="newsLoadingState" role="status" aria-live="polite">
           <span className="newsLoadingBrand" aria-hidden="true">
-            <span className="newsLoadingBrandLogo">ØL</span>
+            <span className="newsLoadingEmblem">
+              <span className="newsLoadingOrbit" />
+              <span className="newsLoadingBrandLogo">ØL</span>
+            </span>
             <span className="newsLoadingProgressTrack">
               <span className="newsLoadingProgressBar" />
             </span>
