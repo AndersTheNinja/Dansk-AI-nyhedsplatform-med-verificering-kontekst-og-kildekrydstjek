@@ -2253,7 +2253,13 @@ export async function getLiveStories(options?: { fast?: boolean; limit?: number 
       await queuePreviewRepairs(illustratedStories.filter((story) =>
         !hasEditorialPreview(story.summary, story.title) ||
         // A valid but short RSS subtitle can still omit the public introduction.
-        story.summary.length < 180
+        story.summary.length < 180 ||
+        // Stiften frequently provides 200–700 character RSS teasers despite
+        // having more public article text; keep these eligible for repair.
+        (/(?:^|\\.)stiften\\.dk$/i.test((() => {
+          try { return new URL(story.sources[0]?.url || "").hostname; }
+          catch { return ""; }
+        })()) && story.summary.length < 700)
       ));
     } catch (error) {
       console.error("Preview repair queue failed:", error);
