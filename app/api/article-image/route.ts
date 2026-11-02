@@ -109,7 +109,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ imageUrl: null });
     }
 
-    const value = metadata(html, "og:image") || metadata(html, "twitter:image");
+        // Some DR stories expose their lead image through the matching NewsArticle JSON-LD.
+    let structuredImage = "";
+    for (const match of html.matchAll(/<script\b[^>]*type=["\x27]application\/ld\+json["\x27][^>]*>([\s\S]*?)<\/script>/gi)) {
+      try {
+        const root = JSON.parse(match[1]);
+        const entries = Array.isArray(root) ? root : [root];
+        const nodes = entries.flatMap((entry: any) => Array.isArray(entry?.["@graph"]) ? entry["@graph"] : [entry]);
+        for (const node of nodes) {
+          const kind = String(node?.["@type"] || "");
+          if (!/NewsArticle|Article/i.test(kind) || !titleMatches(expectedTitle, String(node?.headline || ""))) continue;
+          const photo = Array.isArray(node.image) ? node.image[0] : node.image;
+          const url = typeof photo === "string" ? photo : photo?.url || photo?.contentUrl;
+          if (typeof url === "string") { structuredImage = url; break; }
+        }
+      } catch {}
+      if (structuredImage) break;
+    }
+    const value = metadata(html, "og:image") || metadata(html, "twitter:image") || structuredImage;
     if (!value) return NextResponse.json({ imageUrl: null });
     const image = new URL(value, current);
     if (image.protocol !== "https:" || image.username || image.password ||
