@@ -28,7 +28,7 @@ export default function Home() {
         <aside className="sidebar">
           <TextSizeControl />
           <section className="sideBox">
-            <h3>AI CHECK</h3>
+            <h3>AI-analyse</h3>
             <div className="sideItem"><div><strong>Resumé</strong><small>Få et kort resumé af artiklen</small></div></div>
             <div className="sideItem"><div><strong>Faktatjek</strong><small>OpenAI vurderer troværdigheden af nyheden</small></div></div>
           </section>
