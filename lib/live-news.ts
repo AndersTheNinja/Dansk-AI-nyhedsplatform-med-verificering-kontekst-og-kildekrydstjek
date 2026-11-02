@@ -1992,7 +1992,8 @@ function applyPublisherPreviews(stories: Story[], value: unknown): Story[] {
   return stories.map((story) => {
     const hasCurrentPreview = hasEditorialPreview(story.summary, story.title);
     // A usable RSS sentence can still omit the publisher's public introduction.
-    if (hasCurrentPreview && story.summary.length >= 180) return story;
+    const isStiftenStory = /^Stiften\.dk$/i.test(story.sources[0]?.label || story.sourceLabel);
+    if (hasCurrentPreview && story.summary.length >= (isStiftenStory ? 700 : 180)) return story;
     const lead = story.sources[0];
     const row = lead && rows.get(`${lead.label}:${canonical(lead.url)}`);
     if (!row || similarity(story.title, stripHtml(String(row.title || ""))) < 0.6) return story;
