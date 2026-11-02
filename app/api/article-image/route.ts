@@ -126,7 +126,18 @@ export async function POST(request: Request) {
       } catch {}
       if (structuredImage) break;
     }
-    const value = metadata(html, "og:image") || metadata(html, "twitter:image") || structuredImage;
+    // On JFM/Stiften the lead image may be inside the article rather than
+    // advertised via Open Graph. Require a matched article title above.
+    let leadImage = "";
+    if (/(?:^|\\.)stiften\\.dk$/i.test(page.hostname)) {
+      const article = html.match(/<article\\b[^>]*>([\\s\\S]*?)<\\/article>/i)?.[1] || "";
+      const firstFigure = article.match(/<figure\\b[^>]*>([\\s\\S]*?)<\\/figure>/i)?.[1] || "";
+      const imageTag = firstFigure.match(/<img\\b[^>]*>/i)?.[0] || "";
+      const src = imageTag.match(/\\b(?:src|data-src)\\s*=\\s*["']([^"']+)["']/i)?.[1] || "";
+      const srcSet = imageTag.match(/\\b(?:srcset|data-srcset)\\s*=\\s*["']([^"']+)["']/i)?.[1] || "";
+      leadImage = src || srcSet.split(",")[0]?.trim().split(/\\s+/)[0] || "";
+    }
+    const value = metadata(html, "og:image") || metadata(html, "twitter:image") || structuredImage || leadImage;
     if (!value) return NextResponse.json({ imageUrl: null });
     const image = new URL(value, current);
     if (image.protocol !== "https:" || image.username || image.password ||
