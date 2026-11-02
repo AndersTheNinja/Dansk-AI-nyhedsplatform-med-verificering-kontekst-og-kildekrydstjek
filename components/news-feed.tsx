@@ -388,6 +388,12 @@ function StoryCard({ story }: { story: Story }) {
             Kort introduktion fra Y.dk. Den fulde artikel findes via "Læs mere".
           </p>
         )}
+        {story.sources[0]?.label === "Stiften.dk" && !excerpt.hasMore &&
+          excerpt.text.trim().split(/\s+/).filter(Boolean).length < 60 && (
+          <p className="storyShortSourceNote">
+            Kort artikeluddrag fra Stiften.dk – ikke et AI-resumé. Læs hele artiklen via "Læs mere".
+          </p>
+        )}
 
         {textOpen && resolvedImageUrl && !articleImageFailed && (
           <div className="storyArticleImageWrap">
