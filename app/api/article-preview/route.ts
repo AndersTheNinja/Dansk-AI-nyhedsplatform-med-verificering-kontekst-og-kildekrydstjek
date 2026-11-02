@@ -55,14 +55,14 @@ export async function POST(request:Request) {
   const rssIntro=String(body?.intro||"").slice(0,1500);
   if(url.protocol!=="https:"||!hosts.has(url.hostname)||url.username||url.password||title.length<8)return NextResponse.json({excerpt:null,hasMore:null},{status:400});
   // Strip Stiften's RSS tracking flag when requesting the actual article.
-  const isStiften = /^(?:www\\.)?stiften\\.dk$/i.test(url.hostname);
+  const isStiften = /^(?:www\.)?stiften\.dk$/i.test(url.hostname);
   const articleUrl = new URL(url.toString());
   if (isStiften) articleUrl.searchParams.delete("rss");
   const response=await fetch(articleUrl.toString(),{redirect:"follow",next:{revalidate:900},headers:{"Accept":"text/html,application/xhtml+xml","User-Agent":"Mozilla/5.0 (compatible; OEL.dk/1.0)"},signal:AbortSignal.timeout(isStiften?10000:4500)});
   if(!response.ok||!(response.headers.get("content-type")||"").includes("text/html"))return NextResponse.json({excerpt:null,hasMore:null});
   const landed = new URL(response.url);
   if (landed.hostname !== articleUrl.hostname ||
-      landed.pathname.replace(/\\/+$/, "") !== articleUrl.pathname.replace(/\\/+$/, "")) {
+      landed.pathname.replace(/\/+$/, "") !== articleUrl.pathname.replace(/\/+$/, "")) {
     return NextResponse.json({excerpt:null,hasMore:null});
   }
   const html=(await response.text()).slice(0,750000);
@@ -107,7 +107,7 @@ export async function POST(request:Request) {
           });
           const resolved=new URL(fragmentResponse.url);
           if (fragmentResponse.ok && resolved.hostname===articleUrl.hostname &&
-              (fragmentResponse.headers.get("content-type")||"").match(/(?:text\\/html|application\\/xhtml\\+xml)/i)) {
+              (fragmentResponse.headers.get("content-type")||"").match(/(?:text\/html|application\/xhtml\+xml)/i)) {
             const fragment=(await fragmentResponse.text()).slice(0,450000);
             stiftenPublic=extractStiftenPublicFragment(fragment,title,rssIntro);
           }
