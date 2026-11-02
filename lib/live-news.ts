@@ -288,6 +288,9 @@ function stripHtml(value = "") {
 // Remove image credits embedded between the photo caption and article text.
 // They are metadata, not part of the editorial article body.
 function removeInlinePhotoCredits(value: string) {
+  // Wikimedia attribution is occasionally prepended without a "Foto:" label.
+  // Remove only the leading attribution, never editorial sentences.
+  value = value.replace(/^\s*(?:[^.!?]{2,100}?)\s*\/\s*Wikimedia Commons\s*,?\s*CC\s*BY(?:-SA)?\s*\d(?:\.\d)?\s*[.,:–-]?\s*/i, "");
   const creditStart = /(?:foto|fotograf|fotocredit|photo|billedkredit)\s*:\s*(?:\/\s*)?/gi;
   const editorialStart = /\s+(?:(?:En|Et|Den|Det|Der|For|Fra|Efter|Mens|Men|Ifølge|Han|Hun|De|På|Til|I|Samtidig|Alligevel)\s+|Olfi,\s+)(?=[A-Za-zÆØÅæøå0-9»"'(])/g;
   let result = "";
