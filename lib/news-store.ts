@@ -62,7 +62,8 @@ export async function persistStories(stories: Story[]) {
         verification: story.verification,
         verificationText: story.verificationText,
         neutrality: story.neutrality,
-        mentions: story.mentions || []
+        mentions: story.mentions || [],
+        andersOnly: Boolean(story.andersOnly)
       },
       sources: story.sources
     }));
@@ -190,6 +191,7 @@ export async function getAndersWinnerskjoldArchiveStories(): Promise<Story[]> {
         publishedDate: formatArchivePublishedDate(row?.published_at ? String(row.published_at) : undefined),
         sourceMethod: row?.source_method === "WEB" ? "WEB" : "RSS",
         mentions: Array.isArray(raw?.mentions) ? raw.mentions.map(String) : [],
+        andersOnly: Boolean(raw?.andersOnly) || /^(?:Jyllands-Posten|JP Kronik)/i.test(String(row?.source || "")),
         // Public previews are applied with the same URL/title validation as current stories.
         summary: String(row?.teaser || ""),
         why: "Gemte ØL.dk-nyheder om Aarhus-borgmester Anders Winnerskjold.",
