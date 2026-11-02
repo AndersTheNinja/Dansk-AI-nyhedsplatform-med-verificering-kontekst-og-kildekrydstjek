@@ -136,31 +136,6 @@ const feeds: FeedConfig[] = [
     category: "Aarhus"
   },
   {
-    name: "MigogAarhus",
-    url: "https://migogaarhus.dk/feed/?paged=2",
-    category: "Aarhus"
-  },
-  {
-    name: "MigogAarhus",
-    url: "https://migogaarhus.dk/feed/?paged=3",
-    category: "Aarhus"
-  },
-  {
-    name: "MigogAarhus",
-    url: "https://migogaarhus.dk/feed/?paged=4",
-    category: "Aarhus"
-  },
-  {
-    name: "MigogAarhus",
-    url: "https://migogaarhus.dk/feed/?paged=5",
-    category: "Aarhus"
-  },
-  {
-    name: "MigogAarhus",
-    url: "https://migogaarhus.dk/feed/?paged=6",
-    category: "Aarhus"
-  },
-  {
     name: "TV2.dk",
     // The two legacy TV2 feed URLs fail in production (including HTTP 404).
     // This feed is actively verified by RSS reader services.
@@ -2009,27 +1984,34 @@ export async function addPublisherFeaturedImages(stories: Story[]): Promise<Stor
 
 export async function getLiveStories(options?: { fast?: boolean; limit?: number }): Promise<Story[]> {
   const fast = Boolean(options?.fast);
-  const fastFeeds = feeds.filter((feed) =>
+  // Use the same visible-publisher plan for scheduled and fast collection.
+  // Hidden publishers are removed later anyway; fetching them wastes capacity.
+  // MigogAarhus gets the latest stories via one RSS feed and its WordPress API,
+  // rather than six parallel paginated RSS calls against the same publisher.
+  const activeFeeds = feeds.filter((feed) =>
     isVisiblePublisher(feed.name) &&
     !/[?&]paged=\d+/i.test(feed.url)
   );
+  const sourceTasks = activeFeeds.map((feed) => ({
+    label: `${feed.name} RSS (${new URL(feed.url).pathname})`,
+    run: () => fetchFeed(feed, fast ? 2200 : 7000)
+  }));
 
-  const results = await Promise.allSettled(
-    fast
-      ? fastFeeds.map((feed) => fetchFeed(feed, 2200))
-      : [
-          ...feeds.map((feed) => fetchFeed(feed)),
-          fetchMigogAarhusApi(),
-          fetchBorsenWebsite(),
-          fetchBerlingskeWebsite(),
-          fetchTV2Website()
-        ]
-  );
+  if (!fast) {
+    sourceTasks.push(
+      { label: "MigogAarhus WordPress API", run: fetchMigogAarhusApi },
+      { label: "Børsen website", run: fetchBorsenWebsite },
+      { label: "Berlingske website", run: fetchBerlingskeWebsite },
+      { label: "TV 2 website", run: fetchTV2Website }
+    );
+  }
+
+  const results = await Promise.allSettled(sourceTasks.map((source) => source.run()));
 
   results.forEach((result, index) => {
     if (result.status === "rejected") {
-      const source = (fast ? fastFeeds : feeds)[index]?.name || "Website source";
-      console.warn("News source fetch failed", source, String(result.reason));
+      // Keep the precise publisher and fetch type in logs to diagnose timeouts.
+      console.warn("News source fetch failed", sourceTasks[index].label, String(result.reason));
     }
   });
 
