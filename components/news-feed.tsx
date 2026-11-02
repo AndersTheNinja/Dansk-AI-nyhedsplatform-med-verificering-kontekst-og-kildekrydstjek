@@ -585,7 +585,7 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
   );
 
   const mediaOptions = useMemo(() => {
-    const names = initialStories.flatMap((story) =>
+    const names = initialStories.filter((story) => !story.andersOnly).flatMap((story) =>
       story.sources.map((source) => mediaName(source.label))
     );
     const hiddenMedia = new Set(["Fredericia Dagblad", "JydskeVestkysten", "Horsens Folkeblad", "Nordjyske", "Fyens.dk"]);
@@ -602,6 +602,7 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
     () =>
       initialStories
         .filter((story) => {
+          if (story.andersOnly && !categoriesSelected.includes(andersTopic)) return false;
           const matchesCategory =
             categoriesSelected.length === 0 ||
             categoriesSelected.includes(story.category) ||
