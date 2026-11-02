@@ -327,15 +327,15 @@ function removeRepeatedLead(value: string) {
   const segments = Array.from(new Intl.Segmenter("da", { granularity: "sentence" }).segment(text));
   if (segments.length < 3) return text;
   const first = segments[0].segment.trim();
-  if (first.length < 55 || first.length > 340) return text;
+  if (first.length < 40 || first.length > 340) return text;
   const words = (v: string) => v.toLocaleLowerCase("da-DK").replace(/[^\p{L}\p{N}]+/gu, " ").trim().split(/\s+/).filter(Boolean);
   const a = words(first);
   if (a.length < 9) return text;
   for (let j = 1; j < Math.min(4, segments.length); j++) {
     const b = words(segments[j].segment);
-    if (b.length < 9) continue;
+    if (b.length < 7) continue;
     const shared = a.filter(w => b.includes(w)).length / Math.max(a.length,b.length);
-    const prefix = a.slice(0,5).join(" ") === b.slice(0,5).join(" ");
+    const prefix = a.slice(0,4).join(" ") === b.slice(0,4).join(" ");
     if (prefix || shared >= 0.84) {
       return (first + " " + segments.slice(j+1).map(x=>x.segment.trim()).join(" ")).trim();
     }
