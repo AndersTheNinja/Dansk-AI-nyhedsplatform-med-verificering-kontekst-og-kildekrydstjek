@@ -1418,10 +1418,17 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
     // For Stiften articles with missing or very short RSS text, a 26-second attempt works
     // better than two short attempts that both abort before JFM responds.
     // The scheduled collector does this work off the visitor's request path.
+    const stiftenTextLength = item.description.trim().length;
     const needsStiftenText = isStiften && (
-      item.description.trim().length < 180 ||
+      stiftenTextLength < 180 ||
       /ingen selvstændig artikeltekst tilgængelig/i.test(item.description)
     );
+    // A valid 200-400-character RSS introduction is still far shorter than
+    // ØL.dk's intended 100-word article excerpt. Give these pages a little
+    // more time, without the expensive 26-second retry used for missing text.
+    const wantsStiftenExpansion = isStiften && stiftenTextLength >= 180 && stiftenTextLength < 400;
+    const stiftenPageTimeout = needsStiftenText ? 26000 : wantsStiftenExpansion ? 9500 : 3500;
+    const stiftenBodyTimeout = needsStiftenText ? 26000 : wantsStiftenExpansion ? 9500 : 8000;
     const fetchArticlePage = (retry = false) => fetch(articleFetchUrl, {
       ...(retry ? { cache: "no-store" as const } : { next: { revalidate: 900 } }),
       redirect: "follow",
@@ -1429,7 +1436,7 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
         "User-Agent": "Mozilla/5.0 (compatible; OELdk/1.0; +https://øl.dk)",
         Accept: "text/html,application/xhtml+xml"
       },
-      signal: AbortSignal.timeout(needsStiftenText ? (retry ? 12000 : 26000) : 3500)
+      signal: AbortSignal.timeout(retry ? 12000 : stiftenPageTimeout)
     });
     let response: Response;
     try {
@@ -1485,7 +1492,7 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
               "User-Agent": "Mozilla/5.0 (compatible; OELdk/1.0; +https://øl.dk)",
               Accept: "text/html,application/xhtml+xml,*/*"
             },
-            signal: AbortSignal.timeout(needsStiftenText ? (retry ? 12000 : 26000) : 8000)
+            signal: AbortSignal.timeout(retry ? 12000 : stiftenBodyTimeout)
           });
           let asyncResponse: Response | null = null;
           try {
