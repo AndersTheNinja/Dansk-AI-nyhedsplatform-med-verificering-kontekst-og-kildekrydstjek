@@ -947,10 +947,9 @@ async function fetchFeed(feed: FeedConfig, timeoutMs = 7000, retry = false): Pro
     };
   }).filter((item: NewsItem) => item.title && item.link)
     .filter((item: NewsItem) => feed.name !== "JP Kronik (Anders W.)" || (
-      /\bwinners(?:kjold|kiold)\b/i.test(`${item.title} ${item.description}`) &&
       /(?:\/debat\/|\/kronik\/|kronik|debatindlæg)/i.test(`${item.link} ${item.title}`)
     )).map((item: NewsItem) => feed.name === "JP Kronik (Anders W.)"
-      ? { ...item, source: "Jyllands-Posten", andersOnly: true, mentions: ["anders-winnerskjold"] }
+      ? { ...item, source: "Jyllands-Posten", andersOnly: true, mentions: [] }
       : item);
 }
 
@@ -2117,8 +2116,9 @@ export async function getLiveStories(options?: { fast?: boolean; limit?: number 
         leadHost = new URL(entry.lead.link).hostname.toLowerCase();
       } catch {}
       const alwaysEnrichStiften = /(?:^|\.)stiften\.dk$/i.test(leadHost);
+       const alwaysEnrichOpinion = Boolean(entry.lead.andersOnly);
       const alwaysEnrichComputerworld = /(?:^|\.)computerworld\.dk$/i.test(leadHost);
-      const alwaysEnrich = alwaysEnrichStiften || alwaysEnrichComputerworld || entry.lead.category === "Aarhus";
+      const alwaysEnrich = alwaysEnrichStiften || alwaysEnrichOpinion || alwaysEnrichComputerworld || entry.lead.category === "Aarhus";
 
       // Stiften and Computerworld frequently publish short RSS teasers while
       // additional article text is available on the article page. Always attempt
@@ -2157,7 +2157,7 @@ export async function getLiveStories(options?: { fast?: boolean; limit?: number 
   const repeatedEnrichedDescriptions = repeatedPublisherDescriptionKeys(
     enrichedSelected.map((entry) => entry.lead)
   );
-  const stories = enrichedSelected.map((entry, index) => {
+  const stories = enrichedSelected.filter(({ lead }) => !lead.andersOnly || /\bwinners(?:kjold|kiold)\b/i.test(`${lead.title} ${lead.description}`) || lead.mentions?.includes("anders-winnerskjold")).map((entry, index) => {
     const { lead, sources } = entry;
     const hasCrossCheck = sources.length >= 2;
     const wordingNeutrality = scoreWordingNeutrality(`${lead.title} ${lead.description}`);
