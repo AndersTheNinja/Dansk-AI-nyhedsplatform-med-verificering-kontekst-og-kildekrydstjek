@@ -1,13 +1,13 @@
 import type { Story } from "./stories";
 
 
-export type QualityIssue = "short_text" | "publisher_ui" | "generic_image" | "missing_image" | "invalid_date" | "future_date" | "duplicate";
+export type QualityIssue = "short_text" | "publisher_ui" | "generic_image" | "missing_image" | "invalid_date" | "future_date" | "duplicate" | "truncated_sentence" | "weak_source_check";
 export type QualityFinding = { id: string; source: string; issues: QualityIssue[] };
 export type QualityReport = { checked: number; issueCounts: Record<QualityIssue, number>; examples: QualityFinding[] };
 
 const uiPattern = /\b(?:opret et personligt gavelink|log ind for at følge|gratis prøve beder vi dig|angiver du ingeniøren som foretrukken kilde|kunne ikke generere link|bliv abonnent for at læse videre|nyheder, analyser, viden, blogs og debat om it|computerworld er dit medie om det digitale danmark|computerworld skriver om nye teknologier, hardware, software)\b/i;
 const genericPicture = /(?:^|[-_\/.])(?:default|placeholder|fallback|generic|standard|nyhedsgrafik|verdenskort|jordklode|logo|favicon)(?:[-_\/.]|$)/i;
-const issueTypes: QualityIssue[] = ["short_text","publisher_ui","generic_image","missing_image","invalid_date","future_date","duplicate"];
+const issueTypes: QualityIssue[] = ["short_text","publisher_ui","generic_image","missing_image","invalid_date","future_date","duplicate","truncated_sentence","weak_source_check"];
 export function auditNewsStories(stories: Story[], now = Date.now()): QualityReport {
  const counts = Object.fromEntries(issueTypes.map(key => [key,0])) as Record<QualityIssue,number>;
  const seen = new Set<string>();
@@ -19,6 +19,8 @@ export function auditNewsStories(stories: Story[], now = Date.now()): QualityRep
   const source = primary?.label || story.sourceLabel || "";
   if (text.split(/\s+/).filter(Boolean).length < 25) issues.push("short_text");
   if (uiPattern.test(text)) issues.push("publisher_ui");
+  if (text.length > 75 && /(?:[,;:]|\b(?:og|men|fordi|at|som|der|med|til|på))\s*$/i.test(text)) issues.push("truncated_sentence");
+  if (story.sources.length < 2 && story.verification === "confirmed") issues.push("weak_source_check");
   if (!story.imageUrl) issues.push("missing_image");
   else { try { if (genericPicture.test(decodeURIComponent(new URL(story.imageUrl).pathname))) issues.push("generic_image"); } catch { issues.push("generic_image"); } }
   const timestamp = story.publishedAt ? Date.parse(story.publishedAt) : NaN;
@@ -38,7 +40,7 @@ export function auditNewsStories(stories: Story[], now = Date.now()): QualityRep
 
 /** Apply only deterministic, reversible display-level fixes. Do not invent text or images. */
 export function repairNewsStories(stories: Story[]): { stories: Story[]; repairs: Record<string,number> } {
- const repairs={ boilerplate:0,genericImage:0,duplicate:0 };
+ const repairs={ boilerplate:0,genericImage:0,duplicate:0,verification:0 };
  const seen=new Set<string>();
  const result:Story[]=[];
  const cutPatterns=[
@@ -75,7 +77,9 @@ export function repairNewsStories(stories: Story[]): { stories: Story[]; repairs
        if(genericPicture.test(path)){imageUrl=undefined;repairs.genericImage++;}
      }catch{imageUrl=undefined;repairs.genericImage++;}
    }
-   result.push({...story,summary,imageUrl});
+   const verification = story.verification === "confirmed" && story.sources.length < 2 ? "unverified" : story.verification;
+   if (verification !== story.verification) repairs.verification++;
+   result.push({...story,summary,imageUrl,verification});
  }
  return {stories:result,repairs};
 }
