@@ -22,6 +22,7 @@ type NewsItem = {
   pubDate?: string;
   description: string;
   mentions?: string[];
+  andersOnly?: boolean;
   imageUrl?: string;
   source: string;
   method: "RSS" | "WEB";
@@ -29,6 +30,7 @@ type NewsItem = {
 };
 
 const feeds: FeedConfig[] = [
+  { name: "JP Kronik (Anders W.)", url: "https://newsletter-proxy.aws.jyllands-posten.dk/v1/latestNewsRss/jyllands-posten.dk", category: "Aarhus" },
   {
     name: "DR Nyheder",
     url: "https://www.dr.dk/nyheder/service/feeds/allenyheder",
@@ -943,7 +945,13 @@ async function fetchFeed(feed: FeedConfig, timeoutMs = 7000, retry = false): Pro
       method: "RSS" as const,
       id: `${feed.name}:${link || title}`
     };
-  }).filter((item: NewsItem) => item.title && item.link);
+  }).filter((item: NewsItem) => item.title && item.link)
+    .filter((item: NewsItem) => feed.name !== "JP Kronik (Anders W.)" || (
+      /\\bwinners(?:kjold|kiold)\\b/i.test(`${item.title} ${item.description}`) &&
+      /(?:\\/debat\\/|\\/kronik\\/|kronik|debatindlæg)/i.test(`${item.link} ${item.title}`)
+    )).map((item: NewsItem) => feed.name === "JP Kronik (Anders W.)"
+      ? { ...item, source: "Jyllands-Posten", andersOnly: true, mentions: ["anders-winnerskjold"] }
+      : item);
 }
 
 
@@ -2183,6 +2191,7 @@ export async function getLiveStories(options?: { fast?: boolean; limit?: number 
       sourceMethod: lead.method,
       summary,
       mentions,
+      andersOnly: lead.andersOnly || undefined,
       imageUrl: lead.imageUrl && !isGenericArticleImage(lead.imageUrl, lead.title, lead.source) ? lead.imageUrl : undefined,
       why: categoryWhy(lead.category),
       verification: hasCrossCheck ? "nuance" : "unverified",
