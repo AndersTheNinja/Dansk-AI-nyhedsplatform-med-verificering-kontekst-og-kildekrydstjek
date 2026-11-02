@@ -694,6 +694,12 @@ function isFresh(pubDate?: string) {
 }
 
 function isLiveCoverage(item: NewsItem) {
+  // Evergreen landing pages are not individual news stories.
+  const title = item.title.trim();
+  const teaser = item.description.trim();
+  if (/^seneste nyt om (?:dansk )?politik\s*[–-]\s*følg udviklingen her$/i.test(title)) return true;
+  if (/^følg med (?:og )?få de seneste nyheder om (?:dansk )?politik her\.?$/i.test(teaser) &&
+      /seneste nyt|følg udviklingen/i.test(title)) return true;
   const haystack = `${item.title} ${item.description} ${item.link}`.toLowerCase();
   return [
     "livechat",
