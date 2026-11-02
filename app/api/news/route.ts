@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
     if (!isCollector) {
       const snapshot = await getNewsSnapshot();
       if (snapshot) {
-        const visibleStories = cleanNewsStories(snapshot.stories).sort((a, b) => { const at = a.publishedAt ? Date.parse(a.publishedAt) : 0; const bt = b.publishedAt ? Date.parse(b.publishedAt) : 0; return (Number.isFinite(bt) ? bt : 0) - (Number.isFinite(at) ? at : 0); });
+        const visibleStories = cleanNewsStories(await addPublisherFeaturedImages(cleanNewsStories(snapshot.stories))).sort((a, b) => { const at = a.publishedAt ? Date.parse(a.publishedAt) : 0; const bt = b.publishedAt ? Date.parse(b.publishedAt) : 0; return (Number.isFinite(bt) ? bt : 0) - (Number.isFinite(at) ? at : 0); });
         const limit = Number.isFinite(requestedLimit) && requestedLimit > 0
           ? Math.min(Math.floor(requestedLimit), visibleStories.length)
           : visibleStories.length;
