@@ -1386,7 +1386,7 @@ function extractJfmAsyncArticleText(html: string, title: string) {
     });
 
   if (!paragraphs.length) return "";
-  return cleanPreviewText(joinEditorialParagraphs(paragraphs.slice(0, 10)), title);
+  return cleanPreviewText(joinEditorialParagraphs(paragraphs.slice(0, 30)).slice(0, 15000), title);
 }
 
 async function enrichPreview(item: NewsItem): Promise<NewsItem> {
@@ -1532,15 +1532,20 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
       : "";
 
     const preview = isStiften
-      ? (trustedStiftenAsyncPreview.length >= 80 ? trustedStiftenAsyncPreview :
-          trustedStiftenMetadata.length >= 80 ? trustedStiftenMetadata : [
-          extractArticleBodyFromJson(articleHtml, item.title, item.description),
-          extractScopedArticlePreview(articleHtml, item.title, item.description),
-          extractEmbeddedArticlePreview(articleHtml, item.title, item.description),
-          extractMetadataPreview(articleHtml)
-        ]
-          .filter((text) => text && !isBoilerplatePreview(text))
-          .sort((a, b) => previewQuality(b) - previewQuality(a))[0] || "")
+      ? (() => {
+          // Prefer actual current-article content to a shorter RSS/metadata teaser.
+          // The asynchronous body belongs to the title-verified Stiften page.
+          if (trustedStiftenAsyncPreview.length >= 80) return trustedStiftenAsyncPreview;
+          const candidates = [
+            extractArticleBodyFromJson(articleHtml, item.title, item.description),
+            extractScopedArticlePreview(articleHtml, item.title, item.description),
+            extractEmbeddedArticlePreview(articleHtml, item.title, item.description)
+          ].filter((text) => text.length >= 80 && !isBoilerplatePreview(text));
+          // Metadata is a fallback only: do not let it displace longer article text.
+          const articleBody = candidates.sort((a, b) => previewQuality(b) - previewQuality(a))[0] || "";
+          if (articleBody.length >= Math.max(180, trustedStiftenMetadata.length + 80)) return articleBody;
+          return trustedStiftenMetadata.length >= 80 ? trustedStiftenMetadata : articleBody;
+        })()
       : isPolitiken
         ? [
             extractPolitikenArticlePreview(html, item.title, item.description),
@@ -1601,7 +1606,10 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
     );
 
     const bestDescription =
-      stiftenPreviewMatchesTitle && previewQuality(cleanedPreview) > previewQuality(item.description)
+      stiftenPreviewMatchesTitle && (
+        (isStiften && cleanedPreview.length >= Math.max(180, item.description.length + 80)) ||
+        previewQuality(cleanedPreview) > previewQuality(item.description)
+      )
         ? cleanedPreview
         : item.description;
 
