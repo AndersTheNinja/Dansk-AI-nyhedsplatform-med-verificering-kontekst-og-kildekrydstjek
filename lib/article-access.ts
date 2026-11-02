@@ -116,8 +116,12 @@ export function accessFromArticleMeta(html: string, requestedUrl: URL): boolean 
       if (value === "false") paid = true;
       else free = true;
     }
-    if ((kind === "article:paywall" || kind === "paywall") &&
-        ["true", "locked", "subscriber", "subscription"].includes(value)) paid = true;
+    if (kind === "article:paywall" || kind === "paywall") {
+      if (["true", "locked", "subscriber", "subscription"].includes(value)) paid = true;
+      // Only an explicit, canonical-matched article-level FREE flag counts.
+      // Missing paywall data is never enough to mark a story "(gratis)".
+      if (["false", "free", "none"].includes(value)) free = true;
+    }
   }
   // Conflicting publisher metadata cannot establish free access.
   return paid && free ? null : paid ? true : free ? false : null;

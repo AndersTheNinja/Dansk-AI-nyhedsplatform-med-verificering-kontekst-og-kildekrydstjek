@@ -148,3 +148,28 @@ test("other-story paywall messaging inside recommendations stays unknown",()=>{
  '<article><h1>Historien</h1><p>Almindelig artikeltekst</p></article><section class="more-news">Bliv abonnent for at læse videre</section>');
  assert.equal(classifyArticleAccess(html,url).requiresSubscription,null);
 });
+
+
+test("explicit article-level free paywall metadata on matching Stiften URL confirms gratis",()=>{
+ const requested=new URL("https://stiften.dk/erhverv/anders-solgte-verdenskendt-risskov-succes-for-750-millioner-i-dag-fortryder-han?rss");
+ const html='<html><head><link rel="canonical" href="'+requested.origin+requested.pathname+'"/>'+
+ '<meta property="article:paywall" content="false"></head><body><article><h1>Anders solgte verdenskendt Risskov-succes</h1></article></body></html>';
+ assert.deepEqual(classifyArticleAccess(html,requested),{
+   requiresSubscription:false,basis:"article-meta"
+ });
+});
+
+test("free flag on different article never marks the requested Stiften story gratis",()=>{
+ const requested=new URL("https://stiften.dk/erhverv/anders-solgte-verdenskendt-risskov-succes-for-750-millioner-i-dag-fortryder-han");
+ const html='<html><head><link rel="canonical" href="https://stiften.dk/erhverv/andet-indhold"/>'+
+ '<meta property="article:paywall" content="false"></head><body></body></html>';
+ assert.equal(classifyArticleAccess(html,requested).requiresSubscription,null);
+});
+
+test("contradictory same-article paywall metadata never claims free",()=>{
+ const requested=new URL("https://stiften.dk/erhverv/noget-nyt");
+ const html='<html><head><link rel="canonical" href="'+requested.toString()+'"/>'+
+ '<meta property="article:paywall" content="false">'+
+ '<meta property="article:content_tier" content="premium"></head></html>';
+ assert.equal(classifyArticleAccess(html,requested).requiresSubscription,null);
+});
