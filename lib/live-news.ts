@@ -1621,6 +1621,7 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
         : item.description;
 
     const fullArticleMentionText = articleMentionText(html, stiftenAsyncHtml);
+    const isStiftenOpinion = isStiften && /(?:\/debat\/|\/kronik\/|\/laeserbrev\/|kronik)/i.test(`${item.link} ${item.title}`);
     const fullArticleMentions = /\bwinners(?:kjold|kiold)\b/i.test(fullArticleMentionText)
       ? Array.from(new Set([...(item.mentions || []), "anders-winnerskjold"]))
       : (item.mentions || []);
@@ -1629,6 +1630,7 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
       ...item,
       description: bestDescription,
       mentions: fullArticleMentions,
+      andersOnly: item.andersOnly || isStiftenOpinion || undefined,
       imageUrl: isStiften && !stiftenPreviewMatchesTitle ? item.imageUrl : (pageImageUrl || item.imageUrl),
       pubDate: extractPublishedDateFromHtml(html, item.title) || item.pubDate
     };
