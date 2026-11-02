@@ -1463,7 +1463,7 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
     const stiftenPageTimeout = needsStiftenText ? 26000 : wantsStiftenExpansion ? 9500 : 3500;
     const stiftenBodyTimeout = needsStiftenText ? 26000 : wantsStiftenExpansion ? 9500 : 8000;
     const fetchArticlePage = (retry = false) => fetch(articleFetchUrl, {
-      ...(retry ? { cache: "no-store" as const } : { next: { revalidate: 900 } }),
+      ...(retry || isStiften ? { cache: "no-store" as const } : { next: { revalidate: 900 } }),
       redirect: "follow",
       headers: {
         "User-Agent": "Mozilla/5.0 (compatible; OELdk/1.0; +https://øl.dk)",
@@ -1512,7 +1512,7 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
       const asyncPath = html.match(/data-load-async-url=["']([^"']+)["']/i)?.[1];
       if (asyncPath) {
         try {
-          const asyncEndpoint = new URL(asyncPath, articleFetchUrl);
+          const asyncEndpoint = new URL(asyncPath.replace(/&amp;/gi, "&"), articleFetchUrl);
           // Never follow a publisher-supplied async path to a different host.
           if (asyncEndpoint.protocol !== "https:" ||
               asyncEndpoint.hostname !== new URL(articleFetchUrl).hostname) {
@@ -1539,7 +1539,30 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
           }
           if (asyncResponse?.ok) {
             stiftenAsyncHtml = await asyncResponse.text();
+            // An HTTP 200 can still contain only a placeholder or navigation.
+            // Retry once rather than permanently storing the short RSS teaser.
+            if (needsStiftenText && extractJfmAsyncArticleText(stiftenAsyncHtml, item.title).length < 80) {
+              try {
+                const fresh = await fetchBody(true);
+                if (fresh.ok) {
+                  const freshHtml = await fresh.text();
+                  if (extractJfmAsyncArticleText(freshHtml, item.title).length >
+                      extractJfmAsyncArticleText(stiftenAsyncHtml, item.title).length) {
+                    stiftenAsyncHtml = freshHtml;
+                  }
+                }
+              } catch {}
+            }
             articleHtml = `${html}\n${stiftenAsyncHtml}`;
+          }
+          if (needsStiftenText) {
+            console.info("ØL.dk Stiften extract", JSON.stringify({
+              url: articleFetchUrl,
+              rssChars: item.description.length,
+              asyncChars: extractJfmAsyncArticleText(stiftenAsyncHtml, item.title).length,
+              asyncEndpointFound: Boolean(asyncPath),
+              asyncHttpStatus: asyncResponse?.status ?? null
+            }));
           }
         } catch {}
       }
