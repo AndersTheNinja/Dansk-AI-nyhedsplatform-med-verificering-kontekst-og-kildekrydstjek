@@ -694,13 +694,13 @@ function isFresh(pubDate?: string) {
 }
 
 function isGenericLandingPage(title: string, description: string, link = "") {
-  const headline = title.replace(/\\s+/g, " ").trim();
-  const teaser = description.replace(/\\s+/g, " ").trim();
+  const headline = title.replace(/\s+/g, " ").trim();
+  const teaser = description.replace(/\s+/g, " ").trim();
   // Require unmistakable landing-page wording; do not filter genuine news
   // merely because its headline contains "seneste nyt".
-  const genericTitle = /^(?:seneste nyt (?:om|fra)|følg (?:med i|udviklingen i)|alt om)\\b.{3,115}(?:følg udviklingen her|følg med her|seneste nyheder her|live her)?$/i.test(headline);
-  const genericTeaser = /^(?:følg med (?:og få)?|få (?:alle )?de seneste nyheder|her (?:kan du )?følge|hold dig opdateret)\\b.{0,180}$/i.test(teaser);
-  const genericPath = /\\/(?:seneste-nyt|nyhedsoverblik|overblik|liveblog|live)\\/?$/i.test(link.split("?")[0]);
+  const genericTitle = /^(?:seneste nyt (?:om|fra)|følg (?:med i|udviklingen i)|alt om)\b.{3,115}(?:følg udviklingen her|følg med her|seneste nyheder her|live her)?$/i.test(headline);
+  const genericTeaser = /^(?:følg med (?:og få)?|få (?:alle )?de seneste nyheder|her (?:kan du )?følge|hold dig opdateret)\b.{0,180}$/i.test(teaser);
+  const genericPath = /\/(?:seneste-nyt|nyhedsoverblik|overblik|liveblog|live)\/?$/i.test(link.split("?")[0]);
   return (genericTitle && (genericTeaser || genericPath || /følg udviklingen her|følg med her/i.test(headline))) ||
     (genericPath && genericTeaser && teaser.length < 190);
 }
