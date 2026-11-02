@@ -947,8 +947,8 @@ async function fetchFeed(feed: FeedConfig, timeoutMs = 7000, retry = false): Pro
     };
   }).filter((item: NewsItem) => item.title && item.link)
     .filter((item: NewsItem) => feed.name !== "JP Kronik (Anders W.)" || (
-      /\\bwinners(?:kjold|kiold)\\b/i.test(`${item.title} ${item.description}`) &&
-      /(?:\\/debat\\/|\\/kronik\\/|kronik|debatindlæg)/i.test(`${item.link} ${item.title}`)
+      /\bwinners(?:kjold|kiold)\b/i.test(`${item.title} ${item.description}`) &&
+      /(?:\/debat\/|\/kronik\/|kronik|debatindlæg)/i.test(`${item.link} ${item.title}`)
     )).map((item: NewsItem) => feed.name === "JP Kronik (Anders W.)"
       ? { ...item, source: "Jyllands-Posten", andersOnly: true, mentions: ["anders-winnerskjold"] }
       : item);
