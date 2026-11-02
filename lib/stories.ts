@@ -20,6 +20,8 @@ export type Story = {
   sourceMethod?: "RSS" | "WEB";
   summary: string;
   mentions?: string[];
+  /** Opinion items explicitly reserved for the ANDERS W. topic. */
+  andersOnly?: boolean;
   imageUrl?: string;
   why: string;
   verification: Verification;
