@@ -22,7 +22,7 @@ export function NewsLoader() {
     // Repeat visits in the same tab can paint up to two-minute-old headlines
     // instantly while a fresh request updates the feed in the background.
     try {
-      const cache = parseFirstNewsCache(sessionStorage.getItem(FIRST_NEWS_CACHE_KEY));
+      const cache = parseFirstNewsCache(localStorage.getItem(FIRST_NEWS_CACHE_KEY) || sessionStorage.getItem(FIRST_NEWS_CACHE_KEY));
       if (cache) {
         setStories(cache.stories);
         notifyNewsCount(cache.totalCount);
@@ -54,7 +54,7 @@ export function NewsLoader() {
         setError(false);
 
         try {
-          sessionStorage.setItem(FIRST_NEWS_CACHE_KEY, JSON.stringify({
+          localStorage.setItem(FIRST_NEWS_CACHE_KEY, JSON.stringify({
             savedAt: Date.now(),
             stories: nextStories.slice(0, 20),
             totalCount
