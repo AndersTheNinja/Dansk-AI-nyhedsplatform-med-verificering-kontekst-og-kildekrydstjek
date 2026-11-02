@@ -337,7 +337,7 @@ function removeRepeatedLead(value: string) {
     const shared = a.filter(w => b.includes(w)).length / Math.max(a.length,b.length);
     const prefix = a.slice(0,4).join(" ") === b.slice(0,4).join(" ");
     if (prefix || shared >= 0.84) {
-      return (first + " " + segments.slice(j+1).map(x=>x.segment.trim()).join(" ")).trim();
+      return segments.slice(j).map(x=>x.segment.trim()).join(" ").trim();
     }
   }
   return text;
