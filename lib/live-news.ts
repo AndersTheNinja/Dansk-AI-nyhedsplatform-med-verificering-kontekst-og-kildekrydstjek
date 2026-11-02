@@ -460,6 +460,10 @@ function cleanPreviewText(value = "", title = "") {
 function cleanPublisherTeaser(value: string, title: string, source: string) {
   if (/^TV2(?:\.dk)?\b/i.test(source)) return cleanTV2PhotoCaptions(value, title);
   let text = cleanPreviewText(value, title);
+  if (/^computerworld\b/i.test(source)) {
+    // Remove inline reading-time metadata, but preserve the following sentence.
+    text = text.replace(/\s*\bLæsetid\s*:?\s*\d{1,3}(?::\d{2})?\s*(?:min(?:utter)?\.?|min\b)?\s*/gi, " ").replace(/\s+/g, " ").trim();
+  }
   // WordPress publisher footers and related-story links are not article text.
   if (/^(?:techsavvy|migogaarhus)\b/i.test(source)) {
     text = text.replace(/\s*Indlægget\s+[\s\S]*?blev først udgivet på\s+TechSavvy\s*\.?\s*$/i, "")
