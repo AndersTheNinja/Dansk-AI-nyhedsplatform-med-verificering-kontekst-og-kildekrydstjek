@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
     const rawArchive = wantsFast ? [] : await getAndersWinnerskjoldArchiveStories();
     if (isCollector) {
       try {
-        await queuePreviewRepairs(rawArchive.filter((story) => story.summary.length < 180));
+        await queuePreviewRepairs(rawArchive.filter((story) => story.summary.length < 180 || (story.sources[0]?.url?.includes("stiften.dk/") && story.summary.length < 700)));
       } catch (error) { console.error("Archive preview repair failed", error); }
     }
     const andersArchive = rawArchive.length ? await addPublisherFeaturedImages(rawArchive) : [];
