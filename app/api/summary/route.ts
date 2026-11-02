@@ -195,7 +195,36 @@ export async function POST(req: NextRequest) {
       if (articleResponse.ok) {
         const html = await articleResponse.text();
         const paywall = looksLikePaywall(html);
-        const fullExtracted = extractArticleText(html);
+        let fullExtracted = extractArticleText(html);
+        // Stiften/JFM loads public article paragraphs separately. The visible
+        // article body is more informative than the page's metadata teaser.
+        if (!paywall && /^(?:www\\.)?stiften\\.dk$/i.test(parsedUrl.hostname)) {
+          const asyncPath = html.match(/data-load-async-url=["']([^"']+)["']/i)?.[1];
+          if (asyncPath) {
+            try {
+              const asyncUrl = new URL(asyncPath.replace(/&amp;/g, "&"), parsedUrl);
+              if (asyncUrl.protocol === "https:" && asyncUrl.hostname === parsedUrl.hostname &&
+                  !asyncUrl.username && !asyncUrl.password && !asyncUrl.port) {
+                const fragmentResponse = await fetch(asyncUrl.toString(), {
+                  headers: { Accept: "text/html,application/xhtml+xml,*/*" },
+                  signal: AbortSignal.timeout(9000),
+                  cache: "no-store"
+                });
+                if (fragmentResponse.ok && new URL(fragmentResponse.url).hostname === parsedUrl.hostname) {
+                  const fragmentHtml = await fragmentResponse.text();
+                  const editorial = fragmentHtml.replace(/<(?:script|style|nav|aside|footer|figure|figcaption)\\b[^>]*>[\\s\\S]*?<\\/(?:script|style|nav|aside|footer|figure|figcaption)>/gi, " ");
+                  const paragraphs = Array.from(editorial.matchAll(/<p\\b[^>]*>([\\s\\S]*?)<\\/p>/gi))
+                    .map((match) => cleanText(match[1] || ""))
+                    .filter((paragraph) => paragraph.length >= 35 && !/^(?:læs også|se også|annonce|bliv abonnent|log ind)\\b/i.test(paragraph));
+                  const unique = [...new Set(paragraphs)].join(" ");
+                  if (unique.length > fullExtracted.length + 100) fullExtracted = unique;
+                }
+              }
+            } catch {
+              // Continue with verified page text or the feed excerpt.
+            }
+          }
+        }
         articleTruncated = fullExtracted.length > 14000;
         const extracted = fullExtracted.slice(0, 14000);
 
