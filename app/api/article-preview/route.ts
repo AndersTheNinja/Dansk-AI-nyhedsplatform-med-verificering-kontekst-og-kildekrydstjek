@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { hasPublisherInterfaceText, isEditorialParagraph, joinArticleParagraphs, previewWordCount, stripPublisherBoilerplate } from "@/lib/article-preview-quality";
 import { extractYPublicArticlePreview } from "@/lib/y-article-preview";
+import { extractStiftenPublicFragment } from "@/lib/stiften-public-article";
 
 export const dynamic = "force-dynamic";
 
@@ -53,8 +54,17 @@ export async function POST(request:Request) {
   const title=String(body?.title||"").slice(0,300);
   const rssIntro=String(body?.intro||"").slice(0,1500);
   if(url.protocol!=="https:"||!hosts.has(url.hostname)||url.username||url.password||title.length<8)return NextResponse.json({excerpt:null,hasMore:null},{status:400});
-  const response=await fetch(url.toString(),{redirect:"follow",next:{revalidate:900},headers:{"Accept":"text/html,application/xhtml+xml","User-Agent":"Mozilla/5.0 (compatible; OEL.dk/1.0)"},signal:AbortSignal.timeout(4500)});
+  // Strip Stiften's RSS tracking flag when requesting the actual article.
+  const isStiften = /^(?:www\\.)?stiften\\.dk$/i.test(url.hostname);
+  const articleUrl = new URL(url.toString());
+  if (isStiften) articleUrl.searchParams.delete("rss");
+  const response=await fetch(articleUrl.toString(),{redirect:"follow",next:{revalidate:900},headers:{"Accept":"text/html,application/xhtml+xml","User-Agent":"Mozilla/5.0 (compatible; OEL.dk/1.0)"},signal:AbortSignal.timeout(isStiften?10000:4500)});
   if(!response.ok||!(response.headers.get("content-type")||"").includes("text/html"))return NextResponse.json({excerpt:null,hasMore:null});
+  const landed = new URL(response.url);
+  if (landed.hostname !== articleUrl.hostname ||
+      landed.pathname.replace(/\\/+$/, "") !== articleUrl.pathname.replace(/\\/+$/, "")) {
+    return NextResponse.json({excerpt:null,hasMore:null});
+  }
   const html=(await response.text()).slice(0,750000);
   if(!titleMatches(title,html))return NextResponse.json({excerpt:null,hasMore:null});
   // Only an article-scoped body or explicitly identified articleBody is safe.
@@ -79,9 +89,37 @@ export async function POST(request:Request) {
   // Prefer articleBody where available. Otherwise use only editorial paragraphs
   // inside the article element, never generic navigation/main page text.
   const yPublic = publisher === "y.dk" ? extractYPublicArticlePreview(html, title, rssIntro) : "";
-  // Use the longest proven article-specific public copy, never page-wide
-  // navigation or an invented continuation to a short RSS description.
-  const candidates=[cleanedBody, cleanedParagraphs, yPublic]
+  let stiftenPublic = "";
+  if (isStiften && rssIntro.length >= 40) {
+    // Public JFM articles may load the real body from an async endpoint.
+    // Follow only the relative endpoint specified by THIS verified article page,
+    // never a foreign domain or a paywall/login redirect.
+    const asyncPath=html.match(/data-load-async-url=["']([^"']+)["']/i)?.[1] || "";
+    if (asyncPath) {
+      try {
+        const endpoint=new URL(asyncPath.replace(/&amp;/g,"&"),articleUrl);
+        if (endpoint.protocol==="https:" && endpoint.hostname===articleUrl.hostname &&
+            !endpoint.username && !endpoint.password && !endpoint.port) {
+          const fragmentResponse=await fetch(endpoint.toString(),{
+            redirect:"follow",next:{revalidate:900},
+            headers:{"Accept":"text/html,application/xhtml+xml,*/*","User-Agent":"Mozilla/5.0 (compatible; OEL.dk/1.0)"},
+            signal:AbortSignal.timeout(8500)
+          });
+          const resolved=new URL(fragmentResponse.url);
+          if (fragmentResponse.ok && resolved.hostname===articleUrl.hostname &&
+              (fragmentResponse.headers.get("content-type")||"").match(/(?:text\\/html|application\\/xhtml\\+xml)/i)) {
+            const fragment=(await fragmentResponse.text()).slice(0,450000);
+            stiftenPublic=extractStiftenPublicFragment(fragment,title,rssIntro);
+          }
+        }
+      } catch {
+        // Preserve the original verified RSS excerpt if the publisher is slow.
+      }
+    }
+  }
+  // Use only verified article-scoped, public paragraphs. A text extract is
+  // not an AI-generated summary and may not reproduce an entire article.
+  const candidates=[cleanedBody, cleanedParagraphs, yPublic, stiftenPublic]
     .filter(text => text.length >= 120 && !hasPublisherInterfaceText(text))
     .sort((a,b)=>b.length-a.length);
   const selected=stripPublisherBoilerplate(candidates[0]||"");
