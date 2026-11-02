@@ -693,10 +693,23 @@ function isFresh(pubDate?: string) {
   return ageHours >= -0.25 && ageHours <= maxHours;
 }
 
+function isGenericLandingPage(title: string, description: string, link = "") {
+  const headline = title.replace(/\\s+/g, " ").trim();
+  const teaser = description.replace(/\\s+/g, " ").trim();
+  // Require unmistakable landing-page wording; do not filter genuine news
+  // merely because its headline contains "seneste nyt".
+  const genericTitle = /^(?:seneste nyt (?:om|fra)|følg (?:med i|udviklingen i)|alt om)\\b.{3,115}(?:følg udviklingen her|følg med her|seneste nyheder her|live her)?$/i.test(headline);
+  const genericTeaser = /^(?:følg med (?:og få)?|få (?:alle )?de seneste nyheder|her (?:kan du )?følge|hold dig opdateret)\\b.{0,180}$/i.test(teaser);
+  const genericPath = /\\/(?:seneste-nyt|nyhedsoverblik|overblik|liveblog|live)\\/?$/i.test(link.split("?")[0]);
+  return (genericTitle && (genericTeaser || genericPath || /følg udviklingen her|følg med her/i.test(headline))) ||
+    (genericPath && genericTeaser && teaser.length < 190);
+}
+
 function isLiveCoverage(item: NewsItem) {
   // Evergreen landing pages are not individual news stories.
   const title = item.title.trim();
   const teaser = item.description.trim();
+  if (isGenericLandingPage(title, teaser, item.link)) return true;
   if (/^seneste nyt om (?:dansk )?politik\s*[–-]\s*følg udviklingen her$/i.test(title)) return true;
   if (/^følg med (?:og )?få de seneste nyheder om (?:dansk )?politik her\.?$/i.test(teaser) &&
       /seneste nyt|følg udviklingen/i.test(title)) return true;
@@ -1436,13 +1449,13 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
     // The scheduled collector does this work off the visitor's request path.
     const stiftenTextLength = item.description.trim().length;
     const needsStiftenText = isStiften && (
-      stiftenTextLength < 400 ||
+      stiftenTextLength < 700 ||
       /ingen selvstændig artikeltekst tilgængelig/i.test(item.description)
     );
     // A valid 200-400-character RSS introduction is still far shorter than
     // ØL.dk's intended 100-word article excerpt. Give these pages a little
     // more time, without the expensive 26-second retry used for missing text.
-    const wantsStiftenExpansion = isStiften && stiftenTextLength >= 400 && stiftenTextLength < 650;
+    const wantsStiftenExpansion = isStiften && stiftenTextLength >= 700 && stiftenTextLength < 1100;
     const stiftenPageTimeout = needsStiftenText ? 26000 : wantsStiftenExpansion ? 9500 : 3500;
     const stiftenBodyTimeout = needsStiftenText ? 26000 : wantsStiftenExpansion ? 9500 : 8000;
     const fetchArticlePage = (retry = false) => fetch(articleFetchUrl, {
@@ -1928,7 +1941,7 @@ function hasEditorialPreview(text: string, title = "") {
 
 // Apply the same excerpt rules to stored snapshots and archive-only stories.
 export function cleanNewsStories(stories: Story[]): Story[] {
-  const normalized = stories.map((story) => ({ ...story,
+  const normalized = stories.filter((story) => !isGenericLandingPage(story.title, story.summary, story.sources[0]?.url || "")).map((story) => ({ ...story,
     summary: cleanPublisherTeaser(story.summary, story.title, story.sources[0]?.label || story.sourceLabel)
   }));
   // Apply the same cross-headline check to older, precomputed snapshots.
