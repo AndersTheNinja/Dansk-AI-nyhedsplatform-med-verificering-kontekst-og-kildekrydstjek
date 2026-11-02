@@ -212,10 +212,10 @@ export async function POST(req: NextRequest) {
                 });
                 if (fragmentResponse.ok && new URL(fragmentResponse.url).hostname === parsedUrl.hostname) {
                   const fragmentHtml = await fragmentResponse.text();
-                  const editorial = fragmentHtml.replace(/<(?:script|style|nav|aside|footer|figure|figcaption)\\b[^>]*>[\\s\\S]*?<\\/(?:script|style|nav|aside|footer|figure|figcaption)>/gi, " ");
-                  const paragraphs = Array.from(editorial.matchAll(/<p\\b[^>]*>([\\s\\S]*?)<\\/p>/gi))
+                  const editorial = fragmentHtml.replace(/<(?:script|style|nav|aside|footer|figure|figcaption)\b[^>]*>[\s\S]*?<\/(?:script|style|nav|aside|footer|figure|figcaption)>/gi, " ");
+                  const paragraphs = Array.from(editorial.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi))
                     .map((match) => cleanText(match[1] || ""))
-                    .filter((paragraph) => paragraph.length >= 35 && !/^(?:læs også|se også|annonce|bliv abonnent|log ind)\\b/i.test(paragraph));
+                    .filter((paragraph) => paragraph.length >= 35 && !/^(?:læs også|se også|annonce|bliv abonnent|log ind)\b/i.test(paragraph));
                   const unique = [...new Set(paragraphs)].join(" ");
                   if (unique.length > fullExtracted.length + 100) fullExtracted = unique;
                 }
