@@ -2311,11 +2311,11 @@ export async function getLiveStories(options?: { fast?: boolean; limit?: number 
         story.summary.length < 180 ||
         // Metadata pollution and duplicated introductions should be repaired,
         // even if the teaser is long enough to pass the word-count threshold.
-        /\\blæsetid\\s*:?\\s*\\d{1,3}(?::\\d{2})?\\s*(?:min|minutter)?\\b/i.test(story.summary) ||
-        /\\b(?:foto|fotograf|fotocredit)\\s*:\\s*[^.!?]{2,100}\\b(?:ritzau|scanpix|wikimedia|commons)\\b/i.test(story.summary) ||
+        /\blæsetid\s*:?\s*\d{1,3}(?::\d{2})?\s*(?:min|minutter)?\b/i.test(story.summary) ||
+        /\b(?:foto|fotograf|fotocredit)\s*:\s*[^.!?]{2,100}\b(?:ritzau|scanpix|wikimedia|commons)\b/i.test(story.summary) ||
         // Stiften frequently provides 200–700 character RSS teasers despite
         // having more public article text; keep these eligible for repair.
-        (/(?:^|\\.)stiften\\.dk$/i.test((() => {
+        (/(?:^|\.)stiften\.dk$/i.test((() => {
           try { return new URL(story.sources[0]?.url || "").hostname; }
           catch { return ""; }
         })()) && story.summary.length < 700)
