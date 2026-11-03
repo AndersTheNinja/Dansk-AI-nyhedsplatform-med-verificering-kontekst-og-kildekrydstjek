@@ -21,11 +21,11 @@ export function auditNewsStories(stories: Story[], now = Date.now()): QualityRep
   if (uiPattern.test(text)) issues.push("publisher_ui");
   if (text.length > 75 && /(?:[,;:]|\b(?:og|men|fordi|at|som|der|med|til|på))\s*$/i.test(text)) issues.push("truncated_sentence");
   // Detect publisher metadata leaking into editorial copy.
-  if (/\\blæsetid\\s*:?\\s*\\d{1,3}(?::\\d{2})?\\s*(?:min|minutter)?\\b/i.test(text)) issues.push("reading_time");
-  if (/\\b(?:foto|fotograf|fotocredit)\\s*:\\s*[^.!?]{2,100}\\b(?:ritzau|scanpix|wikimedia|commons)\\b/i.test(text)) issues.push("photo_credit");
+  if (/\blæsetid\s*:?\s*\d{1,3}(?::\d{2})?\s*(?:min|minutter)?\b/i.test(text)) issues.push("reading_time");
+  if (/\b(?:foto|fotograf|fotocredit)\s*:\s*[^.!?]{2,100}\b(?:ritzau|scanpix|wikimedia|commons)\b/i.test(text)) issues.push("photo_credit");
   const sentences = Array.from(new Intl.Segmenter("da", { granularity: "sentence" }).segment(text), part => part.segment.trim());
   if (sentences.length >= 3) {
-    const normalize = (value: string) => value.toLocaleLowerCase("da-DK").replace(/[^\\p{L}\\p{N}]+/gu, " ").trim().split(/\\s+/);
+    const normalize = (value: string) => value.toLocaleLowerCase("da-DK").replace(/[^\p{L}\p{N}]+/gu, " ").trim().split(/\s+/);
     const first = normalize(sentences[0]);
     if (first.length >= 8 && sentences.slice(1,4).some(sentence => {
       const candidate = normalize(sentence);
