@@ -85,6 +85,7 @@ function StoryCard({ story }: { story: Story }) {
   const [imageLookupAttempted, setImageLookupAttempted] = useState(false);
   const [photoCredit, setPhotoCredit] = useState<string | null>(null);
   const [articleImageFailed, setArticleImageFailed] = useState(false);
+  const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null);
   const [summaryHasOverflow, setSummaryHasOverflow] = useState(false);
   const [factOpen, setFactOpen] = useState(false);
   const [factLoading, setFactLoading] = useState(false);
@@ -191,7 +192,7 @@ function StoryCard({ story }: { story: Story }) {
     fetch("/api/article-image", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: articleUrl, title: story.title })
+      body: JSON.stringify({ url: articleUrl, title: story.title, failedImageUrl })
     })
       .then((response) => response.ok ? response.json() : null)
       .then((data) => {
@@ -207,7 +208,7 @@ function StoryCard({ story }: { story: Story }) {
     }, {rootMargin:"200px 0px"});
     observer.observe(node);
     return () => observer.disconnect();
-  }, [resolvedImageUrl, imageLookupAttempted, story.sources, story.title, story.sourceLabel]);
+  }, [resolvedImageUrl, imageLookupAttempted, failedImageUrl, story.sources, story.title, story.sourceLabel]);
 
   async function toggleSummary() {
     const nextOpen = !summaryOpen;
@@ -408,7 +409,10 @@ function StoryCard({ story }: { story: Story }) {
                 // If the saved publisher image is expired or blocked, try the
                 // article's own verified metadata once before hiding it.
                 setArticleImageFailed(true);
-                if (!imageLookupAttempted) setResolvedImageUrl(null);
+                if (!imageLookupAttempted) {
+                  setFailedImageUrl(resolvedImageUrl);
+                  setResolvedImageUrl(null);
+                }
               }}
             />
             {<div className="storyPhotoCredit">{photoCredit ? `Foto: ${photoCredit}` : `Billedkilde: ${story.sourceLabel}`}</div>}
