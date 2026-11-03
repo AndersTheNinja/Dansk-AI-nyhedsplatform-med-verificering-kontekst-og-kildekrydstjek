@@ -13,6 +13,47 @@ const allowedHosts = new Set([
   "techsavvy.media", "www.techsavvy.media", "y.dk", "www.y.dk"
 ]);
 
+// Only probe known publisher/CDN hosts. Never fetch arbitrary URLs from page metadata.
+const imageHostSuffixes = [
+  "dr.dk", "tv2i.dk", "borsen.dk", "bmcdn.dk", "politiken.dk",
+  "jfmedier.dk", "jfm.dk", "stiften.dk", "ing.dk", "computerworld.dk",
+  "techsavvy.media", "journalisten.dk", "berlingske.dk", "migogaarhus.dk",
+  "version2.dk", "altinget.dk", "y.dk", "cloudfront.net"
+];
+function allowedImageHost(host: string) {
+  return imageHostSuffixes.some(suffix => host === suffix || host.endsWith("." + suffix));
+}
+
+async function imageRespondsAsImage(url: URL): Promise<boolean> {
+  if (url.protocol !== "https:" || !allowedImageHost(url.hostname) || url.port || url.username || url.password) return false;
+  try {
+    // A ranged request avoids downloading full-size images. The response may
+    // ignore Range; read only its first chunk and cancel the stream.
+    const response = await fetch(url, {
+      method: "GET", redirect: "manual", cache: "no-store",
+      headers: { Range: "bytes=0-31", Accept: "image/avif,image/webp,image/png,image/jpeg,image/gif" },
+      signal: AbortSignal.timeout(3500)
+    });
+    if (response.status !== 200 && response.status !== 206) return false;
+    if (!/^image\/(?:jpeg|png|webp|gif|avif)(?:\s*;|$)/i.test(response.headers.get("content-type") || "")) {
+      await response.body?.cancel().catch(() => {});
+      return false;
+    }
+    const reader = response.body?.getReader();
+    if (!reader) return false;
+    const { value } = await reader.read();
+    await reader.cancel().catch(() => {});
+    if (!value || value.length < 4) return false;
+    const byte = (i: number) => value[i] ?? -1;
+    const ascii = (from: number, to: number) => String.fromCharCode(...value.slice(from, to));
+    return (byte(0) === 0xff && byte(1) === 0xd8 && byte(2) === 0xff) ||
+      (byte(0) === 0x89 && ascii(1, 4) === "PNG") ||
+      (ascii(0, 4) === "RIFF" && ascii(8, 12) === "WEBP") ||
+      ascii(0, 3) === "GIF" ||
+      (ascii(4, 8) === "ftyp" && /^(?:avif|avis)$/i.test(ascii(8, 12)));
+  } catch { return false; }
+}
+
 function metadata(html: string, name: string) {
   const tags = html.match(/<meta\b[^>]*>/gi) || [];
   for (const tag of tags) {
@@ -151,6 +192,7 @@ export async function POST(request: Request) {
             /(?:^|\/)(?:logo|favicon|avatar|placeholder)(?:[-_.\/]|$)/i.test(candidate.pathname)) continue;
         if (failedImageUrl && candidate.toString() === failedImageUrl) continue;
         if (isGenericArticleImage(candidate.toString(), expectedTitle, publisher, imageDescription)) continue;
+        if (!(await imageRespondsAsImage(candidate))) continue;
         image = candidate;
         break;
       } catch { /* Ignore invalid publisher image metadata. */ }
