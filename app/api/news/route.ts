@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { unstable_cache } from "next/cache";
 import { auditNewsStories } from "@/lib/news-quality";
+import { auditCurrentImageLinks } from "@/lib/image-health";
 import { getLiveStories, cleanNewsStories, addPublisherFeaturedImages } from "@/lib/live-news";
 import { getAndersWinnerskjoldArchiveStories, getVisibleArchiveCount, getNewsSnapshot, queuePreviewRepairs } from "@/lib/news-store";
 
@@ -48,7 +49,7 @@ export async function GET(req: NextRequest) {
     }
     const andersArchive = rawArchive.length ? await addPublisherFeaturedImages(rawArchive) : [];
     const seen = new Set(liveStories.map((story) => story.id));
-    const stories = cleanNewsStories([
+    let stories = cleanNewsStories([
       ...liveStories,
       ...andersArchive.filter((story) => !seen.has(story.id))
     ]).sort((a, b) => {
@@ -56,9 +57,16 @@ export async function GET(req: NextRequest) {
       const bt = b.publishedAt ? Date.parse(b.publishedAt) : 0;
       return bt - at;
     });
-    // Scheduled ingestion logs a bounded quality report without blocking or
-    // silently deleting valid news with missing pictures or short RSS text.
+    // Image health checks belong to scheduled ingestion, never public requests.
+    // Only confirmed invalid links are removed; CDN blocks/timeouts remain unknown.
     if (isCollector) {
+      try {
+        const imageHealth = await auditCurrentImageLinks(stories, 24);
+        stories = imageHealth.stories;
+        console.info("ØL.dk image health", JSON.stringify({
+          checked: imageHealth.checked, invalid: imageHealth.invalid, uncertain: imageHealth.uncertain
+        }));
+      } catch (error) { console.warn("ØL.dk image health failed", String(error)); }
       console.info("ØL.dk quality audit", JSON.stringify(auditNewsStories(stories)));
     }
     const totalCount = await getVisibleArchiveCount();
