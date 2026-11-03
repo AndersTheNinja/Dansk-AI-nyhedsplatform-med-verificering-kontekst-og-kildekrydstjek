@@ -137,16 +137,23 @@ export async function POST(request: Request) {
       const srcSet = imageTag.match(/\b(?:srcset|data-srcset)\s*=\s*["']([^"']+)["']/i)?.[1] || "";
       leadImage = src || srcSet.split(",")[0]?.trim().split(/\s+/)[0] || "";
     }
-    const value = metadata(html, "og:image") || metadata(html, "twitter:image") || structuredImage || leadImage;
-    if (!value) return NextResponse.json({ imageUrl: null });
-    const image = new URL(value, current);
-    if (image.protocol !== "https:" || image.username || image.password ||
-        /(?:^|\/)(?:logo|favicon|avatar|placeholder)(?:[-_.\/]|$)/i.test(image.pathname)) {
-      return NextResponse.json({ imageUrl: null });
-    }
-
     const imageDescription = metadata(html, "og:image:alt") || metadata(html, "twitter:image:alt");
-    if (isGenericArticleImage(image.toString(), expectedTitle, page.hostname.replace(/^www\./,"").replace(/\.dk$/,"") === "dr" ? "DR" : page.hostname, imageDescription)) return NextResponse.json({ imageUrl: null });
+    const publisher = page.hostname.replace(/^www\./, "").replace(/\.dk$/, "") === "dr" ? "DR" : page.hostname;
+    // A generic OG image must not mask a real, article-specific image in
+    // JSON-LD or the article's own lead figure.
+    const candidates = [metadata(html, "og:image"), metadata(html, "twitter:image"), structuredImage, leadImage].filter(Boolean);
+    let image: URL | undefined;
+    for (const value of candidates) {
+      try {
+        const candidate = new URL(value, current);
+        if (candidate.protocol !== "https:" || candidate.username || candidate.password ||
+            /(?:^|\/)(?:logo|favicon|avatar|placeholder)(?:[-_.\/]|$)/i.test(candidate.pathname)) continue;
+        if (isGenericArticleImage(candidate.toString(), expectedTitle, publisher, imageDescription)) continue;
+        image = candidate;
+        break;
+      } catch { /* Ignore invalid publisher image metadata. */ }
+    }
+    if (!image) return NextResponse.json({ imageUrl: null });
     return NextResponse.json({ imageUrl: image.toString(), imageDescription, photoCredit: photoCredit(html) || null }, {
       headers: { "Cache-Control": "private, max-age=900" }
     });
