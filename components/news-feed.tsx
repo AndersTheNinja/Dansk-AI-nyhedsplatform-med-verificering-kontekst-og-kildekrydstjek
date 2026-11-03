@@ -102,12 +102,13 @@ function StoryCard({ story }: { story: Story }) {
         .then(response=>response.ok?response.json():null)
         .then(data=>{
           if(typeof data?.excerpt==="string"&&data.excerpt.trim()&&typeof data?.hasMore==="boolean"&& !hasPublisherInterfaceText(data.excerpt)){
-            const fetchedWords=data.excerpt.trim().split(/\s+/).length;
-            const feedWords=story.summary.trim().split(/\s+/).filter(Boolean).length;
-            // A short partial article extract must not hide a longer publisher feed.
-            // Preserve the longer confirmed source text until full article text is available.
-            if(data.hasMore || fetchedWords>=feedWords){
-              setArticlePreview({text:data.excerpt,hasMore:data.hasMore});
+            // Compare the excerpts actually shown to readers, not the length
+            // of the stored full article. hasMore alone is not proof that the
+            // fetched preview is better than the existing publisher excerpt.
+            const fetchedExcerpt = previewWordCount(data.excerpt).excerpt;
+            const savedExcerpt = previewWordCount(story.summary).excerpt;
+            if (fetchedExcerpt.length >= savedExcerpt.length && fetchedExcerpt.trim()) {
+              setArticlePreview({text:fetchedExcerpt,hasMore:data.hasMore});
             }
           }
         }).catch(()=>{});
