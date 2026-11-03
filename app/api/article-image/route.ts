@@ -76,6 +76,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const page = new URL(String(body?.url || ""));
     const expectedTitle = String(body?.title || "").trim().slice(0, 300);
+    const failedImageUrl = String(body?.failedImageUrl || "").slice(0, 2000);
 
     if (page.protocol !== "https:" || !allowedHosts.has(page.hostname) ||
         page.username || page.password || expectedTitle.length < 8) {
@@ -148,6 +149,7 @@ export async function POST(request: Request) {
         const candidate = new URL(value, current);
         if (candidate.protocol !== "https:" || candidate.username || candidate.password ||
             /(?:^|\/)(?:logo|favicon|avatar|placeholder)(?:[-_.\/]|$)/i.test(candidate.pathname)) continue;
+        if (failedImageUrl && candidate.toString() === failedImageUrl) continue;
         if (isGenericArticleImage(candidate.toString(), expectedTitle, publisher, imageDescription)) continue;
         image = candidate;
         break;
