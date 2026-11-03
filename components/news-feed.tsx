@@ -404,7 +404,12 @@ function StoryCard({ story }: { story: Story }) {
               alt={`Billede til artiklen: ${story.title}`}
               loading="lazy"
               referrerPolicy="no-referrer"
-              onError={() => setArticleImageFailed(true)}
+              onError={() => {
+                // If the saved publisher image is expired or blocked, try the
+                // article's own verified metadata once before hiding it.
+                setArticleImageFailed(true);
+                if (!imageLookupAttempted) setResolvedImageUrl(null);
+              }}
             />
             {<div className="storyPhotoCredit">{photoCredit ? `Foto: ${photoCredit}` : `Billedkilde: ${story.sourceLabel}`}</div>}
           </div>
