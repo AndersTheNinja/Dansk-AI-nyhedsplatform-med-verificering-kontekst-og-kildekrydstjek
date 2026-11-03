@@ -900,6 +900,10 @@ function categoryWhy(category: Category) {
 async function fetchFeed(feed: FeedConfig, timeoutMs = 7000, retry = false): Promise<NewsItem[]> {
   const isBerlingske = feed.name === "Berlingske";
   const fallback = () => fetchFeed({ ...feed, url: "https://www.berlingske.dk/content/rss" }, timeoutMs, true);
+  // The newsletter-proxy occasionally returns HTTP 400 from the Railway host.
+  // JP also publishes an RSS feed at this separate official endpoint.
+  const jpFallback = () => fetchFeed({ ...feed, url: "https://feeds.jp.dk/jp/seneste" }, timeoutMs, true);
+  const isJp = feed.name === "JP Kronik (Anders W.)";
   const cacheRpc = isBerlingske ? "oeldk_berlingske_rss"
     : feed.name === "TechSavvy" ? "oeldk_techsavvy_rss" : "";
   let xml = "";
@@ -935,11 +939,13 @@ async function fetchFeed(feed: FeedConfig, timeoutMs = 7000, retry = false): Pro
       });
     } catch (error) {
       if (isBerlingske && !retry) return fallback();
+      if (isJp && !retry) return jpFallback();
       throw error;
     }
 
     if (!response.ok) {
       if (isBerlingske && !retry && response.status >= 500) return fallback();
+      if (isJp && !retry && [400, 403, 404, 429, 500, 502, 503, 504].includes(response.status)) return jpFallback();
       throw new Error(`${feed.name} returned ${response.status}`);
     }
 
@@ -954,6 +960,7 @@ async function fetchFeed(feed: FeedConfig, timeoutMs = 7000, retry = false): Pro
   // A publisher error page can return HTTP 200. Do not accept it as an empty feed.
   if (!parsed?.rss?.channel && !parsed?.feed) {
     if (isBerlingske && !retry) return fallback();
+    if (isJp && !retry) return jpFallback();
     throw new Error(`${feed.name} did not return RSS or Atom`);
   }
 
@@ -1008,13 +1015,16 @@ async function fetchFeed(feed: FeedConfig, timeoutMs = 7000, retry = false): Pro
 
 
 async function fetchMigogAarhusApi(): Promise<NewsItem[]> {
-  const response = await fetch("https://migogaarhus.dk/wp-json/wp/v2/posts?per_page=100&_embed=1", {
+  // The previous request fetched 100 posts plus all embedded resources and
+  // repeatedly timed out. The RSS feed already provides the wider archive.
+  // Fetch only recent posts and the fields used to enrich RSS stories.
+  const response = await fetch("https://migogaarhus.dk/wp-json/wp/v2/posts?per_page=20&_embed=wp:featuredmedia&_fields=id,date,date_gmt,link,title,excerpt,_embedded", {
     next: { revalidate: 300 },
     headers: {
       "User-Agent": "Mozilla/5.0 (compatible; OELdk/1.0; +https://øl.dk)",
       Accept: "application/json"
     },
-    signal: AbortSignal.timeout(7000)
+    signal: AbortSignal.timeout(9000)
   });
 
   if (!response.ok) {
