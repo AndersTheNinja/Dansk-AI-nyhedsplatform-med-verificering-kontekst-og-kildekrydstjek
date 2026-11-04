@@ -175,22 +175,22 @@ button{font:inherit}
 @media(max-width:780px){.textSizeBox{display:none}}
 
 
-/* ØL.dk loading signature: restrained halo, editorial mark and light sweep.
-   GPU-friendly transforms only; no external assets or JavaScript animation. */
+/* ØL.dk loading indicator: clean logo and subtle progress bar.
+   Avoid decorative strokes or light sweeps over the mark. */
 .newsLoadingState{min-height:180px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:15px;color:var(--muted);font:13px/1.5 Arial,Helvetica,sans-serif}
 .newsLoadingBrand{display:flex;flex-direction:column;align-items:center;gap:16px}
 .newsLoadingEmblem{position:relative;isolation:isolate;display:grid;place-items:center;width:90px;height:90px}
-.newsLoadingOrbit{position:absolute;inset:2px;border:1.5px solid rgba(30,98,109,.28);border-radius:25px;animation:oelLoadingHalo 2.8s ease-in-out infinite;pointer-events:none}
-.newsLoadingOrbit::before{content:"";position:absolute;top:-2px;left:14px;width:19px;height:3px;background:var(--teal);border-radius:3px;transform:rotate(-14deg);opacity:.78}
+.newsLoadingOrbit{position:absolute;inset:2px;border:1.5px solid rgba(30,98,109,.2);border-radius:25px;animation:oelLoadingHalo 2.8s ease-in-out infinite;pointer-events:none}
+
 .newsLoadingBrandLogo{position:relative;isolation:isolate;display:grid;place-items:center;overflow:hidden;width:65px;height:65px;background:linear-gradient(145deg,#246f79 0%,#175561 57%,#114b57 100%);border-radius:17px;box-shadow:0 7px 19px rgba(19,74,86,.16),inset 0 1px 0 rgba(255,255,255,.18);color:#fff;font:700 29px/1 Arial,Helvetica,sans-serif;letter-spacing:-.04em}
-.newsLoadingBrandLogo::after{content:"";position:absolute;inset:0;background:linear-gradient(105deg,transparent 25%,rgba(255,255,255,.04) 38%,rgba(255,255,255,.28) 50%,rgba(255,255,255,.04) 62%,transparent 75%);transform:translateX(-150%) skewX(-18deg);animation:oelLoadingGleam 3.4s ease-in-out infinite;pointer-events:none}
+
 .newsLoadingProgressTrack{position:relative;display:block;overflow:hidden;width:116px;height:3px;background:#dce8e9;border-radius:99px}
 .newsLoadingProgressBar{position:absolute;left:0;top:0;bottom:0;width:42%;border-radius:99px;background:linear-gradient(90deg,#82bbb8 0%,var(--teal) 65%,#1f7580 100%);animation:oelLoadingFlow 1.9s cubic-bezier(.5,0,.5,1) infinite;will-change:transform}
 .newsLoadingText{text-align:center;font-size:12px;letter-spacing:.018em;color:var(--muted)}
 @keyframes oelLoadingHalo{0%,100%{transform:scale(.95);opacity:.5}50%{transform:scale(1.04);opacity:1}}
-@keyframes oelLoadingGleam{0%,15%{transform:translateX(-150%) skewX(-18deg)}50%,100%{transform:translateX(150%) skewX(-18deg)}}
+
 @keyframes oelLoadingFlow{0%{transform:translateX(-105%)}100%{transform:translateX(345%)}}
-@media(prefers-reduced-motion:reduce){.newsLoadingOrbit,.newsLoadingBrandLogo::after,.newsLoadingProgressBar{animation:none!important}.newsLoadingOrbit{transform:none;opacity:.7}.newsLoadingBrandLogo::after{display:none}.newsLoadingProgressBar{transform:translateX(70%);will-change:auto}}
+@media(prefers-reduced-motion:reduce){.newsLoadingOrbit,.newsLoadingProgressBar{animation:none!important}.newsLoadingOrbit{transform:none;opacity:.7}.newsLoadingProgressBar{transform:translateX(70%);will-change:auto}}
 .newsLoadMore{padding:18px 0;text-align:center;font:11px Arial,sans-serif;color:#8a949a}
 .newsLoadError{padding:18px 0;font:12px/1.5 Arial,sans-serif;color:#7f473f}
 
