@@ -49,11 +49,10 @@ test("loading uses the ØL brand with a progress line, not the generic spinner",
  assert.match(loader, /className="newsLoadingEmblem"/);
  assert.match(loader, /className="newsLoadingOrbit"/);
  assert.match(css, /@keyframes oelLoadingHalo/);
- assert.match(css, /@keyframes oelLoadingGleam/);
  assert.match(css, /@keyframes oelLoadingFlow/);
  assert.match(css, /@media\(prefers-reduced-motion:reduce\)/);
  assert.match(css, /\.newsLoadingBrandLogo::after\{display:none\}/);
- assert.doesNotMatch(css, /@keyframes oelNewsSpin|@keyframes oelBrandPulse|@keyframes oelBrandProgress/);
+ assert.doesNotMatch(css, /@keyframes oelNewsSpin|@keyframes oelBrandPulse|@keyframes oelBrandProgress|@keyframes oelLoadingGleam/);
 });
 
 test("premium loading animation adds no scripts, assets or progress claim",()=>{
