@@ -21,11 +21,11 @@ function editorial(html:string) {
     .replace(/<(?:script|style|noscript|svg|figure|figcaption|aside|nav|header|footer)\b[^>]*>[\s\S]*?<\/(?:script|style|noscript|svg|figure|figcaption|aside|nav|header|footer)>/gi," ")
     .replace(/<([a-z][\w-]*)\b[^>]*(?:class|data-testid)=["'][^"']*(?:caption|photo-credit|related-articles|related-stories|recommended|advert|paywall|newsletter)[^"']*["'][^>]*>[\s\S]*?<\/\1\s*>/gi," ");
 }
-function editorialParagraphs(html:string) {
+function editorialParagraphs(html:string, deduplicate = false) {
  const paragraphs=Array.from(html.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi))
   .map(match=>clean(match[1]||""))
   .filter(isEditorialParagraph);
- return joinArticleParagraphs(paragraphs);
+ return joinArticleParagraphs(deduplicate ? [...new Set(paragraphs)] : paragraphs);
 }
 function jsonBody(html:string) {
  const match=html.match(/"articleBody"\s*:\s*"((?:\\.|[^"\\])*)"/i);
@@ -74,8 +74,8 @@ export async function POST(request:Request) {
   // paragraph scraping, which could include recommendations.
   const article=html.match(/<article\b[^>]*>([\s\S]*?)<\/article>/i)?.[1]||"";
   const scoped=article?editorial(article):"";
-  const paragraphs=scoped?editorialParagraphs(scoped):"";
   const publisher=url.hostname.replace(/^www\./,"");
+  const paragraphs=scoped?editorialParagraphs(scoped, publisher === "y.dk"):"";
   const restrictedPublisher=["borsen.dk","politiken.dk","berlingske.dk"].includes(publisher);
   // For these sites reject a body that appears to consist mainly of
   // paywall/navigation prompts rather than actual article paragraphs.
