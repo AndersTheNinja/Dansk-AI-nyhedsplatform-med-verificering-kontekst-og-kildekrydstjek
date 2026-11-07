@@ -43,6 +43,23 @@ button{font:inherit}
 .sideBox{background:#fff;border:1px solid #d7dbdd;margin-bottom:18px;padding:14px}
 .sideBox h3{margin:0 0 12px;padding-bottom:8px;border-bottom:3px solid var(--teal);font-size:12px;letter-spacing:.08em;color:#4a565e}
 .sideBox p{font-size:12px;line-height:1.5;color:#667179;margin:0}
+
+/* Permanent media breakdown in the sidebar, immediately above text size. */
+.mediaStatsBox{overflow:hidden}
+.mediaStatsScroll{max-width:100%;overflow-x:auto}
+.mediaStatsTable{width:100%;border-collapse:collapse;font:11px/1.4 Arial,Helvetica,sans-serif;color:#56616a;font-variant-numeric:tabular-nums}
+.mediaStatsTable th,.mediaStatsTable td{padding:5px 0;border-bottom:1px solid #eef0f1;vertical-align:top}
+.mediaStatsTable thead th{font-size:10px;color:#77818a;white-space:nowrap;font-weight:700}
+.mediaStatsTable tbody th{text-align:left;font-weight:400;overflow-wrap:anywhere}
+.mediaStatsTable td,.mediaStatsTable thead th:not(:first-child){text-align:right;padding-left:6px;white-space:nowrap}
+.mediaStatsBox .newsStatsMessage{margin:6px 0;color:#667179;font:11px/1.4 Arial,sans-serif}
+@media(max-width:780px){
+  .contentShell{display:flex;flex-direction:column}
+  .contentShell .sidebar{display:block;order:-1}
+  .sidebar > :not(.mediaStatsBox){display:none}
+  .mediaStatsBox{margin-bottom:8px}
+}
+
 .sideItem{display:flex;gap:9px;padding:9px 0;border-bottom:1px solid #eceeef}
 .sideItem:last-child{border-bottom:0}
 .sideItem strong{display:block;font-size:12px}
