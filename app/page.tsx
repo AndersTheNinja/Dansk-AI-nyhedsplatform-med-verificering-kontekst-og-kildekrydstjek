@@ -1,6 +1,7 @@
 import { NewsStatus } from "@/components/news-status";
 import { NewsLoader } from "@/components/news-loader";
 import { TextSizeControl } from "@/components/text-size-control";
+import { SidebarMediaStats } from "@/components/news-stats";
 
 export const revalidate = 300;
 
@@ -26,6 +27,7 @@ export default function Home() {
         </section>
 
         <aside className="sidebar">
+          <SidebarMediaStats />
           <TextSizeControl />
           <section className="sideBox">
             <h3>AI-analyse</h3>
