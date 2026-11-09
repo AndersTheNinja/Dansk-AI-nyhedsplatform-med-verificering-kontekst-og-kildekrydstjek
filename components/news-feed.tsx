@@ -698,7 +698,7 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
       </div>
 
       <div className="sectionTitle sectionTitleRow">
-        <span>Seneste nyheder <span className="sectionTitleNote">baseret på dine valg</span></span>
+        <span>Seneste nyheder <span className="sectionTitleNote">(baseret på dine valg)</span></span>
         <MobileMediaStats />
       </div>
 
