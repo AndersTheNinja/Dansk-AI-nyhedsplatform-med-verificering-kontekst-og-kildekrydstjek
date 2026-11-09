@@ -263,7 +263,7 @@ async function generateSummary(req: NextRequest) {
 
     const prompt = `Du laver et kort, neutralt dansk nyhedsresumé til ØL.dk.
 Brug kun oplysninger fra teksten nedenfor. Tilføj intet, som ikke fremgår af materialet.
-Skriv 3-5 korte, sammenhængende og grammatisk komplette sætninger på naturligt dansk.
+Skriv 4 korte, sammenhængende og grammatisk komplette sætninger på naturligt dansk.\nSigt efter 60-85 ord totalt, så teksten kan tilpasses til omtrent fire linjer på desktop.\nSæt de vigtigste oplysninger i de første to sætninger, så en kort mobilversion også giver mening.
 Hver sætning skal kunne læses og forstås selvstændigt. Undgå sætningsfragmenter, afbrudte
 sætninger, gentagelser, reklame-/abonnementstekst og formuleringer, der ender midt i en tanke.
 Afslut altid resuméet med en komplet sætning og korrekt tegnsætning.
