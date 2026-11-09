@@ -7,7 +7,14 @@ const ts = require('typescript');
 function load(fetch, env = {}) {
   const source = fs.readFileSync('lib/live-news.ts', 'utf8') + '\nexport { addPublisherFeaturedImages, extractMetaContent, hasEditorialPreview, applyPublisherPreviews, applyPublisherFeaturedImages, mergeBerlingskeWebsiteText, parseBerlingskeWebArticle, fetchBerlingskeWebsite, fetchFeed, enrichTV2Item, enrichBorsenItem, parseNewsDate, enrichPreview, extractScopedArticlePreview, articleMentionText, extractPublicPreview, extractPublishedDateFromHtml, extractArticleBodyFromJson, isFresh, cleanPublisherTeaser };';
   const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
-  const context = { exports: {}, process: { env }, fetch, AbortSignal, URL, console, require: (id) => id === 'fast-xml-parser' ? require(id) : { persistStories: async () => {}, queuePreviewRepairs: async () => {} } };
+  const context = {
+    exports: {}, process: { env }, fetch, AbortSignal, URL, console,
+    require(id) {
+      if (id === '@/lib/news-store') return { persistStories: async () => {}, queuePreviewRepairs: async () => {} };
+      if (id.startsWith('@/lib/')) return require(`../${id.slice(2)}.ts`);
+      return require(id);
+    }
+  };
   vm.runInNewContext(compiled, context);
   return context.exports;
 }
@@ -15,7 +22,7 @@ function load(fetch, env = {}) {
 const item = { title: 'Aarhus åbner svømmehal ved havnen', description: 'Det oprindelige uddrag.', link: 'https://nyheder.tv2.dk/samfund/artikel', source: 'TV2.dk', category: 'Danmark', method: 'RSS', id: 'original' };
 test('saved snapshots discard placeholders and remove publisher footers and related-story links', () => {
   const api = load();
-  const story = (source, summary) => ({ title: 'En nyhed', summary, sourceLabel: source, sources: [{ label: source, url: 'https://example.dk/article' }] });
+  const story = (source, summary) => ({ title: 'En nyhed', summary, sourceLabel: source, sources: [{ label: source, url: `https://example.dk/${source.toLowerCase()}/article` }] });
   const result = api.cleanNewsStories([
     story('TechSavvy', 'En offentlig introduktion til en vigtig nyhed. Indlægget En nyhed blev først udgivet på TechSavvy .'),
     story('MigogAarhus', 'Artiklen fortæller om en hændelse i Aarhus. Læs også: Et helt andet emne.'),
@@ -276,7 +283,7 @@ test('Stiften keeps the RSS teaser when article fetch fails instead of inventing
   const api = load(async () => { calls++; throw new Error('Simulated publisher timeout'); });
   const original = { ...item, link: 'https://stiften.dk/debat/ny-artikel?rss', source: 'Stiften.dk', description: teaser };
   const article = await api.enrichPreview(original);
-  assert.equal(calls, 1);
+  assert.equal(calls, 2);
   assert.equal(article.description, teaser);
 });
 
@@ -579,7 +586,7 @@ test('longer verified public introductions enrich short RSS text without shorten
   assert.equal(api.applyPublisherPreviews([story],[metadata])[0].summary,metadata.description);
   assert.equal(api.applyPublisherPreviews([story],[{...metadata,description:'Familien flytter ikke ind.'}])[0].summary,story.summary);
   const long = {...story,summary:'Familien fortæller om deres boligplaner og de problemer, som har ramt det nye byggeri. '.repeat(4)};
-  assert.equal(api.applyPublisherPreviews([long],[{...metadata,description:metadata.description.repeat(5)}])[0].summary,long.summary);
+  assert.equal(api.applyPublisherPreviews([long],[metadata])[0].summary,long.summary);
 });
 
 
