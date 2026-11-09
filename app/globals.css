@@ -312,17 +312,20 @@ button{font:inherit}
 .factPanel .chatGptDiscuss:hover{border:0;background:transparent;text-decoration:underline}
 .chatGptTransferNote{font:10px/1.4 Arial,sans-serif!important;color:#858f94!important;margin:3px 0 10px!important}
 
-/* AI resumé: four-line card rhythm without mid-sentence clipping.
-   Responsive sentence fitting is handled by AiSummaryPreview. */
-.summaryRow:not(.expanded) p:has(.aiSummaryPreview),
-.summaryRow.expanded p:has(.aiSummaryPreview) {
+/* AI summaries are sized independently of the publisher excerpt clamp.
+   Specificity intentionally beats the legacy mobile .storyContent p rule. */
+.storyContent .aiSummaryRow p.aiSummaryText,
+.storyContent .aiSummaryRow.expanded p.aiSummaryText {
   display: block;
-  overflow: visible;
   -webkit-line-clamp: unset;
+  -webkit-box-orient: initial;
+  overflow: visible;
+  flex: 1 1 0;
+  min-width: 0;
   min-height: calc(4 * 1.5em);
 }
-.aiSummaryPreview {
+.storyContent .aiSummaryPreview {
   display: block;
   width: 100%;
-  position: relative;
+  min-width: 0;
 }
