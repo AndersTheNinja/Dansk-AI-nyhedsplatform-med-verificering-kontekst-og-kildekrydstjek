@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { unstable_cache } from "next/cache";
 import { auditNewsStories } from "@/lib/news-quality";
 import { auditCurrentImageLinks } from "@/lib/image-health";
-import { getLiveStories, cleanNewsStories, addPublisherFeaturedImages } from "@/lib/live-news";
+import { getLiveStories, cleanNewsStories, addPublisherFeaturedImages, loadPublisherArticleEnricher } from "@/lib/live-news";
 import { getAndersWinnerskjoldArchiveStories, getVisibleArchiveCount, getNewsSnapshot, queuePreviewRepairs } from "@/lib/news-store";
 
 export const revalidate = 60;
@@ -27,16 +27,16 @@ export async function GET(req: NextRequest) {
     // Visitors read the precomputed snapshot instead of waiting for publishers.
     const isCollector = req.nextUrl.searchParams.get("collector") === "scheduled";
     if (!isCollector) {
+      const isFirstBatch = wantsFast && requestedLimit > 0 && requestedLimit <= 20;
+      // The first batch needs both lookups, but neither depends on the other.
+      const firstBatchEnricher = isFirstBatch ? loadPublisherArticleEnricher() : null;
       const snapshot = await getNewsSnapshot();
       if (snapshot) {
         const cleanedStories = cleanNewsStories(snapshot.stories);
-        // The homepage asks for a small first batch before loading the full feed.
-        // Show the collected articles while the full request adds stored updates.
-        const isFirstBatch = wantsFast && requestedLimit > 0 && requestedLimit <= 20;
-        const visibleStories = (isFirstBatch
-          ? cleanedStories
-          : cleanNewsStories(await addPublisherFeaturedImages(cleanedStories))
-        ).sort((a, b) => {
+        const enrichedStories = firstBatchEnricher
+          ? (await firstBatchEnricher)(cleanedStories)
+          : await addPublisherFeaturedImages(cleanedStories);
+        const visibleStories = cleanNewsStories(enrichedStories).sort((a, b) => {
           const at = a.publishedAt ? Date.parse(a.publishedAt) : 0;
           const bt = b.publishedAt ? Date.parse(b.publishedAt) : 0;
           return (Number.isFinite(bt) ? bt : 0) - (Number.isFinite(at) ? at : 0);

@@ -67,12 +67,15 @@ test("premium loading animation adds no scripts, assets or progress claim",()=>{
  assert.doesNotMatch(loader, /progressbar|aria-valuenow|aria-valuemax/);
 });
 
-test("the first batch renders the newest cleaned snapshot articles without waiting for metadata", async () => {
+test("the first batch starts the snapshot and metadata reads together and preserves enrichment", async () => {
  const older = { id: "older", publishedAt: "2026-10-28T17:00:00Z", summary: "Original excerpt" };
  const newer = { id: "newer", publishedAt: "2026-10-28T18:00:00Z", summary: "Original excerpt" };
  const placeholder = { id: "placeholder", publishedAt: "2026-10-28T19:00:00Z" };
  const stories = [older, placeholder, newer];
- let metadataCalls = 0;
+ const calls = [];
+ const enrich = entries => entries.map(story => ({ ...story, imageUrl: "https://example.com/article.jpg" }));
+ let finishMetadata;
+ const pendingMetadata = new Promise(resolve => { finishMetadata = resolve; });
  const modules = {
   "next/server": { NextResponse: { json: data => data } },
   "next/cache": { unstable_cache: fn => fn },
@@ -80,13 +83,20 @@ test("the first batch renders the newest cleaned snapshot articles without waiti
   "@/lib/image-health": {},
   "@/lib/live-news": {
    cleanNewsStories: entries => entries.filter(story => story.summary),
+   loadPublisherArticleEnricher: () => {
+    calls.push("metadata");
+    return pendingMetadata;
+   },
    addPublisherFeaturedImages: async entries => {
-    metadataCalls++;
-    return entries.map(story => ({ ...story, imageUrl: "https://example.com/article.jpg" }));
+    calls.push("metadata");
+    return enrich(entries);
    },
   },
   "@/lib/news-store": {
-   getNewsSnapshot: async () => ({ stories, totalCount: 200, availableStories: 3 }),
+   getNewsSnapshot: async () => {
+    calls.push("snapshot");
+    return { stories, totalCount: 200, availableStories: 3 };
+   },
   },
  };
  const source = readFileSync(new URL("../app/api/news/route.ts", import.meta.url), "utf8");
@@ -95,15 +105,19 @@ test("the first batch renders the newest cleaned snapshot articles without waiti
  runInNewContext(compiled.outputText, { exports, require: id => modules[id], console });
  const request = query => ({ nextUrl: new URL(query, "https://example.com/api/news") });
 
- const firstBatch = await exports.GET(request("?fast=1&limit=1"));
- assert.equal(metadataCalls, 0);
+ const firstRequest = exports.GET(request("?fast=1&limit=1"));
+ assert.deepEqual(calls, ["metadata", "snapshot"]);
+ finishMetadata(enrich);
+ const firstBatch = await firstRequest;
  assert.equal(firstBatch.totalCount, 200);
  assert.equal(firstBatch.availableStories, 2);
  assert.equal(firstBatch.stories.length, 1);
- assert.equal(firstBatch.stories[0], newer);
+ assert.equal(firstBatch.stories[0].id, newer.id);
+ assert.equal(firstBatch.stories[0].summary, newer.summary);
+ assert.equal(firstBatch.stories[0].imageUrl, "https://example.com/article.jpg");
 
+ calls.length = 0;
  const full = await exports.GET(request("?limit=1"));
- assert.equal(metadataCalls, 1);
- assert.equal(full.stories[0].id, newer.id);
- assert.equal(full.stories[0].imageUrl, "https://example.com/article.jpg");
+ assert.deepEqual(calls, ["snapshot", "metadata"]);
+ assert.deepEqual(full, firstBatch);
 });
