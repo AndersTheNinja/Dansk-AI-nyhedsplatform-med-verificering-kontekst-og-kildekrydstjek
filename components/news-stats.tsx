@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 
 type MediaCount = { source: string; last24h: number; total: number };
 const numberFormat = new Intl.NumberFormat("da-DK");
@@ -17,7 +17,12 @@ export function NewsStats({ newsCount, visitorCount, error }: { newsCount: numbe
   );
 }
 
-export function SidebarMediaStats() {
+const MediaStatsContext = createContext<{ media: MediaCount[] | null; failed: boolean }>({
+  media: null,
+  failed: false,
+});
+
+export function MediaStatsProvider({ children }: { children: ReactNode }) {
   const [media, setMedia] = useState<MediaCount[] | null>(null);
   const [failed, setFailed] = useState(false);
 
@@ -44,8 +49,17 @@ export function SidebarMediaStats() {
   }, []);
 
   return (
-    <section className="sideBox mediaStatsBox" aria-label="Nyheder fordelt på medier">
-      <h3>NYHEDER PR. MEDIE</h3>
+    <MediaStatsContext.Provider value={{ media, failed }}>
+      {children}
+    </MediaStatsContext.Provider>
+  );
+}
+
+function MediaStatsTable() {
+  const { media, failed } = useContext(MediaStatsContext);
+
+  return (
+    <>
       {failed && <p className="newsStatsMessage" role="status">{media ? "Kunne ikke opdatere tallene. Viser seneste oversigt." : "Oversigten kunne ikke hentes."}</p>}
       {!media && !failed && <p className="newsStatsMessage" role="status">Henter medieoversigt…</p>}
       {media && (
@@ -63,6 +77,26 @@ export function SidebarMediaStats() {
           </table>
         </div>
       )}
+    </>
+  );
+}
+
+export function SidebarMediaStats() {
+  return (
+    <section className="sideBox mediaStatsBox" aria-label="Nyheder fordelt på medier">
+      <h3>NYHEDER PR. MEDIE</h3>
+      <MediaStatsTable />
     </section>
+  );
+}
+
+export function MobileMediaStats() {
+  return (
+    <details className="mobileMediaStats">
+      <summary aria-label="Nyheder pr. medie">Medier <span aria-hidden="true">▾</span></summary>
+      <div className="sideBox mediaStatsBox mobileMediaStatsPanel">
+        <MediaStatsTable />
+      </div>
+    </details>
   );
 }

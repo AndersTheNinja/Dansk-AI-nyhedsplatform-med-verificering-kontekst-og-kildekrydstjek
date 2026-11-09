@@ -53,11 +53,13 @@ button{font:inherit}
 .mediaStatsTable tbody th{text-align:left;font-weight:400;overflow-wrap:anywhere}
 .mediaStatsTable td,.mediaStatsTable thead th:not(:first-child){text-align:right;padding-left:6px;white-space:nowrap}
 .mediaStatsBox .newsStatsMessage{margin:6px 0;color:#667179;font:11px/1.4 Arial,sans-serif}
+.mobileMediaStats{display:none}
 @media(max-width:780px){
-  .contentShell{display:flex;flex-direction:column}
-  .contentShell .sidebar{display:block;order:-1}
-  .sidebar > :not(.mediaStatsBox){display:none}
-  .mediaStatsBox{margin-bottom:8px}
+  .mobileMediaStats{display:block;position:relative;flex:none}
+  .mobileMediaStats summary{display:flex;align-items:center;gap:4px;min-height:44px;list-style:none;cursor:pointer;white-space:nowrap;font:700 11px Arial,sans-serif;color:#455158}
+  .mobileMediaStats summary::-webkit-details-marker{display:none}
+  .mobileMediaStats[open] summary span{transform:rotate(180deg)}
+  .mobileMediaStatsPanel{position:absolute;z-index:30;top:100%;right:0;width:min(300px,calc(100vw - 32px));max-height:60vh;overflow:auto;overscroll-behavior:contain}
 }
 
 .sideItem{display:flex;gap:9px;padding:9px 0;border-bottom:1px solid #eceeef}
@@ -262,6 +264,7 @@ button{font:inherit}
 
 /* Optional joke stream */
 .sectionTitleRow{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.feedTitleActions{display:flex;align-items:center;gap:12px;flex:none}
 .jokeToggle{display:inline-flex;align-items:center;gap:7px;flex:0 0 auto;font:400 10px Arial,sans-serif;color:#8b949b;cursor:pointer}
 .jokeToggle input{position:absolute;opacity:0;pointer-events:none}
 .jokeSlider{position:relative;width:30px;height:16px;border-radius:9px;background:#cfd5d7;transition:background .18s ease;box-shadow:inset 0 0 0 1px rgba(0,0,0,.06)}

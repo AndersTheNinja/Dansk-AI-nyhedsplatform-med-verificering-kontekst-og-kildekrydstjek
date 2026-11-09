@@ -1,7 +1,7 @@
 import { NewsStatus } from "@/components/news-status";
 import { NewsLoader } from "@/components/news-loader";
 import { TextSizeControl } from "@/components/text-size-control";
-import { SidebarMediaStats } from "@/components/news-stats";
+import { MediaStatsProvider, SidebarMediaStats } from "@/components/news-stats";
 
 export const revalidate = 300;
 
@@ -21,26 +21,28 @@ export default function Home() {
 
       <div className="tealRule" />
 
-      <div className="contentShell shell">
-        <section className="mainColumn">
-          <NewsLoader />
-        </section>
-
-        <aside className="sidebar">
-          <SidebarMediaStats />
-          <TextSizeControl />
-          <section className="sideBox">
-            <h3>AI-analyse</h3>
-            <div className="sideItem"><div><strong>Resumé</strong><small>Få et kort resumé af artiklen</small></div></div>
-            <div className="sideItem"><div><strong>Faktatjek</strong><small>OpenAI vurderer troværdigheden af nyheden</small></div></div>
+      <MediaStatsProvider>
+        <div className="contentShell shell">
+          <section className="mainColumn">
+            <NewsLoader />
           </section>
 
-          <section className="sideBox">
-            <h3>OM ØL.DK</h3>
-            <p>Redaktør og ai-geni: Anders Grønborg, info@agronborg.dk</p>
-          </section>
-        </aside>
-      </div>
+          <aside className="sidebar">
+            <SidebarMediaStats />
+            <TextSizeControl />
+            <section className="sideBox">
+              <h3>AI-analyse</h3>
+              <div className="sideItem"><div><strong>Resumé</strong><small>Få et kort resumé af artiklen</small></div></div>
+              <div className="sideItem"><div><strong>Faktatjek</strong><small>OpenAI vurderer troværdigheden af nyheden</small></div></div>
+            </section>
+
+            <section className="sideBox">
+              <h3>OM ØL.DK</h3>
+              <p>Redaktør og ai-geni: Anders Grønborg, info@agronborg.dk</p>
+            </section>
+          </aside>
+        </div>
+      </MediaStatsProvider>
 
       <footer className="footer shell">
         <span>© ØL.dk</span>
