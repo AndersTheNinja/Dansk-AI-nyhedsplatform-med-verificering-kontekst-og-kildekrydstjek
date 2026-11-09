@@ -93,7 +93,7 @@ export function SidebarMediaStats() {
 export function MobileMediaStats() {
   return (
     <details className="mobileMediaStats">
-      <summary aria-label="Nyheder pr. medie">Medier <span aria-hidden="true">▾</span></summary>
+      <summary className="sectionTitleNote" aria-label="Oversigt over nyheder pr. medie">Oversigt <span aria-hidden="true">▾</span></summary>
       <div className="sideBox mediaStatsBox mobileMediaStatsPanel">
         <MediaStatsTable />
       </div>
