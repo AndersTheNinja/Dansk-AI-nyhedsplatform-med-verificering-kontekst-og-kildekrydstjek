@@ -6,6 +6,7 @@ import type { FactResult } from "@/lib/factcheck";
 import { hasPublisherInterfaceText, previewWordCount } from "@/lib/article-preview-quality";
 import { isGenericArticleImage } from "@/lib/article-image-quality";
 import { MobileMediaStats } from "@/components/news-stats";
+import { AiSummaryPreview } from "@/components/ai-summary-preview";
 
 const categoryLabel: Record<string,string> = {
   "AI/Tech": "AI",
@@ -349,7 +350,7 @@ function StoryCard({ story }: { story: Story }) {
             aria-expanded={summaryHasOverflow || textOpen ? textOpen : undefined}
             title={summaryHasOverflow || textOpen ? (textOpen ? "Tryk for at vise mindre" : "Tryk for at vise hele teksten") : undefined}
           >
-            {excerpt.text}
+            <AiSummaryPreview story={story} />
           </p>
           {(summaryHasOverflow || textOpen) && (
             <button
@@ -399,7 +400,7 @@ function StoryCard({ story }: { story: Story }) {
         )}
 
         <div className="scoreLine">
-          {excerpt.hasMore && <button
+          {false && excerpt.hasMore && <button
             type="button"
             className="aiSummaryButton"
             onClick={toggleSummary}
@@ -428,7 +429,7 @@ function StoryCard({ story }: { story: Story }) {
           )}
         </div>
 
-        <div className={`aiSummaryPanel ${summaryOpen ? "open" : ""}`}>
+        <div className="aiSummaryPanel">
           <div className="aiSummaryInner">
             <div className="aiSummaryHeader">Resumé</div>
             {summaryLoading && <p className="aiSummaryStatus">Henter artikel og laver resumé…</p>}
