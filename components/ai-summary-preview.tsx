@@ -34,25 +34,36 @@ export function AiSummaryPreview({ story }: { story: Story }) {
         setStatus("error");
         return;
       }
-      fetch("/api/summary", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          url: sourceUrl,
-          title: story.title,
-          source: story.sources[0]?.label ?? story.sourceLabel,
-          feedText: story.summary
-        })
-      }).then(async response => {
-        if (!response.ok) throw new Error("Summary failed");
-        return response.json();
-      }).then(data => {
-        if (cancelled) return;
-        if (typeof data?.summary !== "string" || !data.summary.trim()) throw new Error("Empty summary");
-        const summary = { summary: data.summary.trim(), basisType: data.basisType };
-        cache.set(key, summary);
-        setResult(summary);
-      }).catch(() => {
+      const requestSummary = async () => {
+        // A different visitor may currently be generating this exact article.
+        // Poll the shared database result instead of paying for a new AI call.
+        for (let attempt = 0; attempt < 35 && !cancelled; attempt++) {
+          const response = await fetch("/api/summary", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              url: sourceUrl,
+              title: story.title,
+              source: story.sources[0]?.label ?? story.sourceLabel,
+              feedText: story.summary
+            })
+          });
+          if (response.status === 202) {
+            await new Promise<void>(resolve => setTimeout(resolve, 3000));
+            continue;
+          }
+          if (!response.ok) throw new Error("Summary failed");
+          const data = await response.json();
+          if (cancelled) return;
+          if (typeof data?.summary !== "string" || !data.summary.trim()) throw new Error("Empty summary");
+          const summary = { summary: data.summary.trim(), basisType: data.basisType };
+          cache.set(key, summary);
+          setResult(summary);
+          return;
+        }
+        if (!cancelled) setStatus("error");
+      };
+      void requestSummary().catch(() => {
         if (!cancelled) setStatus("error");
       });
     }, { rootMargin: "150px 0px" });
