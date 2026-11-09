@@ -22,13 +22,25 @@ const getFastStories = unstable_cache(
 export async function GET(req: NextRequest) {
   try {
     const requestedLimit = Number(req.nextUrl.searchParams.get("limit"));
+    const wantsFast = req.nextUrl.searchParams.get("fast") === "1";
     // The scheduled collector must still fetch publishers and build a new feed.
     // Visitors read the precomputed snapshot instead of waiting for publishers.
     const isCollector = req.nextUrl.searchParams.get("collector") === "scheduled";
     if (!isCollector) {
       const snapshot = await getNewsSnapshot();
       if (snapshot) {
-        const visibleStories = cleanNewsStories(await addPublisherFeaturedImages(cleanNewsStories(snapshot.stories))).sort((a, b) => { const at = a.publishedAt ? Date.parse(a.publishedAt) : 0; const bt = b.publishedAt ? Date.parse(b.publishedAt) : 0; return (Number.isFinite(bt) ? bt : 0) - (Number.isFinite(at) ? at : 0); });
+        const cleanedStories = cleanNewsStories(snapshot.stories);
+        // The homepage asks for a small first batch before loading the full feed.
+        // Show the collected articles while the full request adds stored updates.
+        const isFirstBatch = wantsFast && requestedLimit > 0 && requestedLimit <= 20;
+        const visibleStories = (isFirstBatch
+          ? cleanedStories
+          : cleanNewsStories(await addPublisherFeaturedImages(cleanedStories))
+        ).sort((a, b) => {
+          const at = a.publishedAt ? Date.parse(a.publishedAt) : 0;
+          const bt = b.publishedAt ? Date.parse(b.publishedAt) : 0;
+          return (Number.isFinite(bt) ? bt : 0) - (Number.isFinite(at) ? at : 0);
+        });
         const limit = Number.isFinite(requestedLimit) && requestedLimit > 0
           ? Math.min(Math.floor(requestedLimit), visibleStories.length)
           : visibleStories.length;
@@ -39,7 +51,6 @@ export async function GET(req: NextRequest) {
         }, { headers: { "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60" } });
       }
     }
-    const wantsFast = req.nextUrl.searchParams.get("fast") === "1";
     const liveStories = wantsFast ? await getFastStories() : await getCachedStories();
     const rawArchive = wantsFast ? [] : await getAndersWinnerskjoldArchiveStories();
     if (isCollector) {
