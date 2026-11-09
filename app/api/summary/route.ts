@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createHash } from "node:crypto";
 
 const ALLOWED_HOSTS = new Set([
   "dr.dk","www.dr.dk","politiken.dk","www.politiken.dk","version2.dk","www.version2.dk",
@@ -152,7 +153,7 @@ function parseSummary(text: string) {
   };
 }
 
-export async function POST(req: NextRequest) {
+async function generateSummary(req: NextRequest) {
   const body = await req.json();
   const apiKey = process.env.OPENAI_API_KEY;
   const preferredModel = process.env.OPENAI_MODEL || "gpt-6-luna";
@@ -433,4 +434,88 @@ ${parsedSummary.summary}`,
     console.error("AI summary route failed", error);
     return NextResponse.json({ error: "Artiklen kunne ikke behandles." }, { status: 502 });
   }
+}
+
+/**
+ * Only the winning request generates a summary. The private Supabase cache
+ * persists across deployments, replicas, browsers and visitors. A failed
+ * database lookup must never trigger unmetered AI work.
+ */
+export async function POST(req: NextRequest) {
+  const dbUrl = process.env.SUPABASE_URL;
+  const dbKey = process.env.SUPABASE_PUBLISHABLE_KEY;
+  const secret = process.env.OEL_INGEST_SECRET;
+  if (!dbUrl || !dbKey || !secret) {
+    return NextResponse.json({ error: "Resumé-cache er ikke tilgængelig." }, { status: 503 });
+  }
+  let body: any;
+  try { body = await req.clone().json(); }
+  catch { return NextResponse.json({ error: "Ugyldig forespørgsel." }, { status: 400 }); }
+  const url = String(body?.url || "");
+  const title = String(body?.title || "");
+  const feedText = String(body?.feedText || "");
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+    if (parsed.protocol !== "https:" || !ALLOWED_HOSTS.has(parsed.hostname) ||
+        parsed.username || parsed.password || parsed.port) throw new Error("url");
+  } catch {
+    return NextResponse.json({ error: "Ugyldig artikelkilde." }, { status: 400 });
+  }
+  const key = createHash("sha256").update(JSON.stringify([parsed.href, title, feedText])).digest("hex");
+  const headers = {
+    apikey: dbKey,
+    Authorization: `Bearer ${dbKey}`,
+    "Content-Type": "application/json",
+    "x-oel-ingest-secret": secret
+  };
+  const rpc = async (functionName: string, payload: object) => {
+    const response = await fetch(`${dbUrl}/rest/v1/rpc/${functionName}`, {
+      method: "POST", headers, body: JSON.stringify(payload),
+      cache: "no-store", signal: AbortSignal.timeout(6000)
+    });
+    if (!response.ok) throw new Error(`Summary cache error ${response.status}`);
+    return response.json();
+  };
+  let claimed: any;
+  try {
+    claimed = await rpc("oeldk_summary_claim", { p_key: key, p_url: parsed.href, p_title: title });
+  } catch (error) {
+    console.error("Summary cache claim failed", error);
+    return NextResponse.json({ error: "Resumé-cache er midlertidigt utilgængelig." }, { status: 503 });
+  }
+  if (claimed?.status === "ready") {
+    return NextResponse.json({ summary: claimed.summary, bullets: [], basisType: claimed.basisType, cached: true });
+  }
+  if (claimed?.status === "busy") {
+    return NextResponse.json({ status: "generating" }, { status: 202, headers: { "Retry-After": "3" } });
+  }
+  if (claimed?.status === "failed") {
+    return NextResponse.json({ error: "Resuméet kan ikke dannes lige nu." }, { status: 503 });
+  }
+  if (claimed?.status !== "claimed" || !claimed.ticket) {
+    return NextResponse.json({ error: "Ugyldig cache-status." }, { status: 503 });
+  }
+  let generated: NextResponse;
+  try { generated = await generateSummary(req); }
+  catch (error) {
+    console.error("Summary generation failed", error);
+    generated = NextResponse.json({ error: "Resuméet kunne ikke genereres." }, { status: 502 });
+  }
+  let result: any = {};
+  try { result = await generated.clone().json(); } catch {}
+  const good = generated.ok && typeof result?.summary === "string" && result.summary.trim().length >= 40;
+  try {
+    await rpc("oeldk_summary_finish", {
+      p_key: key, p_ticket: claimed.ticket,
+      p_summary: good ? result.summary.trim() : "",
+      p_basis_type: good ? (result.basisType || "excerpt") : "",
+      p_success: good
+    });
+  } catch (error) {
+    console.error("Failed to persist AI summary", error);
+    // Avoid claiming success when other visitors cannot reuse the result.
+    return NextResponse.json({ error: "Resuméet kunne ikke gemmes." }, { status: 503 });
+  }
+  return generated;
 }
