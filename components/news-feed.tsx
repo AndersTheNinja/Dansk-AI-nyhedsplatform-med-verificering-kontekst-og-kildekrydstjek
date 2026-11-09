@@ -5,6 +5,7 @@ import type { Story } from "@/lib/stories";
 import type { FactResult } from "@/lib/factcheck";
 import { hasPublisherInterfaceText, previewWordCount } from "@/lib/article-preview-quality";
 import { isGenericArticleImage } from "@/lib/article-image-quality";
+import { MobileMediaStats } from "@/components/news-stats";
 
 const categoryLabel: Record<string,string> = {
   "AI/Tech": "AI",
@@ -721,16 +722,19 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
 
       <div className="sectionTitle sectionTitleRow">
         <span>Seneste nyheder <span className="sectionTitleNote">baseret på dine valg</span></span>
-        <label className="jokeToggle" title="Indsæt en vittighed som hver tiende post">
-          <span>Jokes</span>
-          <input
-            type="checkbox"
-            checked={jokeMode}
-            onChange={(event) => setJokeMode(event.target.checked)}
-            aria-label="Vis en vittighed som hver tiende post"
-          />
-          <span className="jokeSlider" aria-hidden="true" />
-        </label>
+        <div className="feedTitleActions">
+          <label className="jokeToggle" title="Indsæt en vittighed som hver tiende post">
+            <span>Jokes</span>
+            <input
+              type="checkbox"
+              checked={jokeMode}
+              onChange={(event) => setJokeMode(event.target.checked)}
+              aria-label="Vis en vittighed som hver tiende post"
+            />
+            <span className="jokeSlider" aria-hidden="true" />
+          </label>
+          <MobileMediaStats />
+        </div>
       </div>
 
       <div className="storyList">
