@@ -331,10 +331,10 @@ function StoryCard({ story }: { story: Story }) {
         >
           {story.title}
         </h2>
-        <div className={`summaryRow ${textOpen ? "expanded" : ""}`}>
+        <div className={`summaryRow aiSummaryRow ${textOpen ? "expanded" : ""}`}>
           <p
             ref={summaryTextRef}
-            className={summaryHasOverflow || textOpen ? "expandableStoryText" : undefined}
+            className="aiSummaryText"
             onClick={() => {
               if (summaryHasOverflow || textOpen) setTextOpen((value) => !value);
             }}
@@ -365,18 +365,6 @@ function StoryCard({ story }: { story: Story }) {
             </button>
           )}
         </div>
-        {story.sources[0]?.label === "Y.dk" && excerpt.text.trim().split(/\s+/).filter(Boolean).length < 60 && (
-          <p className="storyShortSourceNote">
-            Kort introduktion fra Y.dk. Den fulde artikel findes via "Læs mere".
-          </p>
-        )}
-        {story.sources[0]?.label === "Stiften.dk" && !excerpt.hasMore &&
-          excerpt.text.trim().split(/\s+/).filter(Boolean).length < 60 && (
-          <p className="storyShortSourceNote">
-            Kort artikeluddrag fra Stiften.dk – ikke et AI-resumé. Læs hele artiklen via "Læs mere".
-          </p>
-        )}
-
         {textOpen && resolvedImageUrl && !articleImageFailed && (
           <div className="storyArticleImageWrap">
             <img
