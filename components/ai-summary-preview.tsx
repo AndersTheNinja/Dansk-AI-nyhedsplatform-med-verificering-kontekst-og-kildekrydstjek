@@ -72,53 +72,63 @@ export function AiSummaryPreview({ story }: { story: Story }) {
     return () => { cancelled = true; observer.disconnect(); };
   }, [story.id, story.summary, story.title, story.sources, story.sourceLabel]);
 
-  // Fit only complete sentences into the available four lines.
-  // This is presentation-only: the persisted AI summary is never regenerated
-  // when the viewport, reader font size or window width changes.
+  // Use the actual news paragraph's font and usable width, not the span's
+  // default font shorthand (which Safari can report as an empty string).
+  // No AI requests are involved in responsive fitting.
   useEffect(() => {
     const element = target.current;
-    if (!element || !result?.summary) return;
-    const complete = result.summary.trim();
-    const sentenceParts = Array.from(new Intl.Segmenter("da", { granularity: "sentence" }).segment(complete))
+    const paragraph = element?.closest("p");
+    if (!element || !paragraph || !result?.summary) return;
+    const full = result.summary.trim();
+    const sentences = Array.from(new Intl.Segmenter("da", { granularity: "sentence" }).segment(full))
       .map(part => part.segment.trim()).filter(Boolean);
-    const candidates = sentenceParts.reduce<string[]>((all, part) => {
-      const previous = all.at(-1);
-      all.push(previous ? previous + " " + part : part);
-      return all;
+    const candidates = sentences.reduce<string[]>((items, sentence) => {
+      const prev = items.at(-1);
+      items.push(prev ? prev + " " + sentence : sentence);
+      return items;
     }, []);
-    const measure = document.createElement("span");
-    measure.setAttribute("aria-hidden", "true");
-    measure.style.cssText = "position:absolute;visibility:hidden;display:block;white-space:normal;pointer-events:none;";
-    element.appendChild(measure);
+    const probe = document.createElement("div");
+    probe.setAttribute("aria-hidden", "true");
+    probe.style.cssText = "position:fixed;left:-10000px;top:0;display:block;visibility:hidden;pointer-events:none;white-space:normal;overflow:visible;max-width:none;";
+    document.body.appendChild(probe);
+
     const fit = () => {
-      const width = element.getBoundingClientRect().width;
-      if (width < 20) return;
-      const computed = window.getComputedStyle(element);
-      const fontSize = Number.parseFloat(computed.fontSize) || 12.5;
-      const lineHeight = computed.lineHeight === "normal" ? fontSize * 1.5 : Number.parseFloat(computed.lineHeight);
-      measure.style.width = width + "px";
-      measure.style.font = computed.font;
-      measure.style.letterSpacing = computed.letterSpacing;
-      measure.style.lineHeight = computed.lineHeight;
+      const width = paragraph.getBoundingClientRect().width;
+      if (width <= 20) return;
+      const style = getComputedStyle(paragraph);
+      probe.style.width = width + "px";
+      probe.style.fontFamily = style.fontFamily;
+      probe.style.fontSize = style.fontSize;
+      probe.style.fontWeight = style.fontWeight;
+      probe.style.fontStyle = style.fontStyle;
+      probe.style.letterSpacing = style.letterSpacing;
+      probe.style.lineHeight = style.lineHeight;
+      probe.style.wordBreak = style.wordBreak;
+      const lineHeight = parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.5;
       let best = "";
       for (const candidate of candidates) {
-        measure.textContent = candidate;
-        if (measure.getBoundingClientRect().height <= lineHeight * 4 + 1) best = candidate;
+        probe.textContent = candidate;
+        const lines = probe.getBoundingClientRect().height / lineHeight;
+        if (lines <= 4.05) best = candidate;
         else break;
       }
-      // Extremely long individual sentences must remain complete, even if
-      // doing so requires more than four lines on a very narrow screen.
-      setVisibleText(best || candidates[0] || complete);
+      // A full first sentence takes precedence over truncation mid-sentence.
+      setVisibleText(best || candidates[0] || full);
     };
     const observer = new ResizeObserver(fit);
-    observer.observe(element);
+    observer.observe(paragraph);
+    window.addEventListener("resize", fit);
     fit();
-    return () => { observer.disconnect(); measure.remove(); };
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", fit);
+      probe.remove();
+    };
   }, [result?.summary]);
 
   return (
     <span ref={target} className="aiSummaryPreview">
-      {result ? (visibleText || result.summary)
+      {result ? (visibleText ?? "Tilpasser resumé…")
         : status === "error" ? "AI-resumé kunne ikke dannes. Læs nyheden hos originalkilden."
         : "AI-resumé udarbejdes…"}
     </span>
