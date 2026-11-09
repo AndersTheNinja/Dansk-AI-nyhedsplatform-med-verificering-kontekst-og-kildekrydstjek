@@ -33,7 +33,10 @@ test("never renders invalid cache payloads",()=>{
 test("initial view does not issue a redundant third news-count fetch",()=>{
  const loader=readFileSync(new URL("../components/news-loader.tsx",import.meta.url),"utf8");
  const status=readFileSync(new URL("../components/news-status.tsx",import.meta.url),"utf8");
- assert.match(loader, /loadNews\(20\)\.finally/);
+ assert.match(loader, /const FIRST_NEWS_LIMIT = 5;/);
+ assert.match(loader, /loadNews\(FIRST_NEWS_LIMIT\)\.finally/);
+ assert.match(loader, /setStories\(cache\.stories\.slice\(0, FIRST_NEWS_LIMIT\)\)/);
+ assert.match(loader, /stories: nextStories\.slice\(0, FIRST_NEWS_LIMIT\)/);
  assert.match(loader, /"oel-news-loaded"/);
  assert.match(status, /addEventListener\("oel-news-loaded"/);
  assert.doesNotMatch(status, /fetch\("\/api\/news\?limit=1"/);
