@@ -5,6 +5,8 @@ import { NewsFeed } from "@/components/news-feed";
 import type { Story } from "@/lib/stories";
 import { FIRST_NEWS_CACHE_KEY, parseFirstNewsCache } from "@/lib/first-news-cache";
 
+const FIRST_NEWS_LIMIT = 5;
+
 export function NewsLoader() {
   const [stories, setStories] = useState<Story[] | null>(null);
   const [error, setError] = useState(false);
@@ -24,7 +26,7 @@ export function NewsLoader() {
     try {
       const cache = parseFirstNewsCache(localStorage.getItem(FIRST_NEWS_CACHE_KEY) || sessionStorage.getItem(FIRST_NEWS_CACHE_KEY));
       if (cache) {
-        setStories(cache.stories);
+        setStories(cache.stories.slice(0, FIRST_NEWS_LIMIT));
         notifyNewsCount(cache.totalCount);
       }
     } catch {}
@@ -56,7 +58,7 @@ export function NewsLoader() {
         try {
           localStorage.setItem(FIRST_NEWS_CACHE_KEY, JSON.stringify({
             savedAt: Date.now(),
-            stories: nextStories.slice(0, 20),
+            stories: nextStories.slice(0, FIRST_NEWS_LIMIT),
             totalCount
           }));
         } catch {}
@@ -71,7 +73,7 @@ export function NewsLoader() {
 
     // The quick first page starts immediately. Only request the large feed
     // after it has returned, avoiding two simultaneous expensive news reads.
-    void loadNews(20).finally(() => {
+    void loadNews(FIRST_NEWS_LIMIT).finally(() => {
       if (!controller.signal.aborted) {
         fullLoadTimer = window.setTimeout(() => { void loadNews(); }, 1000);
       }
