@@ -2077,10 +2077,10 @@ function applyPublisherFeaturedImages(stories: Story[], value: unknown): Story[]
   });
 }
 
-export async function addPublisherFeaturedImages(stories: Story[]): Promise<Story[]> {
+export async function loadPublisherArticleEnricher(): Promise<(stories: Story[]) => Story[]> {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_PUBLISHABLE_KEY;
-  if (!url || !key) return stories;
+  if (!url || !key) return (stories) => stories;
   const metadata = await Promise.allSettled(["oeldk_featured_images", "oeldk_article_previews"].map(async (rpc) => {
     const response = await fetch(`${url}/rest/v1/rpc/${rpc}`, {
       method: "POST", headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
@@ -2090,7 +2090,12 @@ export async function addPublisherFeaturedImages(stories: Story[]): Promise<Stor
   }));
   const images = metadata[0].status === "fulfilled" ? metadata[0].value : [];
   const previews = metadata[1].status === "fulfilled" ? metadata[1].value : [];
-  return applyPublisherFeaturedImages(applyPublisherPreviews(stories, previews), images);
+  return (stories) => applyPublisherFeaturedImages(applyPublisherPreviews(stories, previews), images);
+}
+
+export async function addPublisherFeaturedImages(stories: Story[]): Promise<Story[]> {
+  const enrich = await loadPublisherArticleEnricher();
+  return enrich(stories);
 }
 
 export async function getLiveStories(options?: { fast?: boolean; limit?: number }): Promise<Story[]> {
