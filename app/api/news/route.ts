@@ -101,7 +101,7 @@ export async function GET(req: NextRequest) {
       ? Math.min(Math.floor(requestedLimit), stories.length)
       : stories.length;
     return NextResponse.json(
-      { stories: stories.slice(0, limit), totalCount: Math.max(totalCount, stories.length), generatedAt: new Date().toISOString(), availableStories: stories.length },
+      { stories: stories.slice(0, limit), totalCount: Math.max(totalCount, stories.length), generatedAt: new Date().toISOString(), availableStories: stories.length, ...(isCollector ? { collectorSnapshot: true } : {}) },
       { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=120" } }
     );
   } catch (error) {
