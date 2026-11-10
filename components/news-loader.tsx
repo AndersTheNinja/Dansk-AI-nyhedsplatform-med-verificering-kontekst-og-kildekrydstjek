@@ -107,7 +107,7 @@ export function NewsLoader() {
               <span className="newsLoadingProgressBar" />
             </span>
           </span>
-          <span className="newsLoadingText">Glæd dig, om lidt er vi klar med dine nyheder</span>
+          <span className="newsLoadingText"><strong>Glæd dig</strong>, om lidt er vi klar med dine nyheder …</span>
         </div>
       </section>
     );
