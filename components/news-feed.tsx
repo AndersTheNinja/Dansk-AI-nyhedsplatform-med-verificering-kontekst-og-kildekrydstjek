@@ -280,7 +280,6 @@ function StoryCard({ story }: { story: Story }) {
                 <>
                   {published.time && <strong className="storyTime">Kl. {published.time}</strong>}
                   {published.rest && <span>{published.time ? " · " : ""}{published.rest}</span>}
-                  {story.sourceMethod ? ` · ${story.sourceMethod}` : ""}
                 </>
               );
             })()}
