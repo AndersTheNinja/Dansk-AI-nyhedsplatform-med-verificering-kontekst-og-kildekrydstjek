@@ -16,7 +16,7 @@ const SUPPORTED_HOSTS = new Set([
   "migogaarhus.dk", "www.migogaarhus.dk", "tv2.dk", "www.tv2.dk"
 ]);
 
-// Must match /api/summary cache-key algorithm exactly to reuse existing summaries.
+// Cache by canonical URL and headline: RSS excerpt changes never regenerate AI text.
 export function summaryCacheKey(story: Story): string | null {
   const source = story.sources[0]?.url;
   if (!source || story.title.length < 5 || story.title.length > 500) return null;
@@ -25,7 +25,7 @@ export function summaryCacheKey(story: Story): string | null {
     if (url.protocol !== "https:" || url.username || url.password || url.port ||
         !SUPPORTED_HOSTS.has(url.hostname)) return null;
     return createHash("sha256").update(
-      JSON.stringify([url.href, story.title, story.summary])
+      JSON.stringify([url.href, story.title])
     ).digest("hex");
   } catch { return null; }
 }
