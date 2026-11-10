@@ -25,7 +25,7 @@ export function NewsLoader() {
     // instantly while a fresh request updates the feed in the background.
     try {
       const cache = parseFirstNewsCache(localStorage.getItem(FIRST_NEWS_CACHE_KEY) || sessionStorage.getItem(FIRST_NEWS_CACHE_KEY));
-      if (cache) {
+      if (cache && cache.stories.every(story => typeof story.aiSummary === "string" && story.aiSummary.trim().length >= 40)) {
         setStories(cache.stories.slice(0, FIRST_NEWS_LIMIT));
         notifyNewsCount(cache.totalCount);
       }
@@ -40,7 +40,9 @@ export function NewsLoader() {
         });
         if (!response.ok) throw new Error("News request failed");
         const data = await response.json();
-        const nextStories: Story[] = Array.isArray(data.stories) ? data.stories : [];
+        const nextStories: Story[] = Array.isArray(data.stories) ? data.stories.filter((story: Story) =>
+          typeof story.aiSummary === "string" && story.aiSummary.trim().length >= 40
+        ) : [];
         if (!nextStories.length) throw new Error("Empty news response");
         if (controller.signal.aborted) return;
 
