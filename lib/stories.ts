@@ -19,6 +19,8 @@ export type Story = {
   publishedDate?: string;
   sourceMethod?: "RSS" | "WEB";
   summary: string;
+  /** Precomputed AI summary. Only ready stories are returned to public clients. */
+  aiSummary?: string;
   mentions?: string[];
   /** Opinion items explicitly reserved for the ANDERS W. topic. */
   andersOnly?: boolean;
