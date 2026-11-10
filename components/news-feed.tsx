@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Story } from "@/lib/stories";
 import type { FactResult } from "@/lib/factcheck";
-import { hasPublisherInterfaceText, previewWordCount } from "@/lib/article-preview-quality";
+import { previewWordCount } from "@/lib/article-preview-quality";
 import { isGenericArticleImage } from "@/lib/article-image-quality";
 import { MobileMediaStats } from "@/components/news-stats";
 import { AiSummaryPreview } from "@/components/ai-summary-preview";
@@ -51,8 +51,7 @@ function originalExcerpt(value: string) {
 
 function StoryCard({ story }: { story: Story }) {
   const feedExcerpt = originalExcerpt(story.summary);
-  const [articlePreview, setArticlePreview] = useState<{text:string;hasMore:boolean}|null>(null);
-  const excerpt = articlePreview ? {text:articlePreview.text,hasMore:articlePreview.hasMore} : feedExcerpt;
+  const excerpt = feedExcerpt;
   const ref = useRef<HTMLElement | null>(null);
   const summaryTextRef = useRef<HTMLParagraphElement | null>(null);
    const [subscriptionRequired, setSubscriptionRequired] = useState<boolean | null>(null);
@@ -72,31 +71,6 @@ function StoryCard({ story }: { story: Story }) {
   const [factCheck, setFactCheck] = useState<FactResult | null>(null);
   const [factError, setFactError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const node=ref.current;
-    const articleUrl=story.sources[0]?.url;
-    if(!node||!articleUrl)return;
-    const observer=new IntersectionObserver((entries)=>{
-      if(!entries.some(entry=>entry.isIntersecting))return;
-      observer.disconnect();
-      fetch("/api/article-preview",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({url:articleUrl,title:story.title,intro:story.summary})})
-        .then(response=>response.ok?response.json():null)
-        .then(data=>{
-          if(typeof data?.excerpt==="string"&&data.excerpt.trim()&&typeof data?.hasMore==="boolean"&& !hasPublisherInterfaceText(data.excerpt)){
-            // Compare the excerpts actually shown to readers, not the length
-            // of the stored full article. hasMore alone is not proof that the
-            // fetched preview is better than the existing publisher excerpt.
-            const fetchedExcerpt = previewWordCount(data.excerpt).excerpt;
-            const savedExcerpt = previewWordCount(story.summary).excerpt;
-            if (fetchedExcerpt.length >= savedExcerpt.length && fetchedExcerpt.trim()) {
-              setArticlePreview({text:fetchedExcerpt,hasMore:data.hasMore});
-            }
-          }
-        }).catch(()=>{});
-    },{rootMargin:"250px 0px"});
-    observer.observe(node);
-    return()=>observer.disconnect();
-  },[story.id,story.title,story.sources]);
 
   useEffect(() => {
     const node = ref.current;
