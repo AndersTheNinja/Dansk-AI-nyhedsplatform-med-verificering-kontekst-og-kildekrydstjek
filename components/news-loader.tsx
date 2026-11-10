@@ -95,7 +95,7 @@ export function NewsLoader() {
     return (
       <section id="feed" aria-busy="true">
         <div className="sectionTitle">
-          Seneste nyheder <span className="sectionTitleNote">(indlæses nu).</span>
+          Seneste nyheder <span className="sectionTitleNote">(indlæses nu)</span>
         </div>
         <div className="newsLoadingState" role="status" aria-live="polite">
           <span className="newsLoadingBrand" aria-hidden="true">
@@ -107,7 +107,7 @@ export function NewsLoader() {
               <span className="newsLoadingProgressBar" />
             </span>
           </span>
-          <span className="newsLoadingText">Henter de seneste nyheder…</span>
+          <span className="newsLoadingText">Glæd dig, om lidt er vi klar med dine nyheder</span>
         </div>
       </section>
     );
