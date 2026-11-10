@@ -13,7 +13,8 @@ const SUPPORTED_HOSTS = new Set([
   "hsfo.dk", "www.hsfo.dk", "frdb.dk", "www.frdb.dk",
   "journalisten.dk", "www.journalisten.dk", "berlingske.dk", "www.berlingske.dk",
   "borsen.dk", "www.borsen.dk", "stiften.dk", "www.stiften.dk",
-  "migogaarhus.dk", "www.migogaarhus.dk", "tv2.dk", "www.tv2.dk"
+  "migogaarhus.dk", "www.migogaarhus.dk", "tv2.dk", "www.tv2.dk",
+  "nyheder.tv2.dk", "y.dk", "www.y.dk"
 ]);
 
 // Cache by canonical URL and headline: RSS excerpt changes never regenerate AI text.
