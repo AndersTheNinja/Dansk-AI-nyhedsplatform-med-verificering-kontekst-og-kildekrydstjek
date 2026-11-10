@@ -4,6 +4,7 @@ import { auditNewsStories } from "@/lib/news-quality";
 import { auditCurrentImageLinks } from "@/lib/image-health";
 import { getLiveStories, cleanNewsStories, addPublisherFeaturedImages, loadPublisherArticleEnricher } from "@/lib/live-news";
 import { getAndersWinnerskjoldArchiveStories, getVisibleArchiveCount, getNewsSnapshot, queuePreviewRepairs } from "@/lib/news-store";
+import { getSummaryStates, onlyCompletedStories } from "@/lib/ready-summaries";
 
 export const revalidate = 60;
 
@@ -33,10 +34,19 @@ export async function GET(req: NextRequest) {
       const snapshot = await getNewsSnapshot();
       if (snapshot) {
         const cleanedStories = cleanNewsStories(snapshot.stories);
+        // Publication gate: no article goes to visitors without a completed
+        // AI summary already stored in the shared database.
+        const summaryStates = await getSummaryStates(cleanedStories);
+        const readyStories = onlyCompletedStories(cleanedStories, summaryStates);
+        // Enrich only the already-published stories, never hundreds of pending
+        // articles, which also speeds up the first five news cards.
+        const displayCandidates = isFirstBatch ? readyStories.slice(0, 20) : readyStories;
         const enrichedStories = firstBatchEnricher
-          ? (await firstBatchEnricher)(cleanedStories)
-          : await addPublisherFeaturedImages(cleanedStories);
-        const visibleStories = cleanNewsStories(enrichedStories).sort((a, b) => {
+          ? (await firstBatchEnricher)(displayCandidates)
+          : await addPublisherFeaturedImages(displayCandidates);
+        const visibleStories = cleanNewsStories(enrichedStories).filter(story =>
+          typeof (story as {aiSummary?: string}).aiSummary === "string"
+        ).sort((a, b) => {
           const at = a.publishedAt ? Date.parse(a.publishedAt) : 0;
           const bt = b.publishedAt ? Date.parse(b.publishedAt) : 0;
           return (Number.isFinite(bt) ? bt : 0) - (Number.isFinite(at) ? at : 0);
@@ -79,6 +89,12 @@ export async function GET(req: NextRequest) {
         }));
       } catch (error) { console.warn("ØL.dk image health failed", String(error)); }
       console.info("ØL.dk quality audit", JSON.stringify(auditNewsStories(stories)));
+    }
+    // Collectors keep returning their raw snapshot to the scheduled database
+    // refresh. All public fallback responses are strictly ready-only.
+    if (!isCollector) {
+      const states = await getSummaryStates(stories);
+      stories = onlyCompletedStories(stories, states);
     }
     const totalCount = await getVisibleArchiveCount();
     const limit = Number.isFinite(requestedLimit) && requestedLimit > 0
