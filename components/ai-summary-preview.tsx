@@ -55,6 +55,13 @@ export function AiSummaryPreview({ story }: { story: Story }) {
     observer.observe(paragraph);
     window.addEventListener("resize", fit);
     fit();
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", fit);
+      probe.remove();
+    };
+  }, [story.aiSummary]);
+
     // The entire story is already prepared in Supabase before publication.
   // No browser request to /api/summary, and no loading/error placeholder.
   return <span ref={target} className="aiSummaryPreview">{visibleText ?? ""}</span>;
