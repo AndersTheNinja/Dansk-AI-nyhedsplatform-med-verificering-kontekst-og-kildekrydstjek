@@ -468,7 +468,7 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json({ error: "Ugyldig artikelkilde." }, { status: 400 });
   }
-  const key = createHash("sha256").update(JSON.stringify([parsed.href, title, feedText])).digest("hex");
+  const key = createHash("sha256").update(JSON.stringify([parsed.href, title])).digest("hex");
   const headers = {
     apikey: dbKey,
     Authorization: `Bearer ${dbKey}`,
