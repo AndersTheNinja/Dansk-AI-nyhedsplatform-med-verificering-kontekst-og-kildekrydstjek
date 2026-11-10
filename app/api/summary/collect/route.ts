@@ -24,13 +24,18 @@ export async function POST(req: NextRequest) {
     }
     const stories = cleanNewsStories(snapshot.stories);
     const known = await getSummaryStates(stories);
-    const missing = stories.filter(story => {
+    const eligible = stories.filter(story => summaryCacheKey(story) !== null);
+    const unsupported = stories.length - eligible.length;
+    const readyBefore = eligible.filter(story => {
       const key = summaryCacheKey(story);
-      if (!key) return false;
-      const status = known.get(key)?.status;
-      // Skip summaries already published and in-flight/temporarily failed
-      // tasks. The DB also holds an atomic lease against concurrency.
-      return !status || status === "failed" || status === "generating";
+      const state = key ? known.get(key) : null;
+      return state?.status === "ready" && typeof state.summary === "string" && state.summary.trim().length >= 40;
+    }).length;
+    const missing = eligible.filter(story => {
+      const key = summaryCacheKey(story)!;
+      const state = known.get(key);
+      // Do not repeatedly generate an in-flight or cooling-down article.
+      return state?.status !== "ready" && state?.status !== "busy" && state?.status !== "cooldown";
     });
     const work = missing.slice(0, BATCH_SIZE);
 
@@ -62,13 +67,13 @@ export async function POST(req: NextRequest) {
       }));
     }
     console.info("ØL.dk summary collector", JSON.stringify({
-      readyBefore: stories.length - missing.length, pending: missing.length,
+      readyBefore, unsupported, pending: eligible.length - readyBefore,
       attempted: work.length, stored, skipped, failed
     }));
     return NextResponse.json({
       status: "ok", feedArticles: stories.length,
-      readyBefore: stories.length - missing.length,
-      remainingBefore: missing.length, attempted: work.length, stored, skipped, failed
+      readyBefore, unsupported,
+      remainingBefore: eligible.length - readyBefore, attempted: work.length, stored, skipped, failed
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("AI background summary collection failed", error);
