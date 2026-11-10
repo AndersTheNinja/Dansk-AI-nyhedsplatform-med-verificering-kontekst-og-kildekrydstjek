@@ -442,6 +442,12 @@ ${parsedSummary.summary}`,
  * database lookup must never trigger unmetered AI work.
  */
 export async function POST(req: NextRequest) {
+  // Summary generation is reserved for the scheduled collector, not readers.
+  // The browser only receives already-stored summaries via /api/news.
+  const ingestSecret = process.env.OEL_INGEST_SECRET;
+  if (!ingestSecret || req.headers.get("x-oel-ingest-secret") !== ingestSecret) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   const dbUrl = process.env.SUPABASE_URL;
   const dbKey = process.env.SUPABASE_PUBLISHABLE_KEY;
   const secret = process.env.OEL_INGEST_SECRET;
