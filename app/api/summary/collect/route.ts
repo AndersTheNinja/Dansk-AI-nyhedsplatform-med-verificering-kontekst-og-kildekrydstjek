@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getNewsSnapshot } from "@/lib/news-store";
-import { cleanNewsStories } from "@/lib/live-news";
+import { cleanNewsStories, getLiveStories } from "@/lib/live-news";
 import { getSummaryStates, summaryCacheKey } from "@/lib/ready-summaries";
 import { POST as generateAndStoreSummary } from "@/app/api/summary/route";
 
@@ -19,10 +19,10 @@ export async function POST(req: NextRequest) {
 
   try {
     const snapshot = await getNewsSnapshot(12000);
-    if (!snapshot) {
-      return NextResponse.json({ status: "no_fresh_snapshot", processed: 0 }, { status: 503 });
-    }
-    const stories = cleanNewsStories(snapshot.stories);
+    // A transient Supabase REST read must not halt the AI worker. A fresh
+    // publisher feed is sufficient to identify articles needing summaries.
+    const stories = cleanNewsStories(snapshot?.stories ?? await getLiveStories({ fast: true, limit: 80 }));
+    if (stories.length < 5) return NextResponse.json({ status: "no_fresh_stories", processed: 0 }, { status: 503 });
     const known = await getSummaryStates(stories);
     const eligible = stories.filter(story => summaryCacheKey(story) !== null);
     const unsupported = stories.length - eligible.length;
