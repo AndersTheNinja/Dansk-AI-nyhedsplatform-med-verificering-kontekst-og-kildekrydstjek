@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Story } from "@/lib/stories";
 
 /** Display only a ready, persisted summary; layout changes cost no AI tokens. */
-export function AiSummaryPreview({ story }: { story: Story }) {
+export function AiSummaryPreview({ story, expanded = false }: { story: Story; expanded?: boolean }) {
   const target = useRef<HTMLSpanElement | null>(null);
   const [visibleText, setVisibleText] = useState<string | null>(null);
 
@@ -16,6 +16,10 @@ export function AiSummaryPreview({ story }: { story: Story }) {
     const paragraph = element?.closest("p");
     if (!element || !paragraph || !story.aiSummary) return;
     const full = story.aiSummary.trim();
+    if (expanded) {
+      setVisibleText(full);
+      return;
+    }
     const sentences = Array.from(new Intl.Segmenter("da", { granularity: "sentence" }).segment(full))
       .map(part => part.segment.trim()).filter(Boolean);
     const candidates = sentences.reduce<string[]>((items, sentence) => {
@@ -60,7 +64,7 @@ export function AiSummaryPreview({ story }: { story: Story }) {
       window.removeEventListener("resize", fit);
       probe.remove();
     };
-  }, [story.aiSummary]);
+  }, [story.aiSummary, expanded]);
 
     // The entire story is already prepared in Supabase before publication.
   // No browser request to /api/summary, and no loading/error placeholder.
