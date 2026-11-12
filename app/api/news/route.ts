@@ -26,7 +26,9 @@ export async function GET(req: NextRequest) {
     const wantsFast = req.nextUrl.searchParams.get("fast") === "1";
     // The scheduled collector must still fetch publishers and build a new feed.
     // Visitors read the precomputed snapshot instead of waiting for publishers.
-    const isCollector = req.nextUrl.searchParams.get("collector") === "scheduled";
+    const collectorMode = req.nextUrl.searchParams.get("collector");
+    const isFastCollector = collectorMode === "fast";
+    const isCollector = collectorMode === "scheduled" || isFastCollector;
     if (!isCollector) {
       const isFirstBatch = wantsFast && requestedLimit > 0 && requestedLimit <= 20;
       // The first batch needs both lookups, but neither depends on the other.
@@ -83,8 +85,10 @@ export async function GET(req: NextRequest) {
         degraded: true
       }, { headers: { "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60" } });
     }
-    const liveStories = wantsFast ? await getFastStories() : await getCachedStories();
-    const rawArchive = wantsFast ? [] : await getAndersWinnerskjoldArchiveStories();
+    // Scheduled fast collection only reads fresh RSS metadata; it must never
+    // trigger the 1,500-article enrichment job on the visitor-facing service.
+    const liveStories = isFastCollector ? await getLiveStories({ fast: true, limit: 100 }) : wantsFast ? await getFastStories() : await getCachedStories();
+    const rawArchive = (wantsFast || isFastCollector) ? [] : await getAndersWinnerskjoldArchiveStories();
     if (isCollector) {
       try {
         await queuePreviewRepairs(rawArchive.filter((story) => story.summary.length < 180 || (story.sources[0]?.url?.includes("stiften.dk/") && story.summary.length < 700)));
@@ -102,7 +106,7 @@ export async function GET(req: NextRequest) {
     });
     // Image health checks belong to scheduled ingestion, never public requests.
     // Only confirmed invalid links are removed; CDN blocks/timeouts remain unknown.
-    if (isCollector) {
+    if (isCollector && !isFastCollector) {
       try {
         const imageHealth = await auditCurrentImageLinks(stories, 24);
         stories = imageHealth.stories;
@@ -118,7 +122,7 @@ export async function GET(req: NextRequest) {
       const states = await getSummaryStates(stories);
       stories = onlyCompletedStories(stories, states);
     }
-    const totalCount = await getVisibleArchiveCount();
+    const totalCount = isFastCollector ? stories.length : await getVisibleArchiveCount();
     const limit = Number.isFinite(requestedLimit) && requestedLimit > 0
       ? Math.min(Math.floor(requestedLimit), stories.length)
       : stories.length;
