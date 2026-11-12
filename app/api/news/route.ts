@@ -33,6 +33,7 @@ export async function GET(req: NextRequest) {
       const firstBatchEnricher = isFirstBatch ? loadPublisherArticleEnricher() : null;
       const snapshot = await getNewsSnapshot();
       if (snapshot) {
+        try {
         const cleanedStories = cleanNewsStories(snapshot.stories);
         // Publication gate: no article goes to visitors without a completed
         // AI summary already stored in the shared database.
@@ -59,6 +60,7 @@ export async function GET(req: NextRequest) {
           stories: visibleStories.slice(0, limit),
           availableStories: visibleStories.length
         }, { headers: { "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60" } });
+        } catch (error) { console.warn("Snapshot summary lookup unavailable; using publisher feed fallback", error); }
       }
     }
     // Degraded mode: Supabase may time out even while Railway is healthy.
