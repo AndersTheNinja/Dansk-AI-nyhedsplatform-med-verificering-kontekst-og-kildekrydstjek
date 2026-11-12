@@ -61,6 +61,26 @@ export async function GET(req: NextRequest) {
         }, { headers: { "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60" } });
       }
     }
+    // Degraded mode: Supabase may time out even while Railway is healthy.
+    // Never block the entire homepage on a failed database lookup. Use short,
+    // attributed publisher excerpts, NOT fabricated AI summaries.
+    if (!isCollector) {
+      const live = await getFastStories();
+      const fallbackStories = cleanNewsStories(live)
+        .filter(story => typeof story.summary === "string" && story.summary.trim().length >= 40 && story.sources[0]?.url)
+        .slice(0, wantsFast ? 5 : 20)
+        .map(story => {
+          const excerpt = story.summary.replace(/\\s+/g, " ").trim().slice(0, 260);
+          const sentenceEnd = Math.max(excerpt.lastIndexOf(". "), excerpt.lastIndexOf("! "), excerpt.lastIndexOf("? "));
+          const shortText = sentenceEnd >= 60 ? excerpt.slice(0, sentenceEnd + 1) : excerpt.replace(/\\s+\\S*$/, "").trim() + "…";
+          return { ...story, aiSummary: shortText, publisherExcerptFallback: true };
+        });
+      if (fallbackStories.length) return NextResponse.json({
+        stories: fallbackStories, availableStories: fallbackStories.length,
+        totalCount: fallbackStories.length, generatedAt: new Date().toISOString(),
+        degraded: true
+      }, { headers: { "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60" } });
+    }
     const liveStories = wantsFast ? await getFastStories() : await getCachedStories();
     const rawArchive = wantsFast ? [] : await getAndersWinnerskjoldArchiveStories();
     if (isCollector) {
