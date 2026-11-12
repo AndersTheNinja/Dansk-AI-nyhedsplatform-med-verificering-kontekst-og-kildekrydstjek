@@ -221,7 +221,7 @@ export async function getNewsSnapshot(timeoutMs = 3500): Promise<{
 } | null> {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_PUBLISHABLE_KEY;
-  if (!url || !key) return null;
+  if (!url || !key) { console.warn("ØL snapshot unavailable: missing database configuration"); return null; }
 
   try {
     const response = await fetch(`${url}/rest/v1/rpc/oeldk_latest_news_snapshot`, {
@@ -231,18 +231,19 @@ export async function getNewsSnapshot(timeoutMs = 3500): Promise<{
       cache: "no-store",
       signal: AbortSignal.timeout(timeoutMs)
     });
-    if (!response.ok) return null;
+    if (!response.ok) { console.warn("ØL snapshot RPC non-200", response.status); return null; }
     const value = await response.json();
-    if (!value || !Array.isArray(value.stories) || value.stories.length < 5) return null;
+    if (!value || !Array.isArray(value.stories) || value.stories.length < 5) { console.warn("ØL snapshot RPC invalid result", typeof value, Array.isArray(value?.stories) ? value.stories.length : "missing"); return null; }
     const created = Date.parse(value.generatedAt);
-    if (!Number.isFinite(created) || Date.now() - created > 20 * 60 * 1000 || created > Date.now() + 120000) return null;
+    if (!Number.isFinite(created) || Date.now() - created > 20 * 60 * 1000 || created > Date.now() + 120000) { console.warn("ØL snapshot outside freshness window", { snapshotDate: value.generatedAt, ageSeconds: (Date.now()-created)/1000 }); return null; }
     return {
       stories: value.stories,
       totalCount: Number(value.totalCount) || value.stories.length,
       generatedAt: value.generatedAt,
       availableStories: value.stories.length
     };
-  } catch {
+  } catch (error) {
+    console.warn("ØL snapshot RPC request failed", String(error));
     return null;
   }
 }
