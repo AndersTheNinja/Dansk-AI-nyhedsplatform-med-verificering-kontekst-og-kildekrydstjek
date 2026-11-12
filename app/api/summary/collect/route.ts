@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const snapshot = await getNewsSnapshot();
+    const snapshot = await getNewsSnapshot(12000);
     if (!snapshot) {
       return NextResponse.json({ status: "no_fresh_snapshot", processed: 0 }, { status: 503 });
     }
