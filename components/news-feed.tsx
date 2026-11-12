@@ -323,7 +323,7 @@ function StoryCard({ story }: { story: Story }) {
             aria-expanded={summaryHasOverflow || textOpen ? textOpen : undefined}
             title={summaryHasOverflow || textOpen ? (textOpen ? "Tryk for at vise mindre" : "Tryk for at vise hele teksten") : undefined}
           >
-            <AiSummaryPreview story={story} />
+            <AiSummaryPreview story={story} expanded={textOpen} />
           </p>
 
         </div>
