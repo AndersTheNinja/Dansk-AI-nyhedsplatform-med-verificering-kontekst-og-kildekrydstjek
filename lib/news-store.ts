@@ -216,7 +216,7 @@ export async function getAndersWinnerskjoldArchiveStories(): Promise<Story[]> {
 }
 
 /** Read the latest precomputed feed. Never return stale news as current. */
-export async function getNewsSnapshot(): Promise<{
+export async function getNewsSnapshot(timeoutMs = 3500): Promise<{
   stories: Story[]; totalCount: number; generatedAt: string; availableStories: number
 } | null> {
   const url = process.env.SUPABASE_URL;
@@ -229,7 +229,7 @@ export async function getNewsSnapshot(): Promise<{
       headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
       body: "{}",
       cache: "no-store",
-      signal: AbortSignal.timeout(3500)
+      signal: AbortSignal.timeout(timeoutMs)
     });
     if (!response.ok) return null;
     const value = await response.json();
