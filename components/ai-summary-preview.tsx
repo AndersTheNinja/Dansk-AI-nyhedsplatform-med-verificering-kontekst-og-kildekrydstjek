@@ -68,5 +68,5 @@ export function AiSummaryPreview({ story, expanded = false }: { story: Story; ex
 
     // The entire story is already prepared in Supabase before publication.
   // No browser request to /api/summary, and no loading/error placeholder.
-  return <span ref={target} className="aiSummaryPreview">{visibleText ?? ""}</span>;
+  return <span ref={target} className="aiSummaryPreview">{(story as Story & {publisherExcerptFallback?: boolean}).publisherExcerptFallback ? "Fra kildens uddrag: " : ""}{visibleText ?? ""}</span>;
 }
