@@ -215,10 +215,19 @@ export async function getAndersWinnerskjoldArchiveStories(): Promise<Story[]> {
   }
 }
 
+// A single Railway instance can serve many visitors at once. Briefly reuse
+// successful snapshots to reduce paid database egress without showing old news.
+let recentSnapshot: { value: { stories: Story[]; totalCount: number; generatedAt: string; availableStories: number }; checkedAt: number } | null = null;
+
 /** Read the latest precomputed feed. Never return stale news as current. */
 export async function getNewsSnapshot(timeoutMs = 3500): Promise<{
   stories: Story[]; totalCount: number; generatedAt: string; availableStories: number
 } | null> {
+  if (recentSnapshot && Date.now() - recentSnapshot.checkedAt < 45_000) {
+    const age = Date.now() - Date.parse(recentSnapshot.value.generatedAt);
+    if (Number.isFinite(age) && age >= -120_000 && age <= 20 * 60_000)
+      return recentSnapshot.value;
+  }
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_PUBLISHABLE_KEY;
   if (!url || !key) { console.warn("ØL snapshot unavailable: missing database configuration"); return null; }
@@ -236,12 +245,14 @@ export async function getNewsSnapshot(timeoutMs = 3500): Promise<{
     if (!value || !Array.isArray(value.stories) || value.stories.length < 5) { console.warn("ØL snapshot RPC invalid result", typeof value, Array.isArray(value?.stories) ? value.stories.length : "missing"); return null; }
     const created = Date.parse(value.generatedAt);
     if (!Number.isFinite(created) || Date.now() - created > 20 * 60 * 1000 || created > Date.now() + 120000) { console.warn("ØL snapshot outside freshness window", { snapshotDate: value.generatedAt, ageSeconds: (Date.now()-created)/1000 }); return null; }
-    return {
-      stories: value.stories,
+    const result = {
+      stories: value.stories as Story[],
       totalCount: Number(value.totalCount) || value.stories.length,
-      generatedAt: value.generatedAt,
+      generatedAt: value.generatedAt as string,
       availableStories: value.stories.length
     };
+    recentSnapshot = { value: result, checkedAt: Date.now() };
+    return result;
   } catch (error) {
     console.warn("ØL snapshot RPC request failed", String(error));
     return null;
