@@ -20,6 +20,14 @@ const getFastStories = unstable_cache(
   { revalidate: 60 }
 );
 
+// If the shared database is temporarily restricted, keep a wider feed of
+// verified publisher teasers available. This is NOT an AI summary cache.
+const getFallbackStories = unstable_cache(
+  async () => getLiveStories({ fast: true, limit: 120 }),
+  ["oel-live-news-fallback-v1"],
+  { revalidate: 120 }
+);
+
 export async function GET(req: NextRequest) {
   try {
     const requestedLimit = Number(req.nextUrl.searchParams.get("limit"));
@@ -69,12 +77,12 @@ export async function GET(req: NextRequest) {
     // Never block the entire homepage on a failed database lookup. Use short,
     // attributed publisher excerpts, NOT fabricated AI summaries.
     if (!isCollector) {
-      const live = await getFastStories();
+      const live = wantsFast ? await getFastStories() : await getFallbackStories();
       const fallbackStories = cleanNewsStories(live)
         .filter(story => typeof story.summary === "string" && story.summary.trim().length >= 40 && story.sources[0]?.url)
-        .slice(0, wantsFast ? 5 : 20)
+        .slice(0, wantsFast ? 5 : 120)
         .map(story => {
-          const excerpt = story.summary.replace(/\\s+/g, " ").trim().slice(0, 260);
+          const excerpt = story.summary.replace(/\s+/g, " ").trim().slice(0, 260);
           const sentenceEnd = Math.max(excerpt.lastIndexOf(". "), excerpt.lastIndexOf("! "), excerpt.lastIndexOf("? "));
           const shortText = sentenceEnd >= 60 ? excerpt.slice(0, sentenceEnd + 1) : excerpt.replace(/\\s+\\S*$/, "").trim() + "…";
           return { ...story, aiSummary: shortText, publisherExcerptFallback: true };
