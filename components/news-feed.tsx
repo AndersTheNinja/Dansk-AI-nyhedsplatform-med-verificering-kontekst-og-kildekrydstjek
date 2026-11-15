@@ -65,6 +65,7 @@ function StoryCard({ story }: { story: Story }) {
   const [photoCredit, setPhotoCredit] = useState<string | null>(null);
   const [articleImageFailed, setArticleImageFailed] = useState(false);
   const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null);
+  const hasArticlePhoto = Boolean(resolvedImageUrl) && !articleImageFailed;
   const [summaryHasOverflow, setSummaryHasOverflow] = useState(false);
   const [factOpen, setFactOpen] = useState(false);
   const [factLoading, setFactLoading] = useState(false);
@@ -116,7 +117,7 @@ function StoryCard({ story }: { story: Story }) {
 
       // The same expand control also reveals a relevant article image,
       // even when the available editorial teaser fits within three lines.
-      setSummaryHasOverflow(node.scrollHeight > node.clientHeight + 1 || Boolean(resolvedImageUrl) && !articleImageFailed);
+      setSummaryHasOverflow(node.scrollHeight > node.clientHeight + 1 || hasArticlePhoto);
     };
 
     measure();
@@ -129,7 +130,7 @@ function StoryCard({ story }: { story: Story }) {
       observer.disconnect();
       window.removeEventListener("resize", measure);
     };
-  }, [excerpt.text, resolvedImageUrl, articleImageFailed, textOpen]);
+  }, [excerpt.text, hasArticlePhoto, textOpen]);
 
   // Discover publisher images for short RSS teasers as they enter the viewport.
   useEffect(() => {
@@ -302,7 +303,9 @@ function StoryCard({ story }: { story: Story }) {
           aria-expanded={summaryHasOverflow || textOpen ? textOpen : undefined}
           title={summaryHasOverflow || textOpen ? (textOpen ? "Tryk for at vise mindre" : "Tryk for at vise hele teksten") : undefined}
         >
-          {story.title}
+          {story.title}{hasArticlePhoto && (
+            <span className={`summaryChevron ${textOpen ? "open" : ""}`} aria-hidden="true">▾</span>
+          )}
         </h2>
         <div className={`summaryRow aiSummaryRow ${textOpen ? "expanded" : ""}`}>
           <p
@@ -327,7 +330,7 @@ function StoryCard({ story }: { story: Story }) {
           </p>
 
         </div>
-        {textOpen && resolvedImageUrl && !articleImageFailed && (
+        {textOpen && hasArticlePhoto && (
           <div className="storyArticleImageWrap">
             <img
               className="storyArticleImage"
