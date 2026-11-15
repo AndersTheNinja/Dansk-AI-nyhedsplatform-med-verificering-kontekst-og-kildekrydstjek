@@ -325,7 +325,18 @@ function StoryCard({ story }: { story: Story }) {
           >
             <AiSummaryPreview story={story} expanded={textOpen} />
           </p>
-
+          {resolvedImageUrl && !articleImageFailed && (
+            <button
+              type="button"
+              className={`storyImageExpandButton ${textOpen ? "open" : ""}`}
+              onClick={() => setTextOpen((value) => !value)}
+              aria-label={textOpen ? "Skjul artikelbillede" : "Vis artikelbillede"}
+              aria-expanded={textOpen}
+              title={textOpen ? "Skjul billede" : "Vis billede til artiklen"}
+            >
+              <span aria-hidden="true">▾</span>
+            </button>
+          )}
         </div>
         {textOpen && resolvedImageUrl && !articleImageFailed && (
           <div className="storyArticleImageWrap">
