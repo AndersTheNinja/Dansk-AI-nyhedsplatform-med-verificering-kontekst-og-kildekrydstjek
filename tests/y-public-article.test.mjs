@@ -36,10 +36,10 @@ test("a missing main or article headline cannot justify a replacement",()=>{
 
 test("the on-demand endpoint uses the actual RSS intro and marks short Y copy",()=>{
  const api=readFileSync(new URL("../app/api/article-preview/route.ts",import.meta.url),"utf8");
- const card=readFileSync(new URL("../components/news-feed.tsx",import.meta.url),"utf8");
+ const preview=readFileSync(new URL("../components/ai-summary-preview.tsx",import.meta.url),"utf8");
  const live=readFileSync(new URL("../lib/live-news.ts",import.meta.url),"utf8");
  assert.match(api,/extractYPublicArticlePreview\(html, title, rssIntro\)/);
- assert.match(card,/intro:story\.summary/);
- assert.match(card,/Kort introduktion fra Y\.dk/);
+ assert.match(api,/const rssIntro=String\(body\?\.intro/);
+ assert.match(preview,/publisherExcerptFallback \? "Fra kildens uddrag: "/);
  assert.match(live,/extractYPublicArticlePreview\(html, item\.title, item\.description\)/);
 });

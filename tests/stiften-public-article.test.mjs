@@ -45,12 +45,12 @@ test("a public article excerpt respects the existing ~100 word display boundary"
 test("on-demand preview follows only same-host, validated Stiften async fragments",()=>{
  const api=readFileSync(new URL("../app/api/article-preview/route.ts",import.meta.url),"utf8");
  const feed=readFileSync(new URL("../lib/live-news.ts",import.meta.url),"utf8");
- const card=readFileSync(new URL("../components/news-feed.tsx",import.meta.url),"utf8");
+ const preview=readFileSync(new URL("../components/ai-summary-preview.tsx",import.meta.url),"utf8");
  assert.match(api,/articleUrl.searchParams.delete\("rss"\)/);
  assert.match(api,/endpoint.hostname===articleUrl.hostname/);
  assert.match(api,/resolved.hostname===articleUrl.hostname/);
  assert.match(api,/extractStiftenPublicFragment\(fragment,title,rssIntro\)/);
  assert.match(api,/titleMatches\(title,html\)/);
  assert.match(feed,/const wantsStiftenExpansion = isStiften/);
- assert.match(card,/Kort artikeluddrag fra Stiften\.dk – ikke et AI-resumé/);
+ assert.match(preview,/publisherExcerptFallback \? "Fra kildens uddrag: "/);
 });

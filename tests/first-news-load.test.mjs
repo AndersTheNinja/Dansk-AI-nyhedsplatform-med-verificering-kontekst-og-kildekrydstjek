@@ -49,7 +49,7 @@ test("loading uses the ØL brand with a progress line, not the generic spinner",
  assert.match(loader, /newsLoadingBrandLogo">ØL<\/span>/);
  assert.match(loader, /className="newsLoadingProgressBar"/);
  assert.match(loader, /role="status" aria-live="polite"/);
- assert.match(loader, /Henter de seneste nyheder…/);
+ assert.match(loader, /Glæd dig<\/strong>, om lidt er vi klar med dine nyheder …/);
  assert.doesNotMatch(loader, /newsLoadingSpinner/);
  assert.match(loader, /className="newsLoadingEmblem"/);
  assert.match(loader, /className="newsLoadingOrbit"/);
@@ -94,6 +94,11 @@ test("the first batch starts the snapshot and metadata reads together and preser
     calls.push("metadata");
     return enrich(entries);
    },
+  },
+  "@/lib/ready-summaries": {
+   getSummaryStates: async () => new Map([["older", "Cached older summary"], ["newer", "Cached newer summary"]]),
+   onlyCompletedStories: (entries, states) => entries.filter(entry => states.has(entry.id))
+    .map(entry => ({ ...entry, aiSummary: states.get(entry.id) })),
   },
   "@/lib/news-store": {
    getNewsSnapshot: async () => {
