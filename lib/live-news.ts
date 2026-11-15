@@ -1,3 +1,4 @@
+import { databaseConfigured, databaseRpc } from "@/lib/database-rpc";
 import { XMLParser } from "fast-xml-parser";
 import { isGenericArticleImage } from "@/lib/article-image-quality";
 import { repairNewsStories } from "@/lib/news-quality";
@@ -910,12 +911,12 @@ async function fetchFeed(feed: FeedConfig, timeoutMs = 7000, retry = false): Pro
   // The scheduled database collector can reach the public RSS feed when the
   // publisher rejects requests from the web host. It exposes only this fixed
   // feed, and discards responses older than 20 minutes.
-  if (cacheRpc && !retry && process.env.SUPABASE_URL && process.env.SUPABASE_PUBLISHABLE_KEY) {
+  if (cacheRpc && !retry && databaseConfigured()) {
     try {
-      const key = process.env.SUPABASE_PUBLISHABLE_KEY;
-      const cached = await fetch(`${process.env.SUPABASE_URL}/rest/v1/rpc/${cacheRpc}`, {
+
+      const cached = await databaseRpc(cacheRpc, {
         method: "POST",
-        headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json" },
         body: "{}",
         cache: "no-store",
         signal: AbortSignal.timeout(4000)
@@ -1930,11 +1931,10 @@ function mergeBerlingskeWebsiteText(items: NewsItem[]): NewsItem[] {
 }
 
 async function fetchBerlingskeWebsite(): Promise<NewsItem[]> {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_PUBLISHABLE_KEY;
-  if (!url || !key) return [];
-  const response = await fetch(`${url}/rest/v1/rpc/oeldk_berlingske_web`, {
-    method: "POST", headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+
+  if (!databaseConfigured()) return [];
+  const response = await databaseRpc("oeldk_berlingske_web", {
+    method: "POST", headers: { "Content-Type": "application/json" },
     body: "{}", cache: "no-store", signal: AbortSignal.timeout(5000)
   });
   if (!response.ok) throw new Error(`Berlingske website collection returned ${response.status}`);
@@ -2078,12 +2078,11 @@ function applyPublisherFeaturedImages(stories: Story[], value: unknown): Story[]
 }
 
 export async function loadPublisherArticleEnricher(): Promise<(stories: Story[]) => Story[]> {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_PUBLISHABLE_KEY;
-  if (!url || !key) return (stories) => stories;
+
+  if (!databaseConfigured()) return (stories) => stories;
   const metadata = await Promise.allSettled(["oeldk_featured_images", "oeldk_article_previews"].map(async (rpc) => {
-    const response = await fetch(`${url}/rest/v1/rpc/${rpc}`, {
-      method: "POST", headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    const response = await databaseRpc(rpc, {
+      method: "POST", headers: { "Content-Type": "application/json" },
       body: "{}", cache: "no-store", signal: AbortSignal.timeout(4000)
     });
     return response.ok ? response.json() : [];

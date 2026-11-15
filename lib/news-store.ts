@@ -1,3 +1,4 @@
+import { databaseConfigured, databaseRpc } from "@/lib/database-rpc";
 // ØL.dk persistent news archive
 import type { Story } from "@/lib/stories";
 
@@ -16,10 +17,9 @@ type StoredStory = {
 
 // Keep failed previews outside the visible archive until verified text is available.
 export async function queuePreviewRepairs(stories: Story[]) {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_PUBLISHABLE_KEY;
+
   const secret = process.env.OEL_INGEST_SECRET;
-  if (!url || !key || !secret || !stories.length) return;
+  if (!databaseConfigured() || !secret || !stories.length) return;
   const payload = stories.slice(0, 100).flatMap((story) => {
     const lead = story.sources[0];
     if (!lead) return [];
@@ -30,9 +30,9 @@ export async function queuePreviewRepairs(stories: Story[]) {
     } catch { return []; }
   });
   if (!payload.length) return;
-  const response = await fetch(`${url}/rest/v1/rpc/oeldk_queue_preview_repairs`, {
+  const response = await databaseRpc("oeldk_queue_preview_repairs", {
     method: "POST",
-    headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json", "x-oel-ingest-secret": secret },
+    headers: { "Content-Type": "application/json", "x-oel-ingest-secret": secret },
     body: JSON.stringify({ payload }),
     signal: AbortSignal.timeout(8000),
     cache: "no-store"
@@ -41,11 +41,10 @@ export async function queuePreviewRepairs(stories: Story[]) {
 }
 
 export async function persistStories(stories: Story[]) {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_PUBLISHABLE_KEY;
+
   const secret = process.env.OEL_INGEST_SECRET;
 
-  if (!url || !key || !secret || !stories.length) return;
+  if (!databaseConfigured() || !secret || !stories.length) return;
 
   const payload: StoredStory[] = stories
     .filter((story) => story.sources[0]?.url)
@@ -70,11 +69,9 @@ export async function persistStories(stories: Story[]) {
 
   if (!payload.length) return;
 
-  const response = await fetch(`${url}/rest/v1/rpc/ingest_news_batch`, {
+  const response = await databaseRpc("ingest_news_batch", {
     method: "POST",
     headers: {
-      apikey: key,
-      Authorization: `Bearer ${key}`,
       "Content-Type": "application/json",
       "x-oel-ingest-secret": secret
     },
@@ -91,16 +88,13 @@ export async function persistStories(stories: Story[]) {
 
 
 export async function getVisibleArchiveCount() {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_PUBLISHABLE_KEY;
-  if (!url || !key) return 0;
+
+  if (!databaseConfigured()) return 0;
 
   try {
-    const response = await fetch(`${url}/rest/v1/rpc/visible_news_archive_count`, {
+    const response = await databaseRpc("visible_news_archive_count", {
       method: "POST",
       headers: {
-        apikey: key,
-        Authorization: `Bearer ${key}`,
         "Content-Type": "application/json"
       },
       body: "{}",
@@ -147,16 +141,13 @@ function formatArchivePublishedDate(value?: string) {
 }
 
 export async function getAndersWinnerskjoldArchiveStories(): Promise<Story[]> {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_PUBLISHABLE_KEY;
-  if (!url || !key) return [];
+
+  if (!databaseConfigured()) return [];
 
   try {
-    const response = await fetch(`${url}/rest/v1/rpc/anders_winnerskjold_archive`, {
+    const response = await databaseRpc("anders_winnerskjold_archive", {
       method: "POST",
       headers: {
-        apikey: key,
-        Authorization: `Bearer ${key}`,
         "Content-Type": "application/json"
       },
       body: "{}",
@@ -228,14 +219,13 @@ export async function getNewsSnapshot(timeoutMs = 3500): Promise<{
     if (Number.isFinite(age) && age >= -120_000 && age <= 20 * 60_000)
       return recentSnapshot.value;
   }
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_PUBLISHABLE_KEY;
-  if (!url || !key) { console.warn("ØL snapshot unavailable: missing database configuration"); return null; }
+
+  if (!databaseConfigured()) { console.warn("ØL snapshot unavailable: missing database configuration"); return null; }
 
   try {
-    const response = await fetch(`${url}/rest/v1/rpc/oeldk_latest_news_snapshot`, {
+    const response = await databaseRpc("oeldk_latest_news_snapshot", {
       method: "POST",
-      headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json" },
       body: "{}",
       cache: "no-store",
       signal: AbortSignal.timeout(timeoutMs)

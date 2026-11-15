@@ -1,11 +1,11 @@
+import { databaseConfigured, databaseRpc } from "@/lib/database-rpc";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_PUBLISHABLE_KEY;
-  if (!url || !key) {
+
+  if (!databaseConfigured()) {
     return NextResponse.json({ count: 0 }, { status: 200 });
   }
 
@@ -16,11 +16,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ count: 0 }, { status: 400 });
     }
 
-    const response = await fetch(`${url}/rest/v1/rpc/presence_ping`, {
+    const response = await databaseRpc("presence_ping", {
       method: "POST",
       headers: {
-        apikey: key,
-        Authorization: `Bearer ${key}`,
         "Content-Type": "application/json"
       },
       body: JSON.stringify({ p_visitor_id: visitorId }),

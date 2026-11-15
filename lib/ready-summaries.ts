@@ -1,3 +1,4 @@
+import { databaseConfigured, databaseRpc } from "@/lib/database-rpc";
 import { createHash } from "node:crypto";
 import type { Story } from "@/lib/stories";
 
@@ -41,18 +42,16 @@ function legacySummaryKey(story: Story): string | null {
 }
 
 export async function getSummaryStates(stories: Story[]): Promise<Map<string, SummaryState>> {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_PUBLISHABLE_KEY;
+
   const secret = process.env.OEL_INGEST_SECRET;
-  if (!url || !key || !secret) throw new Error("AI summary storage not configured");
+  if (!databaseConfigured() || !secret) throw new Error("AI summary storage not configured");
   const ids = [...new Set(stories.flatMap(story => [summaryCacheKey(story), legacySummaryKey(story)])
     .filter((id): id is string => Boolean(id)))];
   const states = new Map<string, SummaryState>();
   for (let offset = 0; offset < ids.length; offset += 800) {
-    const response = await fetch(`${url}/rest/v1/rpc/oeldk_summary_batch_status`, {
+    const response = await databaseRpc("oeldk_summary_batch_status", {
       method: "POST",
-      headers: {
-        apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json",
+      headers: { "Content-Type": "application/json",
         "x-oel-ingest-secret": secret
       },
       body: JSON.stringify({ p_keys: ids.slice(offset, offset + 800) }),
