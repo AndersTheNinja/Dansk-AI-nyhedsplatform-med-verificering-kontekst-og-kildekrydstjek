@@ -93,6 +93,10 @@ button{font:inherit}
 .summaryRow{display:flex;align-items:flex-start;gap:6px;margin:0}
 .summaryRow p{flex:1;min-width:0;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
 .summaryRow.expanded p{display:block;overflow:visible}
+.storyImageExpandButton{flex:0 0 auto;align-self:flex-end;display:inline-flex;align-items:center;justify-content:center;width:25px;height:25px;padding:0;border:1px solid #d7d7d7;border-radius:50%;background:transparent;color:#9a3f36;cursor:pointer;font:700 20px/1 Arial,sans-serif;transition:background .2s ease}
+.storyImageExpandButton:hover,.storyImageExpandButton:focus-visible{background:#f6efee}
+.storyImageExpandButton span{display:inline-block;transition:transform .2s ease}
+.storyImageExpandButton.open span{transform:rotate(180deg)}
 .expandableStoryText,.expandableStoryTitle{cursor:pointer}
 .storyExpandButton{appearance:none;border:0;background:transparent;color:#9a6258;padding:0 1px 1px;font:700 24px/1 Arial,sans-serif;cursor:pointer;flex:0 0 auto;transition:transform .2s ease}
 .storyExpandButton:hover{color:var(--teal-dark)}
