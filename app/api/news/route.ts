@@ -62,6 +62,7 @@ export async function GET(req: NextRequest) {
           const bt = b.publishedAt ? Date.parse(b.publishedAt) : 0;
           return (Number.isFinite(bt) ? bt : 0) - (Number.isFinite(at) ? at : 0);
         });
+        if (!visibleStories.length) throw new Error("Snapshot has no publication-ready stories");
         const limit = Number.isFinite(requestedLimit) && requestedLimit > 0
           ? Math.min(Math.floor(requestedLimit), visibleStories.length)
           : visibleStories.length;

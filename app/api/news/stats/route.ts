@@ -1,3 +1,4 @@
+import { databaseConfigured, databaseRpc } from "@/lib/database-rpc";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -10,13 +11,12 @@ const FRESH_MS = 60_000;
 const STALE_MS = 30 * 60_000;
 
 async function readMediaCounts(): Promise<MediaCounts> {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_PUBLISHABLE_KEY;
-  if (!url || !key) throw new Error("Missing media statistics configuration");
 
-  const response = await fetch(`${url}/rest/v1/rpc/oeldk_media_article_counts`, {
+  if (!databaseConfigured()) throw new Error("Missing media statistics configuration");
+
+  const response = await databaseRpc("oeldk_media_article_counts", {
     method: "POST",
-    headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json" },
     body: "{}",
     cache: "no-store",
     signal: AbortSignal.timeout(5000)

@@ -1,3 +1,4 @@
+import { databaseConfigured, databaseRpc } from "@/lib/database-rpc";
 import { NextRequest, NextResponse } from "next/server";
 import { createHash } from "node:crypto";
 
@@ -479,10 +480,9 @@ export async function POST(req: NextRequest) {
   if (!ingestSecret || req.headers.get("x-oel-ingest-secret") !== ingestSecret) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const dbUrl = process.env.SUPABASE_URL;
-  const dbKey = process.env.SUPABASE_PUBLISHABLE_KEY;
+
   const secret = process.env.OEL_INGEST_SECRET;
-  if (!dbUrl || !dbKey || !secret) {
+  if (!databaseConfigured() || !secret) {
     return NextResponse.json({ error: "Resumé-cache er ikke tilgængelig." }, { status: 503 });
   }
   let body: any;
@@ -501,13 +501,11 @@ export async function POST(req: NextRequest) {
   }
   const key = createHash("sha256").update(JSON.stringify(["v2-100-words", parsed.href, title])).digest("hex");
   const headers = {
-    apikey: dbKey,
-    Authorization: `Bearer ${dbKey}`,
     "Content-Type": "application/json",
     "x-oel-ingest-secret": secret
   };
   const rpc = async (functionName: string, payload: object) => {
-    const response = await fetch(`${dbUrl}/rest/v1/rpc/${functionName}`, {
+    const response = await databaseRpc(functionName, {
       method: "POST", headers, body: JSON.stringify(payload),
       cache: "no-store", signal: AbortSignal.timeout(6000)
     });
