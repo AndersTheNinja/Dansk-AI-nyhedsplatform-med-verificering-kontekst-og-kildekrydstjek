@@ -29,7 +29,7 @@ const getFallbackStories = unstable_cache(
 );
 
 function limitPublicYExcerpt(story: Awaited<ReturnType<typeof getLiveStories>>[number]) {
-  const url = story.sources[0]?.url || "";
+  const url = story.sources?.[0]?.url || "";
   if (!/^https:\/\/(?:www\.)?y\.dk\//i.test(url)) return story;
 
   const words = story.summary.trim().split(/\s+/);
