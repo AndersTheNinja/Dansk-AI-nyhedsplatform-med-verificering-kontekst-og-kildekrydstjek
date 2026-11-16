@@ -349,18 +349,6 @@ function StoryCard({ story }: { story: Story }) {
         )}
 
         <div className="scoreLine">
-          {resolvedImageUrl && !articleImageFailed && (
-            <button
-              type="button"
-              className={`storyExpandButton ${textOpen ? "open" : ""}`}
-              onClick={() => setTextOpen((value) => !value)}
-              aria-label={textOpen ? "Skjul artikelbillede" : "Vis artikelbillede"}
-              aria-expanded={textOpen}
-              title={textOpen ? "Skjul billede" : "Vis billede til artiklen"}
-            >
-              ▾
-            </button>
-          )}
           {false && excerpt.hasMore && <button
             type="button"
             className="aiSummaryButton"
@@ -387,6 +375,18 @@ function StoryCard({ story }: { story: Story }) {
                 </svg>
               </span>
             </a>
+          )}
+          {resolvedImageUrl && !articleImageFailed && (
+            <button
+              type="button"
+              className={`storyExpandButton ${textOpen ? "open" : ""}`}
+              onClick={() => setTextOpen((value) => !value)}
+              aria-label={textOpen ? "Skjul artikelbillede" : "Vis artikelbillede"}
+              aria-expanded={textOpen}
+              title={textOpen ? "Skjul billede" : "Vis billede til artiklen"}
+            >
+              ▾
+            </button>
           )}
         </div>
 
