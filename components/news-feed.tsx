@@ -260,7 +260,20 @@ function StoryCard({ story }: { story: Story }) {
         {story.archiveOnly
           ? <p className="storyArchiveLabel">Arkiv · Læs hele artiklen hos originalkilden</p>
           : <div className="summaryRow aiSummaryRow">
-              <p className="aiSummaryText"><AiSummaryPreview story={story} /></p>
+              <p
+                className={`aiSummaryText ${resolvedImageUrl && !articleImageFailed ? "clickablePhotoSummary" : ""}`}
+                onClick={resolvedImageUrl && !articleImageFailed ? () => setTextOpen(value => !value) : undefined}
+                onKeyDown={resolvedImageUrl && !articleImageFailed ? event => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    setTextOpen(value => !value);
+                  }
+                } : undefined}
+                role={resolvedImageUrl && !articleImageFailed ? "button" : undefined}
+                tabIndex={resolvedImageUrl && !articleImageFailed ? 0 : undefined}
+                aria-expanded={resolvedImageUrl && !articleImageFailed ? textOpen : undefined}
+                aria-label={resolvedImageUrl && !articleImageFailed ? (textOpen ? "Skjul artikelbillede" : "Vis artikelbillede") : undefined}
+              ><AiSummaryPreview story={story} /></p>
             </div>}
         {textOpen && resolvedImageUrl && !articleImageFailed && (
           <div className="storyArticleImageWrap">
