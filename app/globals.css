@@ -145,6 +145,8 @@ button{font:inherit}
 }
 
 .scoreLine{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 2px;font:calc(11px * var(--reader-scale)) Arial,sans-serif;color:#9a6258}
+.scoreLine .storyExpandButton{line-height:1;align-self:center}
+.scoreLine .readMore{margin-left:auto}
 .scoreLine strong{font-weight:400}
 .scoreLine .scoreValue{font-weight:800;color:#9a3f36}
 .aiCheckLink{appearance:none;border:0;background:transparent;padding:0;color:#9a6258;text-decoration:none;font:700 11px Arial,sans-serif;cursor:pointer}
