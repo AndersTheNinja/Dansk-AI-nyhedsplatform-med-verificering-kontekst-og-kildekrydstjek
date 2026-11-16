@@ -53,7 +53,6 @@ function StoryCard({ story }: { story: Story }) {
   const feedExcerpt = originalExcerpt(story.archiveOnly ? "" : story.summary);
   const excerpt = feedExcerpt;
   const ref = useRef<HTMLElement | null>(null);
-  const summaryTextRef = useRef<HTMLParagraphElement | null>(null);
    const [subscriptionRequired, setSubscriptionRequired] = useState<boolean | null>(null);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [summaryLoading, setSummaryLoading] = useState(false);
@@ -65,7 +64,6 @@ function StoryCard({ story }: { story: Story }) {
   const [photoCredit, setPhotoCredit] = useState<string | null>(null);
   const [articleImageFailed, setArticleImageFailed] = useState(false);
   const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null);
-  const [summaryHasOverflow, setSummaryHasOverflow] = useState(false);
   const [factOpen, setFactOpen] = useState(false);
   const [factLoading, setFactLoading] = useState(false);
   const [factCheck, setFactCheck] = useState<FactResult | null>(null);
@@ -103,33 +101,6 @@ function StoryCard({ story }: { story: Story }) {
     observer.observe(node);
     return () => observer.disconnect();
   }, [story, subscriptionRequired]);
-
-  useEffect(() => {
-    const node = summaryTextRef.current;
-    if (!node) return;
-
-    const measure = () => {
-      if (textOpen) {
-        setSummaryHasOverflow(true);
-        return;
-      }
-
-      // The same expand control also reveals a relevant article image,
-      // even when the available editorial teaser fits within three lines.
-      setSummaryHasOverflow(node.scrollHeight > node.clientHeight + 1 || Boolean(resolvedImageUrl) && !articleImageFailed);
-    };
-
-    measure();
-
-    const observer = new ResizeObserver(measure);
-    observer.observe(node);
-    window.addEventListener("resize", measure);
-
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", measure);
-    };
-  }, [excerpt.text, resolvedImageUrl, articleImageFailed, textOpen]);
 
   // Discover publisher images for short RSS teasers as they enter the viewport.
   useEffect(() => {
