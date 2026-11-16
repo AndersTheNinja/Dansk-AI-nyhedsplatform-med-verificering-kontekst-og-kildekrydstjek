@@ -285,47 +285,12 @@ function StoryCard({ story }: { story: Story }) {
             })()}
           </span>
         </div>
-        <h2
-          className={summaryHasOverflow || textOpen ? "expandableStoryTitle" : undefined}
-          onClick={() => {
-            if (summaryHasOverflow || textOpen) setTextOpen((value) => !value);
-          }}
-          onKeyDown={(event) => {
-            if (!(summaryHasOverflow || textOpen)) return;
-            if (event.key === "Enter" || event.key === " ") {
-              event.preventDefault();
-              setTextOpen((value) => !value);
-            }
-          }}
-          role={summaryHasOverflow || textOpen ? "button" : undefined}
-          tabIndex={summaryHasOverflow || textOpen ? 0 : undefined}
-          aria-expanded={summaryHasOverflow || textOpen ? textOpen : undefined}
-          title={summaryHasOverflow || textOpen ? (textOpen ? "Tryk for at vise mindre" : "Tryk for at vise hele teksten") : undefined}
-        >
-          {story.title}
-        </h2>
-        {story.archiveOnly ? <p className="storyArchiveLabel">Arkiv · Læs hele artiklen hos originalkilden</p> : <div className={`summaryRow aiSummaryRow ${textOpen ? "expanded" : ""}`}>
-          <p
-            ref={summaryTextRef}
-            className="aiSummaryText"
-            onClick={() => {
-              if (summaryHasOverflow || textOpen) setTextOpen((value) => !value);
-            }}
-            onKeyDown={(event) => {
-              if (!(summaryHasOverflow || textOpen)) return;
-              if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
-                setTextOpen((value) => !value);
-              }
-            }}
-            role={summaryHasOverflow || textOpen ? "button" : undefined}
-            tabIndex={summaryHasOverflow || textOpen ? 0 : undefined}
-            aria-expanded={summaryHasOverflow || textOpen ? textOpen : undefined}
-            title={summaryHasOverflow || textOpen ? (textOpen ? "Tryk for at vise mindre" : "Tryk for at vise hele teksten") : undefined}
-          >
-            <AiSummaryPreview story={story} expanded={textOpen} />
-          </p>
-        </div>}
+        <h2>{story.title}</h2>
+        {story.archiveOnly
+          ? <p className="storyArchiveLabel">Arkiv · Læs hele artiklen hos originalkilden</p>
+          : <div className="summaryRow aiSummaryRow">
+              <p className="aiSummaryText"><AiSummaryPreview story={story} /></p>
+            </div>}
         {textOpen && resolvedImageUrl && !articleImageFailed && (
           <div className="storyArticleImageWrap">
             <img
