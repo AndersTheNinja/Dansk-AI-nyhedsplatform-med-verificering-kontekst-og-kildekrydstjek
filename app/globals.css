@@ -96,7 +96,7 @@ button{font:inherit}
 .expandableStoryText,.expandableStoryTitle{cursor:pointer}
 .storyExpandButton{appearance:none;border:0;background:transparent;color:#9a6258;padding:0 1px 1px;font:700 24px/1 Arial,sans-serif;cursor:pointer;flex:0 0 auto;transition:transform .2s ease}
 .storyExpandButton:hover{color:var(--teal-dark)}
-.storyExpandButton{display:inline-flex;align-items:center;gap:5px}
+.storyExpandButton{display:inline-flex;align-items:center;gap:1px}
 .storyCameraIcon{width:16px;height:16px;flex:none}
 .storyExpandChevron{display:inline-block;transition:transform .2s ease}
 .storyExpandButton.open{transform:none}
