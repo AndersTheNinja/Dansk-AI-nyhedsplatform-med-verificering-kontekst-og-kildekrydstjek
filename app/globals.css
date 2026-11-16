@@ -334,3 +334,6 @@ button{font:inherit}
   width: 100%;
   min-width: 0;
 }
+
+.clickablePhotoSummary{cursor:pointer}
+.clickablePhotoSummary:focus-visible{outline:2px solid currentColor;outline-offset:3px;border-radius:2px}
