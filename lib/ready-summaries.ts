@@ -18,7 +18,7 @@ const SUPPORTED_HOSTS = new Set([
   "nyheder.tv2.dk", "y.dk", "www.y.dk"
 ]);
 
-// V2 summaries are ~100 words. Retain the legacy cache as a temporary
+// V3 summaries target 50–60 words. Retain the legacy cache as a temporary
 // publication fallback while the collector upgrades articles in the background.
 function summaryKey(story: Story, versioned: boolean): string | null {
   const source = story.sources[0]?.url;
@@ -28,7 +28,7 @@ function summaryKey(story: Story, versioned: boolean): string | null {
     if (url.protocol !== "https:" || url.username || url.password || url.port ||
         !SUPPORTED_HOSTS.has(url.hostname)) return null;
     return createHash("sha256").update(
-      JSON.stringify(versioned ? ["v2-100-words", url.href, story.title] : [url.href, story.title])
+      JSON.stringify(versioned ? ["v3-50-60-words", url.href, story.title] : [url.href, story.title])
     ).digest("hex");
   } catch { return null; }
 }
