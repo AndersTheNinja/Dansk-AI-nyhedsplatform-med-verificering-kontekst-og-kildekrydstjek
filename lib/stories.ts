@@ -21,6 +21,8 @@ export type Story = {
   summary: string;
   /** Precomputed AI summary. Only ready stories are returned to public clients. */
   aiSummary?: string;
+  /** Historical headline without an AI summary. */
+  archiveOnly?: boolean;
   mentions?: string[];
   /** Opinion items explicitly reserved for the ANDERS W. topic. */
   andersOnly?: boolean;
