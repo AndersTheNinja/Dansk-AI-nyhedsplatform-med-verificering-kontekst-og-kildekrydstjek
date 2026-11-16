@@ -50,7 +50,7 @@ function originalExcerpt(value: string) {
 }
 
 function StoryCard({ story }: { story: Story }) {
-  const feedExcerpt = originalExcerpt(story.summary);
+  const feedExcerpt = originalExcerpt(story.archiveOnly ? "" : story.summary);
   const excerpt = feedExcerpt;
   const ref = useRef<HTMLElement | null>(null);
   const summaryTextRef = useRef<HTMLParagraphElement | null>(null);
@@ -133,7 +133,7 @@ function StoryCard({ story }: { story: Story }) {
 
   // Discover publisher images for short RSS teasers as they enter the viewport.
   useEffect(() => {
-    if (imageLookupAttempted || resolvedImageUrl) return;
+    if (story.archiveOnly || imageLookupAttempted || resolvedImageUrl) return;
     const node = ref.current;
     if (!node) return;
     const observer = new IntersectionObserver(entries => {
@@ -304,7 +304,7 @@ function StoryCard({ story }: { story: Story }) {
         >
           {story.title}
         </h2>
-        <div className={`summaryRow aiSummaryRow ${textOpen ? "expanded" : ""}`}>
+        {story.archiveOnly ? <p className="storyArchiveLabel">Arkiv · Læs hele artiklen hos originalkilden</p> : <div className={`summaryRow aiSummaryRow ${textOpen ? "expanded" : ""}`}>
           <p
             ref={summaryTextRef}
             className="aiSummaryText"
@@ -325,7 +325,7 @@ function StoryCard({ story }: { story: Story }) {
           >
             <AiSummaryPreview story={story} expanded={textOpen} />
           </p>
-        </div>
+        </div>}
         {textOpen && resolvedImageUrl && !articleImageFailed && (
           <div className="storyArticleImageWrap">
             <img
@@ -369,14 +369,14 @@ function StoryCard({ story }: { story: Story }) {
           >
             <span className="actionLinkText">Resumé</span><span className={`summaryChevron ${summaryOpen ? "open" : ""}`}>▾</span>
           </button>}
-          <button
+          {!story.archiveOnly && <button
             type="button"
             className="aiCheckLink"
             onClick={toggleFactCheck}
             aria-expanded={factOpen}
           >
             <span className="actionLinkText">AI-analyse</span><span className={`summaryChevron ${factOpen ? "open" : ""}`}>▾</span>
-          </button>
+          </button>}
           {story.sources[0] && (
             <a className="readMore" href={story.sources[0].url} target="_blank" rel="noreferrer">
               <span className="readMoreText">Læs mere</span>{subscriptionRequired !== null && <> <span className="readMoreAccess">({subscriptionRequired ? "abb." : "gratis"})</span></>} <span className="externalArrow" aria-hidden="true">
