@@ -88,7 +88,7 @@ button{font:inherit}
 .storyMeta{display:flex;gap:5px;flex-wrap:wrap;font:400 calc(10px * var(--reader-scale))/1.35 Arial,Helvetica,sans-serif;color:#9a6258;margin-bottom:4px;letter-spacing:.005em}
 .storyMeta span:first-child{font-weight:700}
 .storyDateMeta{font-weight:400}
-.storyTime{font-weight:700;color:#9a6258}
+.storyTime{font-weight:700;color:#9a6258;font-size:1.1em}
 .storyContent p{font-family:Arial,Helvetica,sans-serif;font-size:calc(12.5px * var(--reader-scale));line-height:1.5;color:#59656c;margin:0;font-weight:400}
 .summaryRow{display:flex;align-items:flex-start;gap:6px;margin:0}
 .summaryRow p{flex:1;min-width:0;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
