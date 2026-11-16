@@ -52,5 +52,6 @@ test("on-demand preview follows only same-host, validated Stiften async fragment
  assert.match(api,/extractStiftenPublicFragment\(fragment,title,rssIntro\)/);
  assert.match(api,/titleMatches\(title,html\)/);
  assert.match(feed,/const wantsStiftenExpansion = isStiften/);
- assert.match(preview,/publisherExcerptFallback \? "Fra kildens uddrag: "/);
+ assert.match(preview,/const isPublisherFallback = Boolean\([^;]*\.publisherExcerptFallback\)/);
+ assert.match(preview,/isPublisherFallback \? "Fra kildens uddrag: "/);
 });

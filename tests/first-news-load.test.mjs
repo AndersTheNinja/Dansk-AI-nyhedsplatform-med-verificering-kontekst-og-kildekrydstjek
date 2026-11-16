@@ -72,7 +72,8 @@ test("premium loading animation adds no scripts, assets or progress claim",()=>{
 
 test("the first batch starts the snapshot and metadata reads together and preserves enrichment", async () => {
  const older = { id: "older", publishedAt: "2026-10-28T17:00:00Z", summary: "Original excerpt" };
- const newer = { id: "newer", publishedAt: "2026-10-28T18:00:00Z", summary: "Original excerpt" };
+ const yExcerpt = Array(101).fill("ord").join(" ");
+ const newer = { id: "newer", publishedAt: "2026-10-28T18:00:00Z", summary: yExcerpt, sources: [{ url: "https://y.dk/story" }] };
  const placeholder = { id: "placeholder", publishedAt: "2026-10-28T19:00:00Z" };
  const stories = [older, placeholder, newer];
  const calls = [];
@@ -80,7 +81,7 @@ test("the first batch starts the snapshot and metadata reads together and preser
  let finishMetadata;
  const pendingMetadata = new Promise(resolve => { finishMetadata = resolve; });
  const modules = {
-  "next/server": { NextResponse: { json: data => data } },
+  "next/server": { NextResponse: { json: data => JSON.parse(JSON.stringify(data)) } },
   "next/cache": { unstable_cache: fn => fn },
   "@/lib/news-quality": {},
   "@/lib/image-health": {},
@@ -121,7 +122,9 @@ test("the first batch starts the snapshot and metadata reads together and preser
  assert.equal(firstBatch.availableStories, 2);
  assert.equal(firstBatch.stories.length, 1);
  assert.equal(firstBatch.stories[0].id, newer.id);
- assert.equal(firstBatch.stories[0].summary, newer.summary);
+ assert.equal(firstBatch.stories[0].summary, yExcerpt.slice(0, -4) + " …");
+ assert.equal(firstBatch.stories[0].aiSummary, "Cached newer summary");
+ assert.equal(newer.summary, yExcerpt);
  assert.equal(firstBatch.stories[0].imageUrl, "https://example.com/article.jpg");
 
  calls.length = 0;

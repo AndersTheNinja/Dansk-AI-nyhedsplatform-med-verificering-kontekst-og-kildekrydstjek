@@ -40,6 +40,7 @@ test("the on-demand endpoint uses the actual RSS intro and marks short Y copy",(
  const live=readFileSync(new URL("../lib/live-news.ts",import.meta.url),"utf8");
  assert.match(api,/extractYPublicArticlePreview\(html, title, rssIntro\)/);
  assert.match(api,/const rssIntro=String\(body\?\.intro/);
- assert.match(preview,/publisherExcerptFallback \? "Fra kildens uddrag: "/);
+ assert.match(preview,/const isPublisherFallback = Boolean\([^;]*\.publisherExcerptFallback\)/);
+ assert.match(preview,/isPublisherFallback \? "Fra kildens uddrag: "/);
  assert.match(live,/extractYPublicArticlePreview\(html, item\.title, item\.description\)/);
 });
