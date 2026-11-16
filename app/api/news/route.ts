@@ -49,14 +49,25 @@ export async function GET(req: NextRequest) {
         // AI summary already stored in the shared database.
         const summaryStates = await getSummaryStates(cleanedStories);
         const readyStories = onlyCompletedStories(cleanedStories, summaryStates);
+        // Historical publisher links are visible without AI text; newly
+        // published stories must still pass the AI summary publication gate.
+        const readyIds = new Set(readyStories.map(story => story.id));
+        const archivalCutoff = Date.now() - 24 * 60 * 60 * 1000;
+        const archiveStories = cleanedStories.filter(story =>
+          !readyIds.has(story.id) &&
+          Boolean(story.sources[0]?.url && story.title.trim()) &&
+          Boolean(story.publishedAt && Number.isFinite(Date.parse(story.publishedAt)) &&
+            Date.parse(story.publishedAt) < archivalCutoff)
+        ).map(story => ({ ...story, archiveOnly: true as const }));
+        const displayStories = [...readyStories, ...archiveStories];
         // Enrich only the already-published stories, never hundreds of pending
         // articles, which also speeds up the first five news cards.
-        const displayCandidates = isFirstBatch ? readyStories.slice(0, 20) : readyStories;
+        const displayCandidates = isFirstBatch ? readyStories.slice(0, 20) : displayStories;
         const enrichedStories = firstBatchEnricher
           ? (await firstBatchEnricher)(displayCandidates)
           : await addPublisherFeaturedImages(displayCandidates);
         const visibleStories = cleanNewsStories(enrichedStories).filter(story =>
-          typeof (story as {aiSummary?: string}).aiSummary === "string"
+          story.archiveOnly === true || typeof (story as {aiSummary?: string}).aiSummary === "string"
         ).sort((a, b) => {
           const at = a.publishedAt ? Date.parse(a.publishedAt) : 0;
           const bt = b.publishedAt ? Date.parse(b.publishedAt) : 0;
