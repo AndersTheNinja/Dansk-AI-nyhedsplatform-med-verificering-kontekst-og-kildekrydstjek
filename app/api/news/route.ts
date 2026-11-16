@@ -28,6 +28,16 @@ const getFallbackStories = unstable_cache(
   { revalidate: 120 }
 );
 
+function limitPublicYExcerpt(story: Awaited<ReturnType<typeof getLiveStories>>[number]) {
+  const url = story.sources[0]?.url || "";
+  if (!/^https:\/\/(?:www\.)?y\.dk\//i.test(url)) return story;
+
+  const words = story.summary.trim().split(/\s+/);
+  if (words.length <= 100) return story;
+
+  return { ...story, summary: words.slice(0, 100).join(" ") + " …" };
+}
+
 export async function GET(req: NextRequest) {
   try {
     const requestedLimit = Number(req.nextUrl.searchParams.get("limit"));
@@ -79,7 +89,7 @@ export async function GET(req: NextRequest) {
           : visibleStories.length;
         return NextResponse.json({
           ...snapshot,
-          stories: visibleStories.slice(0, limit),
+          stories: visibleStories.slice(0, limit).map(limitPublicYExcerpt),
           availableStories: visibleStories.length
         }, { headers: { "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60" } });
         } catch (error) { console.warn("Snapshot summary lookup unavailable; using publisher feed fallback", error); }
@@ -100,7 +110,7 @@ export async function GET(req: NextRequest) {
           return { ...story, aiSummary: shortText, publisherExcerptFallback: true };
         });
       if (fallbackStories.length) return NextResponse.json({
-        stories: fallbackStories, availableStories: fallbackStories.length,
+        stories: fallbackStories.map(limitPublicYExcerpt), availableStories: fallbackStories.length,
         totalCount: fallbackStories.length, generatedAt: new Date().toISOString(),
         degraded: true
       }, { headers: { "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60" } });
@@ -146,8 +156,9 @@ export async function GET(req: NextRequest) {
     const limit = Number.isFinite(requestedLimit) && requestedLimit > 0
       ? Math.min(Math.floor(requestedLimit), stories.length)
       : stories.length;
+    const responseStories = stories.slice(0, limit);
     return NextResponse.json(
-      { stories: stories.slice(0, limit), totalCount: Math.max(totalCount, stories.length), generatedAt: new Date().toISOString(), availableStories: stories.length, ...(isCollector ? { collectorSnapshot: true } : {}) },
+      { stories: isCollector ? responseStories : responseStories.map(limitPublicYExcerpt), totalCount: Math.max(totalCount, stories.length), generatedAt: new Date().toISOString(), availableStories: stories.length, ...(isCollector ? { collectorSnapshot: true } : {}) },
       { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=120" } }
     );
   } catch (error) {
