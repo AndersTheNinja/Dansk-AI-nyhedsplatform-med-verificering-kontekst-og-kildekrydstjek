@@ -23,3 +23,34 @@ export function isGenericArticleImage(imageUrl: string, title: string, publisher
   }
   return false;
 }
+
+export function techSavvyPostEndpoint(page: URL): URL | null {
+  const isTechSavvy = page.hostname === "techsavvy.media" || page.hostname === "www.techsavvy.media";
+  const slug = page.pathname.match(/^\/([a-z0-9-]+)\/?$/)?.[1];
+  if (!isTechSavvy || !slug || page.protocol !== "https:" || page.port || page.username || page.password) return null;
+  const endpoint = new URL("https://techsavvy.media/wp-json/wp/v2/posts");
+  endpoint.search = new URLSearchParams({
+    slug, _embed: "wp:featuredmedia", _fields: "link,featured_media,_links,_embedded", per_page: "1"
+  }).toString();
+  return endpoint;
+}
+
+export function techSavvyFeaturedImage(posts: unknown, page: URL): URL | null {
+  if (!Array.isArray(posts) || posts.length !== 1) return null;
+  const post = posts[0];
+  const media = post?._embedded?.["wp:featuredmedia"]?.[0];
+  if (typeof post?.link !== "string" || typeof media?.source_url !== "string" ||
+      !Number.isSafeInteger(post.featured_media) || post.featured_media <= 0 ||
+      media?.id !== post.featured_media || media?.media_type !== "image") return null;
+  try {
+    const link = new URL(post.link);
+    const image = new URL(media.source_url);
+    if (link.origin !== "https://techsavvy.media" || link.username || link.password ||
+        link.pathname.replace(/\/$/, "") !== page.pathname.replace(/\/$/, "") ||
+        image.origin !== link.origin || image.username || image.password ||
+        !image.pathname.startsWith("/wp-content/uploads/")) return null;
+    return image;
+  } catch {
+    return null;
+  }
+}
