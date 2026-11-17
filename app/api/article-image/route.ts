@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { isGenericArticleImage } from "@/lib/article-image-quality";
+import { isGenericArticleImage, techSavvyFeaturedImage, techSavvyPostEndpoint } from "@/lib/article-image-quality";
 
 export const dynamic = "force-dynamic";
 
@@ -112,9 +112,8 @@ function titleMatches(expected: string, actual: string) {
     overlap / Math.min(a.size, b.size) >= 0.6;
 }
 
-export async function POST(request: Request) {
+async function imageFromPage(body: { url?: string; title?: string; failedImageUrl?: string }) {
   try {
-    const body = await request.json();
     const page = new URL(String(body?.url || ""));
     const expectedTitle = String(body?.title || "").trim().slice(0, 300);
     const failedImageUrl = String(body?.failedImageUrl || "").slice(0, 2000);
@@ -203,5 +202,36 @@ export async function POST(request: Request) {
     });
   } catch {
     return NextResponse.json({ imageUrl: null });
+  }
+}
+
+export async function POST(request: Request) {
+  let body: { url?: string; title?: string; failedImageUrl?: string };
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ imageUrl: null });
+  }
+
+  const normal = await imageFromPage(body);
+  if (!normal.ok) return normal;
+  try {
+    const page = new URL(String(body?.url || ""));
+    const endpoint = techSavvyPostEndpoint(page);
+    if (!endpoint || (await normal.clone().json()).imageUrl) return normal;
+    const response = await fetch(endpoint, {
+      redirect: "error", next: { revalidate: 900 }, headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(4500)
+    });
+    if (!response.ok || !response.headers.get("content-type")?.includes("application/json")) return normal;
+    const image = techSavvyFeaturedImage(await response.json(), page);
+    if (!image || image.href === body.failedImageUrl ||
+        isGenericArticleImage(image.href, String(body.title), page.hostname) ||
+        !(await imageRespondsAsImage(image))) return normal;
+    return NextResponse.json({ imageUrl: image.href, imageDescription: "", photoCredit: null }, {
+      headers: { "Cache-Control": "private, max-age=900" }
+    });
+  } catch {
+    return normal;
   }
 }
