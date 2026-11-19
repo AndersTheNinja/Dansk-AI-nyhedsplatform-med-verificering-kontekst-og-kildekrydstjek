@@ -288,7 +288,7 @@ function StoryCard({ story }: { story: Story }) {
                   </button>
                 )}
               </div>
-            </div>
+            </div>}
         {textOpen && resolvedImageUrl && !articleImageFailed && (
           <div className="storyArticleImageWrap">
             <img
