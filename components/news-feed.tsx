@@ -6,7 +6,7 @@ import type { FactResult } from "@/lib/factcheck";
 import { previewWordCount } from "@/lib/article-preview-quality";
 import { isGenericArticleImage } from "@/lib/article-image-quality";
 import { MobileMediaStats } from "@/components/news-stats";
-import { AiSummaryPreview } from "@/components/ai-summary-preview";
+import { AiSummaryPreview, SUMMARY_PREVIEW_WORDS } from "@/components/ai-summary-preview";
 
 const categoryLabel: Record<string,string> = {
   "AI/Tech": "AI",
@@ -55,6 +55,8 @@ function StoryCard({ story }: { story: Story }) {
   const ref = useRef<HTMLElement | null>(null);
    const [subscriptionRequired, setSubscriptionRequired] = useState<boolean | null>(null);
   const [summaryOpen, setSummaryOpen] = useState(false);
+  const [summaryExpanded, setSummaryExpanded] = useState(false);
+  const hasLongSummary = (story.aiSummary?.trim().split(/\s+/).filter(Boolean).length ?? 0) > SUMMARY_PREVIEW_WORDS;
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [aiSummary, setAiSummary] = useState<{ summary: string; bullets: string[]; basis?: string; basisType?: "article_text" | "excerpt"; articleTruncated?: boolean } | null>(null);
   const [summaryError, setSummaryError] = useState<string | null>(null);
@@ -260,21 +262,33 @@ function StoryCard({ story }: { story: Story }) {
         {story.archiveOnly
           ? <p className="storyArchiveLabel">Arkiv · Læs hele artiklen hos originalkilden</p>
           : <div className="summaryRow aiSummaryRow">
-              <p
-                className={`aiSummaryText ${resolvedImageUrl && !articleImageFailed ? "clickablePhotoSummary" : ""}`}
-                onClick={resolvedImageUrl && !articleImageFailed ? () => setTextOpen(value => !value) : undefined}
-                onKeyDown={resolvedImageUrl && !articleImageFailed ? event => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    setTextOpen(value => !value);
-                  }
-                } : undefined}
-                role={resolvedImageUrl && !articleImageFailed ? "button" : undefined}
-                tabIndex={resolvedImageUrl && !articleImageFailed ? 0 : undefined}
-                aria-expanded={resolvedImageUrl && !articleImageFailed ? textOpen : undefined}
-                aria-label={resolvedImageUrl && !articleImageFailed ? (textOpen ? "Skjul artikelbillede" : "Vis artikelbillede") : undefined}
-              ><AiSummaryPreview story={story} /></p>
-            </div>}
+              <div className="aiSummaryBody">
+                <p
+                  className={`aiSummaryText ${resolvedImageUrl && !articleImageFailed ? "clickablePhotoSummary" : ""}`}
+                  onClick={resolvedImageUrl && !articleImageFailed ? () => setTextOpen(value => !value) : undefined}
+                  onKeyDown={resolvedImageUrl && !articleImageFailed ? event => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      setTextOpen(value => !value);
+                    }
+                  } : undefined}
+                  role={resolvedImageUrl && !articleImageFailed ? "button" : undefined}
+                  tabIndex={resolvedImageUrl && !articleImageFailed ? 0 : undefined}
+                  aria-expanded={resolvedImageUrl && !articleImageFailed ? textOpen : undefined}
+                  aria-label={resolvedImageUrl && !articleImageFailed ? (textOpen ? "Skjul artikelbillede" : "Vis artikelbillede") : undefined}
+                ><AiSummaryPreview story={story} expanded={summaryExpanded} /></p>
+                {hasLongSummary && (
+                  <button
+                    type="button"
+                    className="aiSummaryToggle"
+                    aria-expanded={summaryExpanded}
+                    onClick={() => setSummaryExpanded(value => !value)}
+                  >
+                    {summaryExpanded ? "Vis mindre" : "Vis hele resuméet"} <span aria-hidden="true">{summaryExpanded ? "▴" : "▾"}</span>
+                  </button>
+                )}
+              </div>
+            </div>
         {textOpen && resolvedImageUrl && !articleImageFailed && (
           <div className="storyArticleImageWrap">
             <img

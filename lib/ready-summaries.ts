@@ -18,9 +18,9 @@ const SUPPORTED_HOSTS = new Set([
   "nyheder.tv2.dk", "y.dk", "www.y.dk"
 ]);
 
-// V3 summaries target 50–60 words. Retain the legacy cache as a temporary
-// publication fallback while the collector upgrades articles in the background.
-function summaryKey(story: Story, version: "v3" | "v2" | "legacy"): string | null {
+// V4 summaries target 80–100 words. Keep previous versions available during
+// a gradual background regeneration so existing published articles stay visible.
+function summaryKey(story: Story, version: "v4" | "v3" | "v2" | "legacy"): string | null {
   const source = story.sources[0]?.url;
   if (!source || story.title.length < 5 || story.title.length > 500) return null;
   try {
@@ -28,17 +28,21 @@ function summaryKey(story: Story, version: "v3" | "v2" | "legacy"): string | nul
     if (url.protocol !== "https:" || url.username || url.password || url.port ||
         !SUPPORTED_HOSTS.has(url.hostname)) return null;
     return createHash("sha256").update(
-      JSON.stringify(version === "legacy" ? [url.href, story.title] : [version === "v3" ? "v3-50-60-words" : "v2-100-words", url.href, story.title])
+      JSON.stringify(version === "legacy" ? [url.href, story.title] : [version === "v4" ? "v4-80-100-words" : version === "v3" ? "v3-50-60-words" : "v2-100-words", url.href, story.title])
     ).digest("hex");
   } catch { return null; }
 }
 
 export function summaryCacheKey(story: Story): string | null {
-  return summaryKey(story, "v3");
+  return summaryKey(story, "v4");
 }
 
 function legacySummaryKey(story: Story): string | null {
   return summaryKey(story, "legacy");
+}
+
+function v3SummaryKey(story: Story): string | null {
+  return summaryKey(story, "v3");
 }
 
 function previousSummaryKey(story: Story): string | null {
@@ -48,12 +52,12 @@ function previousSummaryKey(story: Story): string | null {
 function sentenceBoundedArchiveFallback(value: string): string {
   const full = value.trim();
   const words = (text: string) => text.split(/\s+/).filter(Boolean).length;
-  if (words(full) <= 60) return full;
+  if (words(full) <= 100) return full;
   const sentences = Array.from(new Intl.Segmenter("da", { granularity: "sentence" }).segment(full), part => part.segment.trim()).filter(Boolean);
   let result = "";
   for (const sentence of sentences) {
     const candidate = result ? result + " " + sentence : sentence;
-    if (words(candidate) > 60) break;
+    if (words(candidate) > 100) break;
     result = candidate;
   }
   return result || full;
@@ -63,7 +67,7 @@ export async function getSummaryStates(stories: Story[]): Promise<Map<string, Su
 
   const secret = process.env.OEL_INGEST_SECRET;
   if (!databaseConfigured() || !secret) throw new Error("AI summary storage not configured");
-  const ids = [...new Set(stories.flatMap(story => [summaryCacheKey(story), previousSummaryKey(story), legacySummaryKey(story)])
+  const ids = [...new Set(stories.flatMap(story => [summaryCacheKey(story), v3SummaryKey(story), previousSummaryKey(story), legacySummaryKey(story)])
     .filter((id): id is string => Boolean(id)))];
   const states = new Map<string, SummaryState>();
   for (let offset = 0; offset < ids.length; offset += 800) {
@@ -91,16 +95,12 @@ export async function getSummaryStates(stories: Story[]): Promise<Map<string, Su
 
 export function onlyCompletedStories(stories: Story[], states: Map<string, SummaryState>): PreparedStory[] {
   return stories.flatMap(story => {
-    const key = summaryCacheKey(story);
-    const current = key ? states.get(key) : null;
-    const previousKey = previousSummaryKey(story);
-    const previous = previousKey ? states.get(previousKey) : null;
-    const fallbackKey = legacySummaryKey(story);
-    const fallback = previous?.status === "ready" ? previous : fallbackKey ? states.get(fallbackKey) : null;
-    const stored = current?.status === "ready" && typeof current.summary === "string" &&
-      current.summary.trim().length >= 40 ? current : fallback;
-    if (stored?.status !== "ready" || typeof stored.summary !== "string" ||
-        stored.summary.trim().length < 40) return [];
-    return [{ ...story, aiSummary: stored === current ? stored.summary.trim() : sentenceBoundedArchiveFallback(stored.summary) }];
+    const currentKey = summaryCacheKey(story);
+    const keys = [currentKey, v3SummaryKey(story), previousSummaryKey(story), legacySummaryKey(story)];
+    const stored = keys.map(key => key ? states.get(key) : null)
+      .find(state => state?.status === "ready" && typeof state.summary === "string" && state.summary.trim().length >= 40);
+    if (!stored?.summary) return [];
+    const isCurrent = currentKey !== null && stored.key === currentKey;
+    return [{ ...story, aiSummary: isCurrent ? stored.summary.trim() : sentenceBoundedArchiveFallback(stored.summary) }];
   });
 }
