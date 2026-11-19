@@ -37,3 +37,78 @@ test("TechSavvy validates the canonical article, featured media ID and image hos
   assert.equal(techSavvyFeaturedImage(response(page.href, original, 44), page), null);
   assert.equal(techSavvyFeaturedImage(response(page.href, "https://example.com/foto.jpg"), page), null);
 });
+
+import { readFileSync } from "node:fs";
+import vm from "node:vm";
+import ts from "typescript";
+
+test("TechSavvy fallback diagnostics identify failures without logging article data", async () => {
+  const page = "https://techsavvy.media/private-test-title/";
+  const title = "Sensitive test headline for image";
+  const image = "https://techsavvy.media/wp-content/uploads/2026/11/photo.jpg";
+  const metadata = (source = image, link = page) => [{
+    link, featured_media: 43,
+    _embedded: { "wp:featuredmedia": [{ id: 43, media_type: "image", source_url: source }] }
+  }];
+  const compiled = ts.transpileModule(
+    readFileSync(new URL("../app/api/article-image/route.ts", import.meta.url), "utf8"),
+    { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }
+  ).outputText;
+  const cases = [
+    { name: "HTTP rejection", response: () => new Response("", { status: 403 }), outcome: "http-error", stage: "metadata-fetch", status: 403 },
+    { name: "non-JSON response", response: () => new Response("private upstream body"), outcome: "invalid-content-type", stage: "metadata-fetch" },
+    { name: "invalid JSON", response: () => new Response("{", { headers: { "content-type": "application/json" } }), outcome: "error", stage: "metadata-parse" },
+    { name: "unrelated article", response: () => Response.json(metadata(image, "https://techsavvy.media/other/")), outcome: "invalid-metadata", stage: "metadata-parse" },
+    { name: "unsafe image host", response: () => Response.json(metadata("https://example.com/photo.jpg")), outcome: "invalid-metadata", stage: "metadata-parse" },
+    { name: "previously failed image", response: () => Response.json(metadata()), failedImageUrl: image, outcome: "previously-failed", stage: "metadata-parse" },
+    { name: "generic image", response: () => Response.json(metadata(image.replace("photo.jpg", "default.jpg"))), outcome: "generic-image", stage: "metadata-parse" },
+    { name: "invalid image response", response: () => Response.json(metadata()), outcome: "unreachable-image", stage: "image-probe" },
+    { name: "valid original image", response: () => Response.json(metadata()), validImage: true, outcome: "selected", stage: "image-probe" },
+    { name: "network error", response: () => { throw new Error(page + title); }, outcome: "error", stage: "metadata-fetch" },
+    { name: "another publisher", otherPublisher: true },
+    { name: "invalid title", invalidTitle: true }
+  ];
+  for (const fixture of cases) {
+    const records = [];
+    const exported = { exports: {} };
+    let requests = 0;
+    const context = {
+      exports: exported.exports, module: exported, URL, AbortSignal,
+      console: { info: (...args) => records.push(args) },
+      require: (name) => {
+        if (name === "next/server") return { NextResponse: { json: (body, init) => Response.json(body, init) } };
+        if (name === "@/lib/article-image-quality") return { isGenericArticleImage, techSavvyFeaturedImage, techSavvyPostEndpoint };
+        throw new Error("Unexpected import");
+      },
+      fetch: async () => {
+        requests++;
+        if (requests === 1) return new Response("", { status: 503 });
+        if (requests === 2) return fixture.response();
+        if (!fixture.validImage) return new Response("<html>not an image</html>");
+        return new Response(new Uint8Array([255, 216, 255, 224]), { headers: { "content-type": "image/jpeg" } });
+      }
+    };
+    vm.runInNewContext(compiled, context);
+    const response = await exported.exports.POST(new Request("https://example.test/api/article-image", {
+      method: "POST", body: JSON.stringify({
+        url: fixture.otherPublisher ? "https://ing.dk/test/" : page,
+        title: fixture.invalidTitle ? "" : title, failedImageUrl: fixture.failedImageUrl
+      })
+    }));
+    assert.deepEqual(await response.json(), fixture.validImage
+      ? { imageUrl: image, imageDescription: "", photoCredit: null }
+      : { imageUrl: null }, fixture.name);
+    assert.equal(response.status, fixture.invalidTitle ? 400 : 200, fixture.name);
+    if (!fixture.outcome) { assert.equal(records.length, 0, fixture.name); continue; }
+    assert.equal(records.length, 1, fixture.name);
+    assert.equal(records[0][0], "ØL.dk image evidence");
+    const evidence = JSON.parse(records[0][1]);
+    assert.deepEqual(evidence, {
+      publisher: "techsavvy.media", stage: fixture.stage, outcome: fixture.outcome,
+      ...(fixture.status ? { status: fixture.status } : {})
+    }, fixture.name);
+    assert.ok(!JSON.stringify(records).includes(page));
+    assert.ok(!JSON.stringify(records).includes(title));
+    assert.ok(!JSON.stringify(records).includes(image));
+  }
+});

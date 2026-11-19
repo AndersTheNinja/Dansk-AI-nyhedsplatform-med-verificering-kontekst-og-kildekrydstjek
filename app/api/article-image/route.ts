@@ -215,23 +215,40 @@ export async function POST(request: Request) {
 
   const normal = await imageFromPage(body);
   if (!normal.ok) return normal;
+  let stage: "metadata-fetch" | "metadata-parse" | "image-probe" = "metadata-fetch";
+  let report: ((outcome: string, status?: number) => void) | undefined;
   try {
     const page = new URL(String(body?.url || ""));
     const endpoint = techSavvyPostEndpoint(page);
     if (!endpoint || (await normal.clone().json()).imageUrl) return normal;
+    // Only fixed diagnostic values: never log article URLs, titles, metadata
+    // or exception messages. Emit one outcome per fallback attempt.
+    report = (outcome, status) => console.info("ØL.dk image evidence", JSON.stringify({
+      publisher: "techsavvy.media", stage, outcome, ...(status === undefined ? {} : { status })
+    }));
     const response = await fetch(endpoint, {
       redirect: "error", next: { revalidate: 900 }, headers: { Accept: "application/json" },
       signal: AbortSignal.timeout(4500)
     });
-    if (!response.ok || !response.headers.get("content-type")?.includes("application/json")) return normal;
+    if (!response.ok) { report("http-error", response.status); return normal; }
+    if (!response.headers.get("content-type")?.includes("application/json")) {
+      report("invalid-content-type"); return normal;
+    }
+    stage = "metadata-parse";
     const image = techSavvyFeaturedImage(await response.json(), page);
-    if (!image || image.href === body.failedImageUrl ||
-        isGenericArticleImage(image.href, String(body.title), page.hostname) ||
-        !(await imageRespondsAsImage(image))) return normal;
+    if (!image) { report("invalid-metadata"); return normal; }
+    if (image.href === body.failedImageUrl) { report("previously-failed"); return normal; }
+    if (isGenericArticleImage(image.href, String(body.title), page.hostname)) {
+      report("generic-image"); return normal;
+    }
+    stage = "image-probe";
+    if (!(await imageRespondsAsImage(image))) { report("unreachable-image"); return normal; }
+    report("selected");
     return NextResponse.json({ imageUrl: image.href, imageDescription: "", photoCredit: null }, {
       headers: { "Cache-Control": "private, max-age=900" }
     });
   } catch {
+    report?.("error");
     return normal;
   }
 }
