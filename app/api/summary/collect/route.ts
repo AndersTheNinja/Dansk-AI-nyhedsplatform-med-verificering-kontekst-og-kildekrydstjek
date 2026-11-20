@@ -22,8 +22,8 @@ export async function POST(req: NextRequest) {
     // A transient Supabase REST read must not halt the AI worker. A fresh
     // publisher feed is sufficient to identify articles needing summaries.
     const live = snapshot?.stories ?? await getLiveStories({ fast: true, limit: 100 });
-    const stored = await getRecentStoredNewsCandidates(500);
-    const stories = cleanNewsStories(combineNewsCandidates(live, stored, 500));
+    const recentStoredStories = await getRecentStoredNewsCandidates(500);
+    const stories = cleanNewsStories(combineNewsCandidates(live, recentStoredStories, 500));
     if (stories.length < 5) return NextResponse.json({ status: "no_fresh_stories", processed: 0 }, { status: 503 });
     const known = await getSummaryStates(stories);
     const eligible = stories.filter(story => summaryCacheKey(story) !== null);
