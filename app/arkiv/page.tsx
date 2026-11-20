@@ -1,4 +1,7 @@
 import type { Metadata } from "next";
+import { NewsStatus } from "@/components/news-status";
+import { TextSizeControl } from "@/components/text-size-control";
+import { MediaStatsProvider, SidebarMediaStats } from "@/components/news-stats";
 import { databaseRpc } from "@/lib/database-rpc";
 
 export const dynamic = "force-dynamic";
@@ -94,64 +97,97 @@ export default async function Archive({
     <main className="site">
       <header className="masthead shell">
         <div className="brandArea">
-          <a className="logoRow logoHomeLink" href="/" aria-label="ØL.dk – seneste nyheder">
+          <a className="logoRow logoHomeLink" href="/" aria-label="Gå til ØL.dk">
             <div className="logoBlock">ØL</div>
             <div className="siteName"><span className="siteNameAccent">.dk</span></div>
           </a>
           <div className="siteTagline"><strong><span className="brandInitial">Ø</span>jeblikkelig &amp; <span className="brandInitial">L</span>ive</strong><span className="siteTaglineSubline">Nyheder. Nu.</span></div>
         </div>
-        <a className="archiveBack" href="/">← Seneste nyheder</a>
+        <NewsStatus />
       </header>
       <div className="tealRule" />
 
-      <section className="shell archivePage">
-        <nav aria-label="Brødkrumme" className="archiveBreadcrumb">
-          <a href="/">Forside</a><span aria-hidden="true">›</span><span>Nyhedsarkiv</span>
-        </nav>
-        <div className="archiveIntro">
-          <div>
-            <span className="archiveEyebrow">ØL.DK / HISTORIK</span>
-            <h1>Nyhedsarkiv</h1>
-            <p>Alle de ældre historier, samlet ét sted. Find den oprindelige artikel hos udgiveren – uden at vente på et AI-resumé.</p>
-          </div>
-          {result && <div className="archiveCount"><strong>{articleCount.toLocaleString("da-DK")}</strong><span>arkivartikler</span></div>}
-        </div>
-
-        {!result ? (
-          <div className="archiveNotice" role="alert">Arkivet kunne ikke indlæses lige nu. <a href={pageHref(requestedPage)}>Prøv igen</a>.</div>
-        ) : (
-          <>
-            <div className="archiveListHeading">
-              <h2>Ældre nyheder</h2>
-              <span>Side {currentPage.toLocaleString("da-DK")} af {pages.toLocaleString("da-DK")} · 100 pr. side</span>
-            </div>
-            <div className="archiveArticleList">
-              {articles.map(article => (
-                <article className="archiveArticle" key={article.id}>
-                  <div className="archiveArticleMeta">
-                    <span className="archiveSource">{article.source || "Ukendt medie"}</span>
-                    <span>{publishedDate(article.publishedAt)}</span>
-                    {article.category && <span className="archiveArticleCategory">{article.category}</span>}
-                  </div>
-                  <h3><a href={article.url} target="_blank" rel="noopener noreferrer">{article.title}<span className="archiveExternal" aria-hidden="true">↗</span></a></h3>
-                </article>
-              ))}
-              {articles.length === 0 && <p className="archiveNotice">Ingen arkivartikler på denne side. <a href="/arkiv">Start fra den nyeste</a>.</p>}
-            </div>
-            <nav className="archivePagination" aria-label="Sider i nyhedsarkivet">
-              {currentPage > 1 && <a className="archivePageMove" href={pageHref(currentPage - 1)}>← Nyere artikler</a>}
-              {pageOptions.map((page, i) => (
-                <span key={page} className="archivePageLinkWrap">
-                  {i > 0 && page > pageOptions[i - 1] + 1 && <span className="archiveEllipsis" aria-hidden="true">…</span>}
-                  <a href={pageHref(page)} aria-current={page === currentPage ? "page" : undefined} className={page === currentPage ? "archivePageCurrent" : ""}>{page}</a>
-                </span>
-              ))}
-              {currentPage < pages && <a className="archivePageMove" href={pageHref(currentPage + 1)}>Ældre artikler →</a>}
+      <MediaStatsProvider>
+        <div className="contentShell shell">
+          <section className="mainColumn" id="feed">
+            <nav className="filterBar" aria-label="Nyhedsvisning">
+              <a className="filterTab" href="/">Alle emner</a>
+              <a className="filterTab archiveFilterLink active" href="/arkiv" aria-current="page">Nyhedsarkiv</a>
             </nav>
-          </>
-        )}
-      </section>
-      <footer className="footer shell"><span>© ØL.dk</span><span>Arkivet linker til originaludgiverne.</span></footer>
+
+            <div className="sectionTitle sectionTitleRow">
+              <span>Nyhedsarkiv <span className="sectionTitleNote">
+                {result ? "(" + articleCount.toLocaleString("da-DK") + " ældre artikler · side " + currentPage + " af " + pages + ")" : "(midlertidigt utilgængeligt)"}
+              </span></span>
+            </div>
+
+            {!result ? (
+              <div className="newsLoadError" role="alert">Arkivet kunne ikke indlæses lige nu. <a href={pageHref(requestedPage)}>Prøv igen</a>.</div>
+            ) : (
+              <>
+                <div className="storyList">
+                  {articles.map(article => (
+                    <article className="storyRow" key={article.id}>
+                      <div className="storyContent">
+                        <div className="storyMeta">
+                          <span>{article.category === "AI/Tech" ? "AI" : article.category === "Danmark" ? "DK" : article.category || "DK"}</span>
+                          <span>•</span>
+                          <span>{article.source || "Ukendt medie"}</span>
+                          <span>•</span>
+                          <span className="storyDateMeta">{publishedDate(article.publishedAt)}</span>
+                        </div>
+                        <h2>{article.title}</h2>
+                        <p className="storyArchiveLabel">Arkiv · Læs hele artiklen hos originalkilden</p>
+                        <div className="scoreLine">
+                          <a className="readMore" href={article.url} target="_blank" rel="noopener noreferrer">
+                            <span className="readMoreText">Læs mere</span> <span className="externalArrow" aria-hidden="true">
+                              <svg viewBox="0 0 16 16" focusable="false">
+                                <path d="M6 3H3.75A1.75 1.75 0 0 0 2 4.75v7.5A1.75 1.75 0 0 0 3.75 14h7.5A1.75 1.75 0 0 0 13 12.25V10" />
+                                <path d="M9 2h5v5" />
+                                <path d="M14 2 7.5 8.5" />
+                              </svg>
+                            </span>
+                          </a>
+                        </div>
+                      </div>
+                    </article>
+                  ))}
+                  {articles.length === 0 && <p className="newsLoadError">Ingen arkivartikler på denne side. <a href="/arkiv">Se de nyeste i arkivet</a>.</p>}
+                </div>
+
+                <nav className="archivePagination" aria-label="Sider i nyhedsarkivet">
+                  {currentPage > 1 && <a className="archivePageMove" href={pageHref(currentPage - 1)}>← Nyere artikler</a>}
+                  {pageOptions.map((page, i) => (
+                    <span key={page} className="archivePageLinkWrap">
+                      {i > 0 && page > pageOptions[i - 1] + 1 && <span className="archiveEllipsis" aria-hidden="true">…</span>}
+                      <a href={pageHref(page)} aria-current={page === currentPage ? "page" : undefined} className={page === currentPage ? "archivePageCurrent" : ""}>{page}</a>
+                    </span>
+                  ))}
+                  {currentPage < pages && <a className="archivePageMove" href={pageHref(currentPage + 1)}>Ældre artikler →</a>}
+                </nav>
+              </>
+            )}
+          </section>
+
+          <aside className="sidebar">
+            <SidebarMediaStats />
+            <TextSizeControl />
+            <section className="sideBox">
+              <h3>AI-analyse</h3>
+              <div className="sideItem"><div><strong>Resumé</strong><small>Få et kort resumé af artiklen</small></div></div>
+              <div className="sideItem"><div><strong>Faktatjek</strong><small>OpenAI vurderer troværdigheden af nyheden</small></div></div>
+            </section>
+            <section className="sideBox">
+              <h3>OM ØL.DK</h3>
+              <p>Redaktør og ai-geni: Anders Grønborg, info@agronborg.dk</p>
+            </section>
+          </aside>
+        </div>
+      </MediaStatsProvider>
+      <footer className="footer shell">
+        <span>© ØL.dk</span>
+        <span>Nyhedslinks fører til originaludgiverne.</span>
+      </footer>
     </main>
   );
 }

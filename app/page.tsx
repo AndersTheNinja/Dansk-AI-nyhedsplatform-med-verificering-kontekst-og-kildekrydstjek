@@ -24,21 +24,12 @@ export default function Home() {
       <MediaStatsProvider>
         <div className="contentShell shell">
           <section className="mainColumn">
-            <div className="archiveHomeLink" role="region" aria-label="Nyhedsarkiv">
-              <div><strong>14.000+ ældre nyheder</strong><span>Hele arkivet fra juni 2026 – uden krav om AI-resumé</span></div>
-              <a href="/arkiv">Åbn nyhedsarkivet <span aria-hidden="true">→</span></a>
-            </div>
             <NewsLoader />
           </section>
 
           <aside className="sidebar">
             <SidebarMediaStats />
             <TextSizeControl />
-            <section className="sideBox archiveSideBox">
-              <h3>NYHEDSARKIV</h3>
-              <p>Find tidligere historier fra ØL.dk. Du kan bladre igennem mere end 14.000 artikler.</p>
-              <p><a href="/arkiv">Se alle gamle nyheder →</a></p>
-            </section>
             <section className="sideBox">
               <h3>AI-analyse</h3>
               <div className="sideItem"><div><strong>Resumé</strong><small>Få et kort resumé af artiklen</small></div></div>
