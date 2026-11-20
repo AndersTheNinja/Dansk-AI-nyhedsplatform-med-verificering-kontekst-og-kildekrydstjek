@@ -102,6 +102,11 @@ test("the first batch starts the snapshot and metadata reads together and preser
     .map(entry => ({ ...entry, aiSummary: states.get(entry.id) })),
   },
   "@/lib/news-store": {
+   combineNewsCandidates: entries => entries,
+   getRecentStoredNewsCandidates: async () => {
+    calls.push("stored");
+    return [];
+   },
    getNewsSnapshot: async () => {
     calls.push("snapshot");
     return { stories, totalCount: 200, availableStories: 3 };
@@ -118,7 +123,7 @@ test("the first batch starts the snapshot and metadata reads together and preser
  assert.deepEqual(calls, ["metadata", "snapshot"]);
  finishMetadata(enrich);
  const firstBatch = await firstRequest;
- assert.equal(firstBatch.totalCount, 200);
+ assert.equal(firstBatch.totalCount, 2);
  assert.equal(firstBatch.availableStories, 2);
  assert.equal(firstBatch.stories.length, 1);
  assert.equal(firstBatch.stories[0].id, newer.id);
@@ -129,6 +134,6 @@ test("the first batch starts the snapshot and metadata reads together and preser
 
  calls.length = 0;
  const full = await exports.GET(request("?limit=1"));
- assert.deepEqual(calls, ["snapshot", "metadata"]);
+ assert.deepEqual(calls, ["snapshot", "stored", "metadata"]);
  assert.deepEqual(full, firstBatch);
 });
