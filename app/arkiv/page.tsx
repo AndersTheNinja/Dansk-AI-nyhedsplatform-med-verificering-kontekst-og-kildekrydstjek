@@ -57,7 +57,7 @@ async function archivePage(page: number): Promise<{ articles: ArchiveArticle[]; 
     }
     const articles = (data.stories as ArchiveArticle[]).filter(row =>
       row && typeof row.title === "string" && row.title.trim().length >= 5 &&
-      safeLink(row.url) && !row.andersOnly
+      safeLink(row.url)
     );
     return { articles, count: Number(data.totalCount) };
   } catch (error) {
