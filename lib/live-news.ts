@@ -31,7 +31,7 @@ type NewsItem = {
 };
 
 const feeds: FeedConfig[] = [
-  { name: "JP Kronik (Anders W.)", url: "https://newsletter-proxy.aws.jyllands-posten.dk/v1/latestNewsRss/jyllands-posten.dk", category: "Aarhus" },
+  { name: "JP Kronik (Anders W.)", url: "https://newsletter-proxy.aws.jyllands-posten.dk/v1/latestNewsRss/jyllands-posten.dk?count=100", category: "Aarhus" },
   {
     name: "DR Nyheder",
     url: "https://www.dr.dk/nyheder/service/feeds/allenyheder",
