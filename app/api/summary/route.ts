@@ -104,17 +104,33 @@ function normalizeSummaryText(value: string) {
     }
   }
 
+  // Keep intact sentences if an otherwise useful summary exceeds 100 words.
+  // This avoids discarding a good summary solely for a long final sentence.
+  const countWords = (value: string) => value.split(/\s+/).filter(Boolean).length;
+  if (countWords(text) > 100) {
+    const sentences = Array.from(new Intl.Segmenter("da", { granularity: "sentence" }).segment(text),
+      part => part.segment.trim()).filter(Boolean);
+    const complete: string[] = [];
+    for (const sentence of sentences) {
+      const next = [...complete, sentence].join(" ");
+      if (countWords(next) > 100) break;
+      complete.push(sentence);
+    }
+    const bounded = complete.join(" ");
+    if (countWords(bounded) >= 60 && /[.!?]["”’]?$/.test(bounded)) text = bounded;
+  }
+
   // Do not invent closing punctuation: a cut-off model response is not a
   // complete sentence and must be repaired or rejected before publication.
   return text;
 }
 
-function summaryLooksReadable(text: string, basisType: "article_text" | "excerpt" = "article_text") {
+function summaryLooksReadable(text: string, basisType: "article_text" | "excerpt" = "article_text", minimumArticleWords = 60) {
   // Longer articles need sufficient verified source material. Excerpt-only
   // items may be shorter; never invent information to reach a word target.
   if (text.length < 105 || text.length > 1100) return false;
   const words = text.trim().split(/\s+/).length;
-  if (words < (basisType === "excerpt" ? 20 : 80) || words > 100) return false;
+  if (words < (basisType === "excerpt" ? 20 : minimumArticleWords) || words > 100) return false;
   if (/\b(?:undefined|null|NaN)\b/i.test(text)) return false;
   if (/^[-*•]|\n[-*•]/m.test(text) || /\.\.\./.test(text)) return false;
   if (!/[.!?]["”’]?$/.test(text)) return false;
@@ -382,7 +398,7 @@ ${articleText}
 
         // If the first model response is fragmented or malformed, ask once for
         // a grammatical rewrite instead of showing broken prose to the user.
-        if (!summaryLooksReadable(parsedSummary.summary, basisType)) {
+        if (!summaryLooksReadable(parsedSummary.summary, basisType, 80)) {
           const repairResponse = await fetch("https://api.openai.com/v1/responses", {
             method: "POST",
             headers: {
@@ -421,7 +437,7 @@ ${articleText.slice(0, 5500)}`,
 
             if (repairData.status !== "incomplete" && !repairData.incomplete_details && repairedOutput.trim()) {
               const repaired = parseSummary(repairedOutput);
-              if (summaryLooksReadable(repaired.summary, basisType)) parsedSummary = repaired;
+              if (summaryLooksReadable(repaired.summary, basisType, 80)) parsedSummary = repaired;
             }
           }
         }
