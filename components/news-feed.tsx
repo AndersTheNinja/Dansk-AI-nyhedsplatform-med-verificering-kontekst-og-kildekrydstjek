@@ -64,9 +64,11 @@ function StoryCard({ story }: { story: Story }) {
   const [imageLookupAttempted, setImageLookupAttempted] = useState(false);
   const [photoCredit, setPhotoCredit] = useState<string | null>(null);
   const [articleImageFailed, setArticleImageFailed] = useState(false);
+  const [verifiedImageUrl, setVerifiedImageUrl] = useState<string | null>(null);
   const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null);
   // Summary text and photo share one disclosure, even when the summary is short.
-  const canExpand = hasLongSummary || Boolean(resolvedImageUrl && !articleImageFailed);
+  const hasValidPhoto = Boolean(resolvedImageUrl && verifiedImageUrl === resolvedImageUrl && !articleImageFailed);
+  const canExpand = hasLongSummary || hasValidPhoto;
   const [factOpen, setFactOpen] = useState(false);
   const [factLoading, setFactLoading] = useState(false);
   const [factCheck, setFactCheck] = useState<FactResult | null>(null);
@@ -137,6 +139,42 @@ function StoryCard({ story }: { story: Story }) {
     observer.observe(node);
     return () => observer.disconnect();
   }, [resolvedImageUrl, imageLookupAttempted, failedImageUrl, story.sources, story.title, story.sourceLabel]);
+
+  // Only advertise a camera icon if the image genuinely loads in the browser.
+  // A publisher's image URL may exist in metadata but have expired or be blocked.
+  useEffect(() => {
+    if (!resolvedImageUrl || articleImageFailed) return;
+
+    let cancelled = false;
+    const check = new Image();
+    check.referrerPolicy = "no-referrer";
+    check.onload = () => {
+      if (cancelled) return;
+      if (check.naturalWidth > 1 && check.naturalHeight > 1) {
+        setVerifiedImageUrl(resolvedImageUrl);
+      } else {
+        setArticleImageFailed(true);
+        if (!imageLookupAttempted) {
+          setFailedImageUrl(resolvedImageUrl);
+          setResolvedImageUrl(null);
+        }
+      }
+    };
+    check.onerror = () => {
+      if (cancelled) return;
+      setArticleImageFailed(true);
+      if (!imageLookupAttempted) {
+        setFailedImageUrl(resolvedImageUrl);
+        setResolvedImageUrl(null);
+      }
+    };
+    check.src = resolvedImageUrl;
+    return () => {
+      cancelled = true;
+      check.onload = null;
+      check.onerror = null;
+    };
+  }, [resolvedImageUrl, articleImageFailed, imageLookupAttempted]);
 
   async function toggleSummary() {
     const nextOpen = !summaryOpen;
@@ -280,7 +318,7 @@ function StoryCard({ story }: { story: Story }) {
                 ><AiSummaryPreview story={story} expanded={summaryExpanded} /></p>
               </div>
             </div>}
-        {summaryExpanded && resolvedImageUrl && !articleImageFailed && (
+        {summaryExpanded && hasValidPhoto && (
           <div className="storyArticleImageWrap">
             <img
               className="storyArticleImage"
@@ -330,7 +368,7 @@ function StoryCard({ story }: { story: Story }) {
               </span>
             </a>
           )}
-          {resolvedImageUrl && !articleImageFailed && (
+          {hasValidPhoto && (
             <button
               type="button"
               className={`storyExpandButton ${summaryExpanded ? "open" : ""}`}
