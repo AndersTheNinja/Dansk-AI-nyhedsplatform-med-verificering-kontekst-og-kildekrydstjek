@@ -547,7 +547,7 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
   );
 
   const mediaOptions = useMemo(() => {
-    const names = activeStories.filter((story) => !story.andersOnly.flatMap((story) =>
+    const names = activeStories.filter((story) => !story.andersOnly).flatMap((story) =>
       story.sources.map((source) => mediaName(source.label))
     );
     const hiddenMedia = new Set(["Fredericia Dagblad", "JydskeVestkysten", "Horsens Folkeblad", "Nordjyske", "Fyens.dk"]);
