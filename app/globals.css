@@ -401,3 +401,8 @@ button{font:inherit}
   .archiveBack{font-size:11px}
   .archivePagination .archivePageMove{width:100%}
 }
+
+/* Both homepage archive links lead to the same paginated archive, with no duplicate feed loader. */
+.filterBar .archiveFilterLink{display:inline-flex;align-items:center;justify-content:center;width:auto;min-height:23px;white-space:nowrap;text-decoration:none;color:var(--teal-dark);border-color:#c5d9d7;background:#f4f9f8;font-weight:700}
+.filterBar .archiveFilterLink:hover{background:#e9f4f2;color:var(--teal-dark)}
+@media(max-width:560px){.filterBar .archiveFilterLink{font-size:10px;padding:4px}}
