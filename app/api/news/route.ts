@@ -117,7 +117,7 @@ export async function GET(req: NextRequest) {
     }
     // Scheduled fast collection only reads fresh RSS metadata; it must never
     // trigger the 1,500-article enrichment job on the visitor-facing service.
-    const liveStories = isFastCollector ? await getLiveStories({ fast: true, limit: 100 }) : wantsFast ? await getFastStories() : await getCachedStories();
+    const liveStories = isFastCollector ? await getLiveStories({ fast: true, limit: 1000 }) : wantsFast ? await getFastStories() : await getCachedStories();
     const rawArchive = (wantsFast || isFastCollector) ? [] : await getAndersWinnerskjoldArchiveStories();
     if (isCollector) {
       try {

@@ -132,3 +132,25 @@ test("the first batch starts the snapshot and metadata reads together and preser
  assert.deepEqual(calls, ["snapshot", "metadata"]);
  assert.deepEqual(full, firstBatch);
 });
+
+test("fast scheduled collection keeps up to 1,000 verified feed stories without enrichment", async () => {
+ const source = readFileSync(new URL("../app/api/news/route.ts", import.meta.url), "utf8");
+ const entries = Array.from({length:1005}, (_,i) => ({id:String(i),title:`Nyhed ${i}`,summary:"Et verificeret kildeuddrag.",publishedAt:new Date(Date.now()-i*1000).toISOString()}));
+ let calls = 0;
+ const modules = {
+  "next/server": {NextResponse:{json:data=>data}}, "next/cache":{unstable_cache:fn=>fn},
+  "@/lib/news-quality":{}, "@/lib/image-health":{}, "@/lib/ready-summaries":{}, "@/lib/news-store":{},
+  "@/lib/live-news":{
+   cleanNewsStories:rows=>rows,
+   getLiveStories:async options=>{calls++;assert.equal(options.fast,true);return entries.slice(0,options.limit);}
+  }
+ };
+ const exports={};
+ runInNewContext(ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText,{exports,require:id=>modules[id],console});
+ const result=await exports.GET({nextUrl:new URL("https://example.com/api/news?collector=fast")});
+ assert.equal(calls,1);
+ assert.equal(result.stories.length,1000);
+ assert.equal(result.stories[0].id,"0");
+ assert.equal(result.stories[999].id,"999");
+ assert.equal(result.collectorSnapshot,true);
+});
