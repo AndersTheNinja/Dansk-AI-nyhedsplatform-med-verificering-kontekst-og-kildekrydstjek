@@ -60,12 +60,13 @@ function StoryCard({ story }: { story: Story }) {
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [aiSummary, setAiSummary] = useState<{ summary: string; bullets: string[]; basis?: string; basisType?: "article_text" | "excerpt"; articleTruncated?: boolean } | null>(null);
   const [summaryError, setSummaryError] = useState<string | null>(null);
-  const [textOpen, setTextOpen] = useState(false);
   const [resolvedImageUrl, setResolvedImageUrl] = useState<string | null>(story.imageUrl && !isGenericArticleImage(story.imageUrl, story.title, story.sources[0]?.label || story.sourceLabel) ? story.imageUrl : null);
   const [imageLookupAttempted, setImageLookupAttempted] = useState(false);
   const [photoCredit, setPhotoCredit] = useState<string | null>(null);
   const [articleImageFailed, setArticleImageFailed] = useState(false);
   const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null);
+  // Summary text and photo share one disclosure, even when the summary is short.
+  const canExpand = hasLongSummary || Boolean(resolvedImageUrl && !articleImageFailed);
   const [factOpen, setFactOpen] = useState(false);
   const [factLoading, setFactLoading] = useState(false);
   const [factCheck, setFactCheck] = useState<FactResult | null>(null);
@@ -264,22 +265,22 @@ function StoryCard({ story }: { story: Story }) {
           : <div className="summaryRow aiSummaryRow">
               <div className="aiSummaryBody">
                 <p
-                  className={`aiSummaryText ${hasLongSummary ? "clickableSummaryText" : ""}`}
-                  onClick={hasLongSummary ? () => setSummaryExpanded(value => !value) : undefined}
-                  onKeyDown={hasLongSummary ? event => {
+                  className={`aiSummaryText ${canExpand ? "clickableSummaryText" : ""}`}
+                  onClick={canExpand ? () => setSummaryExpanded(value => !value) : undefined}
+                  onKeyDown={canExpand ? event => {
                     if (event.key === "Enter" || event.key === " ") {
                       event.preventDefault();
                       setSummaryExpanded(value => !value);
                     }
                   } : undefined}
-                  role={hasLongSummary ? "button" : undefined}
-                  tabIndex={hasLongSummary ? 0 : undefined}
-                  aria-expanded={hasLongSummary ? summaryExpanded : undefined}
-                  aria-label={hasLongSummary ? (summaryExpanded ? "Fold resumé sammen" : "Fold resumé ud") : undefined}
+                  role={canExpand ? "button" : undefined}
+                  tabIndex={canExpand ? 0 : undefined}
+                  aria-expanded={canExpand ? summaryExpanded : undefined}
+                  aria-label={canExpand ? (summaryExpanded ? "Fold nyhed og billede sammen" : "Fold nyhed og billede ud") : undefined}
                 ><AiSummaryPreview story={story} expanded={summaryExpanded} /></p>
               </div>
             </div>}
-        {textOpen && resolvedImageUrl && !articleImageFailed && (
+        {summaryExpanded && resolvedImageUrl && !articleImageFailed && (
           <div className="storyArticleImageWrap">
             <img
               className="storyArticleImage"
@@ -332,11 +333,11 @@ function StoryCard({ story }: { story: Story }) {
           {resolvedImageUrl && !articleImageFailed && (
             <button
               type="button"
-              className={`storyExpandButton ${textOpen ? "open" : ""}`}
-              onClick={() => setTextOpen((value) => !value)}
-              aria-label={textOpen ? "Skjul artikelbillede" : "Vis artikelbillede"}
-              aria-expanded={textOpen}
-              title={textOpen ? "Skjul billede" : "Vis billede til artiklen"}
+              className={`storyExpandButton ${summaryExpanded ? "open" : ""}`}
+              onClick={() => setSummaryExpanded((value) => !value)}
+              aria-label={summaryExpanded ? "Fold nyhed og billede sammen" : "Fold nyhed og billede ud"}
+              aria-expanded={summaryExpanded}
+              title={summaryExpanded ? "Fold nyhed sammen" : "Fold nyhed ud med billede"}
             >
               <svg className="storyCameraIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M14.5 4h-5L7.5 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3.5L14.5 4Z" />
