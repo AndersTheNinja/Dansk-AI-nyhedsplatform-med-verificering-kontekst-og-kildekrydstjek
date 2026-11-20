@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getNewsSnapshot, getRecentStoredNewsCandidates, combineNewsCandidates } from "@/lib/news-store";
 import { cleanNewsStories, getLiveStories } from "@/lib/live-news";
 import { getSummaryStates, summaryCacheKey } from "@/lib/ready-summaries";
+import { selectAcrossPublishers } from "@/lib/media-publishers";
 import { POST as generateAndStoreSummary } from "@/app/api/summary/route";
 
 export const dynamic = "force-dynamic";
@@ -39,7 +40,9 @@ export async function POST(req: NextRequest) {
       // Do not repeatedly generate an in-flight or cooling-down article.
       return state?.status !== "ready" && state?.status !== "busy" && state?.status !== "cooldown";
     });
-    const work = missing.slice(0, BATCH_SIZE);
+    // Every cycle tries to cover different publishers instead of spending
+    // all AI-summary slots on the most prolific newspaper.
+    const work = selectAcrossPublishers(missing, BATCH_SIZE, 1);
 
     let stored = 0, skipped = 0, failed = 0;
     for (let start = 0; start < work.length; start += CONCURRENCY) {
