@@ -5,12 +5,16 @@ const vm = require('node:vm');
 const ts = require('typescript');
 
 function load(fetch, env = {}) {
+  // Keep the real database adapter inside the same isolated environment as
+  // live-news, so cache calls use the fixture fetch rather than host networking.
+  const database = require('./load-database-rpc.cjs')(fetch, env);
   const source = fs.readFileSync('lib/live-news.ts', 'utf8') + '\nexport { addPublisherFeaturedImages, extractMetaContent, hasEditorialPreview, applyPublisherPreviews, applyPublisherFeaturedImages, mergeBerlingskeWebsiteText, parseBerlingskeWebArticle, fetchBerlingskeWebsite, fetchFeed, enrichTV2Item, enrichBorsenItem, parseNewsDate, enrichPreview, extractScopedArticlePreview, articleMentionText, extractPublicPreview, extractPublishedDateFromHtml, extractArticleBodyFromJson, isFresh, cleanPublisherTeaser };';
   const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
   const context = {
     exports: {}, process: { env }, fetch, AbortSignal, URL, console,
     require(id) {
       if (id === '@/lib/news-store') return { persistStories: async () => {}, queuePreviewRepairs: async () => {} };
+      if (id === '@/lib/database-rpc') return database;
       if (id.startsWith('@/lib/')) return require(`../${id.slice(2)}.ts`);
       return require(id);
     }
