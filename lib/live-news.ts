@@ -58,6 +58,12 @@ const feeds: FeedConfig[] = [
     category: "Danmark"
   },
   {
+    name: "Børsen",
+    // Official RSS feed: the previous home-page scraper stopped ingesting news.
+    url: "https://borsen.dk/rss",
+    category: "Erhverv"
+  },
+  {
     name: "Version2",
     url: "https://www.version2.dk/feeds/nyheder",
     category: "AI/Tech"
@@ -86,6 +92,12 @@ const feeds: FeedConfig[] = [
   {
     name: "Altinget",
     url: "https://www.altinget.dk/christiansborg/rss.aspx",
+    category: "Danmark"
+  },
+  {
+    name: "Altinget",
+    // Main feed also covers stories outside Christiansborg.
+    url: "https://www.altinget.dk/rss.aspx",
     category: "Danmark"
   },
   {

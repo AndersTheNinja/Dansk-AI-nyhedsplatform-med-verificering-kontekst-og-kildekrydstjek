@@ -5,6 +5,7 @@ import { auditCurrentImageLinks } from "@/lib/image-health";
 import { getLiveStories, cleanNewsStories, addPublisherFeaturedImages, loadPublisherArticleEnricher } from "@/lib/live-news";
 import { getNewsSnapshot, getRecentStoredNewsCandidates, combineNewsCandidates } from "@/lib/news-store";
 import { getSummaryStates, onlyCompletedStories } from "@/lib/ready-summaries";
+import { selectAcrossPublishers } from "@/lib/media-publishers";
 
 export const revalidate = 60;
 
@@ -62,7 +63,9 @@ export async function GET(req: NextRequest) {
         const readyStories = onlyCompletedStories(cleanedStories, summaryStates);
         // Publish only articles with a completed, stored AI summary.
         // Never surface archive-only headlines as a replacement for AI text.
-        const displayStories = readyStories;
+        // Preserve at least two AI-ready articles from each available publisher
+        // before filling the remaining 200 slots with the freshest stories.
+        const displayStories = selectAcrossPublishers(readyStories, 200, 2);
         // Enrich only the already-published stories, never hundreds of pending
         // articles, which also speeds up the first five news cards.
         const displayCandidates = isFirstBatch ? readyStories.slice(0, 20) : displayStories;

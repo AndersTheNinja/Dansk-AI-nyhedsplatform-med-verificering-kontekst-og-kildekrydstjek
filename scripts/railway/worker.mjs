@@ -13,7 +13,7 @@ const appFunctions = [
   "oeldk_latest_news_snapshot()", "oeldk_media_article_counts()", "oeldk_queue_preview_repairs(jsonb)",
   "oeldk_summary_batch_status(jsonb)", "oeldk_summary_claim(text,text,text)",
   "oeldk_summary_finish(text,uuid,text,text,boolean)", "oeldk_techsavvy_rss()", "presence_ping(text)",
-  "visible_news_archive_count()"
+  "visible_news_archive_count()", "oeldk_recent_news_candidates(integer)"
 ];
 const cacheJobs = {
   berlingske: "select private.oeldk_collect_berlingske()",

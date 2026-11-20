@@ -1,6 +1,7 @@
 import { databaseConfigured, databaseRpc } from "@/lib/database-rpc";
 // ØL.dk persistent news archive
 import type { Story } from "@/lib/stories";
+import { selectAcrossPublishers } from "@/lib/media-publishers";
 
 type StoredStory = {
   canonical_url: string;
@@ -294,7 +295,7 @@ export async function getRecentStoredNewsCandidates(limit = 500): Promise<Story[
 /** Prefer the freshest live RSS metadata and add recent stored articles once. */
 export function combineNewsCandidates(live: Story[], stored: Story[], limit = 500): Story[] {
   const seen = new Set<string>();
-  return [...live, ...stored]
+  const candidates = [...live, ...stored]
     .sort((a, b) => (b.publishedAt ? Date.parse(b.publishedAt) || 0 : 0) -
       (a.publishedAt ? Date.parse(a.publishedAt) || 0 : 0))
     .filter(story => {
@@ -302,7 +303,10 @@ export function combineNewsCandidates(live: Story[], stored: Story[], limit = 50
       if (!url || seen.has(url)) return false;
       seen.add(url);
       return true;
-    }).slice(0, Math.max(1, limit));
+    });
+  // Keep at least two candidates per available publisher for the background
+  // summary collector, even if a quieter source posted yesterday.
+  return selectAcrossPublishers(candidates, Math.max(1, limit), 2);
 }
 
 // A single Railway instance can serve many visitors at once. Briefly reuse

@@ -7,6 +7,7 @@ import { previewWordCount } from "@/lib/article-preview-quality";
 import { isGenericArticleImage } from "@/lib/article-image-quality";
 import { MobileMediaStats } from "@/components/news-stats";
 import { AiSummaryPreview, SUMMARY_PREVIEW_WORDS } from "@/components/ai-summary-preview";
+import { canonicalMediaName } from "@/lib/media-publishers";
 
 const categoryLabel: Record<string,string> = {
   "AI/Tech": "AI",
@@ -21,12 +22,8 @@ function storyTime(value?: string) {
   return Number.isFinite(time) ? time : 0;
 }
 
-function mediaName(label: string) {
-  if (/^DR\b|Danmarks Radio/i.test(label)) return "DR";
-  if (/TV\s?2/i.test(label)) return "TV2.dk";
-  if (/Berlingske/i.test(label)) return "Berlingske";
-  if (/Fyens Stiftstidende|Fyens Stiftstids?\.?/i.test(label)) return "Fyens.dk";
-  return label;
+function mediaName(label: string, url?: string) {
+  return canonicalMediaName(label, url);
 }
 
 function matchesMediaSelection(story: Story, selectedMedia: string[]) {
@@ -34,7 +31,7 @@ function matchesMediaSelection(story: Story, selectedMedia: string[]) {
   // The first source owns the displayed headline, excerpt and timestamp.
   // Secondary cross-check sources must not make another publisher's article appear.
   const primarySource = story.sources[0];
-  return !!primarySource && selectedMedia.includes(mediaName(primarySource.label));
+  return !!primarySource && selectedMedia.includes(mediaName(primarySource.label, primarySource.url));
 }
 
 function splitPublishedDate(value?: string) {
@@ -308,7 +305,7 @@ function StoryCard({ story }: { story: Story }) {
         <div className="storyMeta">
           <span>{categoryLabel[story.category] || story.category}</span>
           <span>•</span>
-          <span>{mediaName(story.sourceLabel)}</span>
+          <span>{mediaName(story.sources[0]?.label || story.sourceLabel, story.sources[0]?.url)}</span>
           <span>•</span>
           <span className="storyDateMeta">
             {(() => {
@@ -566,16 +563,15 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
   );
 
   const mediaOptions = useMemo(() => {
-    const names = initialStories.filter((story) => !story.andersOnly).flatMap((story) =>
-      story.sources.map((source) => mediaName(source.label))
-    );
+    const names = initialStories.filter(story => !story.andersOnly).map(story => {
+      const lead = story.sources[0];
+      return lead ? mediaName(lead.label, lead.url) : mediaName(story.sourceLabel);
+    });
     const hiddenMedia = new Set(["Fredericia Dagblad", "JydskeVestkysten", "Horsens Folkeblad", "Nordjyske", "Fyens.dk"]);
-    return Array.from(new Set([
-      "Berlingske", "DR", "Politiken", "Børsen", "Journalisten",
-      "Altinget", "Stiften.dk", "MigogAarhus", "TV2.dk",
-      ...names
-    ]))
-      .filter((name) => !hiddenMedia.has(name))
+    // Never create media buttons from secondary cross-check sources, or show
+    // publishers with zero available news under the chosen 200-story limit.
+    return Array.from(new Set(names))
+      .filter(name => name && !hiddenMedia.has(name))
       .sort((a, b) => a.localeCompare(b, "da"));
   }, [initialStories]);
 
