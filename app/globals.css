@@ -410,3 +410,7 @@ button{font:inherit}
 /* Original ØL.dk interaction: the summary itself is the expandable control. */
 .storyContent .aiSummaryRow .aiSummaryBody p.aiSummaryText.clickableSummaryText{cursor:pointer}
 .storyContent .aiSummaryRow .aiSummaryBody p.aiSummaryText.clickableSummaryText:focus-visible{outline:2px solid var(--teal);outline-offset:3px;border-radius:2px}
+
+/* Restore the original headline-to-expand interaction without changing the layout. */
+.storyContent h2.storyExpandableHeadline{cursor:pointer}
+.storyContent h2.storyExpandableHeadline:focus-visible{outline:2px solid var(--teal);outline-offset:3px;border-radius:2px}

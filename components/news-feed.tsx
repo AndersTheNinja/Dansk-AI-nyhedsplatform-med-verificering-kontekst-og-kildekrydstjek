@@ -66,9 +66,14 @@ function StoryCard({ story }: { story: Story }) {
   const [articleImageFailed, setArticleImageFailed] = useState(false);
   const [verifiedImageUrl, setVerifiedImageUrl] = useState<string | null>(null);
   const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null);
-  // Summary text and photo share one disclosure, even when the summary is short.
-  const hasValidPhoto = Boolean(resolvedImageUrl && verifiedImageUrl === resolvedImageUrl && !articleImageFailed);
-  const canExpand = hasLongSummary || hasValidPhoto;
+  const imageRequestInFlightRef = useRef(false);
+  const imageOnDemandRequestedRef = useRef(false);
+  const imageFallbackCountRef = useRef(0);
+  const hasImageCandidate = Boolean(resolvedImageUrl && !articleImageFailed);
+  // Only show a camera when the image genuinely loaded in this browser.
+  const hasValidPhoto = hasImageCandidate && verifiedImageUrl === resolvedImageUrl;
+  // The headline and text are always clickable, even while photo discovery runs.
+  const canExpand = !story.archiveOnly;
   const [factOpen, setFactOpen] = useState(false);
   const [factLoading, setFactLoading] = useState(false);
   const [factCheck, setFactCheck] = useState<FactResult | null>(null);
@@ -107,7 +112,44 @@ function StoryCard({ story }: { story: Story }) {
     return () => observer.disconnect();
   }, [story, subscriptionRequired]);
 
-  // Discover publisher images for short RSS teasers as they enter the viewport.
+  // Retrieve photos proactively near the viewport, and retry once on opening a
+  // story. Some stored articles have images on the publisher page but not in RSS.
+  async function ensureArticleImage(force = false) {
+    const articleUrl = story.sources[0]?.url;
+    if (story.archiveOnly || !articleUrl || imageRequestInFlightRef.current ||
+        (imageLookupAttempted && !force) || resolvedImageUrl) return;
+    imageRequestInFlightRef.current = true;
+    setImageLookupAttempted(true);
+    try {
+      const response = await fetch("/api/article-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: articleUrl, title: story.title, failedImageUrl }),
+        signal: AbortSignal.timeout(13000)
+      });
+      if (!response.ok) return;
+      const data = await response.json();
+      if (typeof data.photoCredit === "string") setPhotoCredit(data.photoCredit);
+      if (typeof data.imageUrl === "string" &&
+          data.imageUrl !== failedImageUrl &&
+          !isGenericArticleImage(data.imageUrl, story.title, story.sources[0]?.label || story.sourceLabel, data.imageDescription || "")) {
+        setArticleImageFailed(false);
+        setResolvedImageUrl(data.imageUrl);
+      }
+    } catch { /* A blocked publisher image must not stop the news feed. */ }
+    finally { imageRequestInFlightRef.current = false; }
+  }
+
+  // Preserve images supplied by the full feed after the first five-story
+  // preview. React reuses the card, so its initial state would otherwise stick.
+  useEffect(() => {
+    const image = story.imageUrl;
+    if (!image || image === failedImageUrl ||
+        isGenericArticleImage(image, story.title, story.sources[0]?.label || story.sourceLabel)) return;
+    setResolvedImageUrl(current => current || image);
+    setArticleImageFailed(false);
+  }, [story.imageUrl, story.title, story.sourceLabel, failedImageUrl]);
+
   useEffect(() => {
     if (story.archiveOnly || imageLookupAttempted || resolvedImageUrl) return;
     const node = ref.current;
@@ -115,58 +157,25 @@ function StoryCard({ story }: { story: Story }) {
     const observer = new IntersectionObserver(entries => {
       if (!entries.some(entry => entry.isIntersecting)) return;
       observer.disconnect();
-    const articleUrl = story.sources[0]?.url;
-    if (!articleUrl) return;
-    setImageLookupAttempted(true);
-
-    fetch("/api/article-image", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: articleUrl, title: story.title, failedImageUrl })
-    })
-      .then((response) => response.ok ? response.json() : null)
-      .then((data) => {
-        if (typeof data?.photoCredit === "string" && (!resolvedImageUrl || data?.imageUrl === resolvedImageUrl)) {
-          setPhotoCredit(data.photoCredit);
-        }
-        if (typeof data?.imageUrl === "string" && !resolvedImageUrl && !isGenericArticleImage(data.imageUrl, story.title, story.sources[0]?.label || story.sourceLabel, data.imageDescription || "")) {
-          setResolvedImageUrl(data.imageUrl);
-          setArticleImageFailed(false);
-        }
-      })
-      .catch(() => {});
-    }, {rootMargin:"200px 0px"});
+      void ensureArticleImage();
+    }, { rootMargin: "300px 0px" });
     observer.observe(node);
     return () => observer.disconnect();
-  }, [resolvedImageUrl, imageLookupAttempted, failedImageUrl, story.sources, story.title, story.sourceLabel]);
+  }, [story.archiveOnly, story.title, story.sources, resolvedImageUrl, imageLookupAttempted, failedImageUrl]);
 
-  // Only advertise a camera icon if the image genuinely loads in the browser.
-  // A publisher's image URL may exist in metadata but have expired or be blocked.
+  // Validate the camera icon unobtrusively. Never let a failed preflight
+  // suppress the actual image when the reader opens the article.
   useEffect(() => {
     if (!resolvedImageUrl || articleImageFailed) return;
-
     let cancelled = false;
     const check = new Image();
-    check.referrerPolicy = "no-referrer";
     check.onload = () => {
-      if (cancelled) return;
-      if (check.naturalWidth > 1 && check.naturalHeight > 1) {
+      if (!cancelled && check.naturalWidth > 1 && check.naturalHeight > 1) {
         setVerifiedImageUrl(resolvedImageUrl);
-      } else {
-        setArticleImageFailed(true);
-        if (!imageLookupAttempted) {
-          setFailedImageUrl(resolvedImageUrl);
-          setResolvedImageUrl(null);
-        }
       }
     };
     check.onerror = () => {
-      if (cancelled) return;
-      setArticleImageFailed(true);
-      if (!imageLookupAttempted) {
-        setFailedImageUrl(resolvedImageUrl);
-        setResolvedImageUrl(null);
-      }
+      if (!cancelled) setVerifiedImageUrl(null);
     };
     check.src = resolvedImageUrl;
     return () => {
@@ -174,7 +183,23 @@ function StoryCard({ story }: { story: Story }) {
       check.onload = null;
       check.onerror = null;
     };
-  }, [resolvedImageUrl, articleImageFailed, imageLookupAttempted]);
+  }, [resolvedImageUrl, articleImageFailed]);
+
+  function toggleStory() {
+    const opening = !summaryExpanded;
+    setSummaryExpanded(opening);
+    if (opening && !resolvedImageUrl && !imageOnDemandRequestedRef.current) {
+      imageOnDemandRequestedRef.current = true;
+      void ensureArticleImage(true);
+    }
+  }
+
+  function handleStoryKeyDown(event: React.KeyboardEvent<HTMLElement>) {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      toggleStory();
+    }
+  }
 
   async function toggleSummary() {
     const nextOpen = !summaryOpen;
@@ -297,20 +322,23 @@ function StoryCard({ story }: { story: Story }) {
             })()}
           </span>
         </div>
-        <h2>{story.title}</h2>
+        <h2
+          className={canExpand ? "storyExpandableHeadline" : undefined}
+          role={canExpand ? "button" : undefined}
+          tabIndex={canExpand ? 0 : undefined}
+          aria-expanded={canExpand ? summaryExpanded : undefined}
+          aria-label={canExpand ? (summaryExpanded ? "Fold nyheden sammen: " : "Fold nyheden ud: ") + story.title : undefined}
+          onClick={canExpand ? toggleStory : undefined}
+          onKeyDown={canExpand ? handleStoryKeyDown : undefined}
+        >{story.title}</h2>
         {story.archiveOnly
           ? <p className="storyArchiveLabel">Arkiv · Læs hele artiklen hos originalkilden</p>
           : <div className="summaryRow aiSummaryRow">
               <div className="aiSummaryBody">
                 <p
                   className={`aiSummaryText ${canExpand ? "clickableSummaryText" : ""}`}
-                  onClick={canExpand ? () => setSummaryExpanded(value => !value) : undefined}
-                  onKeyDown={canExpand ? event => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
-                      setSummaryExpanded(value => !value);
-                    }
-                  } : undefined}
+                  onClick={canExpand ? toggleStory : undefined}
+                  onKeyDown={canExpand ? handleStoryKeyDown : undefined}
                   role={canExpand ? "button" : undefined}
                   tabIndex={canExpand ? 0 : undefined}
                   aria-expanded={canExpand ? summaryExpanded : undefined}
@@ -318,21 +346,28 @@ function StoryCard({ story }: { story: Story }) {
                 ><AiSummaryPreview story={story} expanded={summaryExpanded} /></p>
               </div>
             </div>}
-        {summaryExpanded && hasValidPhoto && (
+        {summaryExpanded && hasImageCandidate && (
           <div className="storyArticleImageWrap">
             <img
               className="storyArticleImage"
               src={resolvedImageUrl || ""}
               alt={`Billede til artiklen: ${story.title}`}
               loading="lazy"
-              referrerPolicy="no-referrer"
+              onLoad={(event) => {
+                if (event.currentTarget.naturalWidth > 1 && event.currentTarget.naturalHeight > 1) {
+                  setVerifiedImageUrl(resolvedImageUrl);
+                }
+              }}
               onError={() => {
                 // If the saved publisher image is expired or blocked, try the
                 // article's own verified metadata once before hiding it.
                 setArticleImageFailed(true);
-                if (!imageLookupAttempted) {
+                setVerifiedImageUrl(null);
+                if (imageFallbackCountRef.current < 1) {
+                  imageFallbackCountRef.current += 1;
                   setFailedImageUrl(resolvedImageUrl);
                   setResolvedImageUrl(null);
+                  setImageLookupAttempted(false);
                 }
               }}
             />
@@ -372,7 +407,7 @@ function StoryCard({ story }: { story: Story }) {
             <button
               type="button"
               className={`storyExpandButton ${summaryExpanded ? "open" : ""}`}
-              onClick={() => setSummaryExpanded((value) => !value)}
+              onClick={toggleStory}
               aria-label={summaryExpanded ? "Fold nyhed og billede sammen" : "Fold nyhed og billede ud"}
               aria-expanded={summaryExpanded}
               title={summaryExpanded ? "Fold nyhed sammen" : "Fold nyhed ud med billede"}
