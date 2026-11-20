@@ -206,6 +206,105 @@ export async function getAndersWinnerskjoldArchiveStories(): Promise<Story[]> {
   }
 }
 
+
+type StoredNewsCandidate = {
+  id: number;
+  url: string;
+  title: string;
+  source: string;
+  method?: string;
+  category?: string;
+  publishedAt?: string;
+  summary: string;
+  storyId?: string;
+  meta?: Record<string, unknown>;
+};
+
+// Reuse an existing batch of published stories without publishing old
+// headlines as archive links or generating AI text in the visitor's browser.
+let recentCandidateCache: { stories: Story[]; checkedAt: number } | null = null;
+let recentCandidateInFlight: Promise<Story[]> | null = null;
+export async function getRecentStoredNewsCandidates(limit = 500): Promise<Story[]> {
+  const count = Math.max(1, Math.min(500, Math.trunc(limit)));
+  if (recentCandidateCache && Date.now() - recentCandidateCache.checkedAt < 45_000) {
+    return recentCandidateCache.stories.slice(0, count);
+  }
+  if (recentCandidateInFlight) return (await recentCandidateInFlight).slice(0, count);
+  if (!databaseConfigured()) return [];
+
+  recentCandidateInFlight = (async () => {
+    try {
+      const response = await databaseRpc("oeldk_recent_news_candidates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ p_limit: 500 }),
+        cache: "no-store",
+        signal: AbortSignal.timeout(7000)
+      });
+      if (!response.ok) throw new Error("Stored news candidates returned " + response.status);
+      const rows: unknown = await response.json();
+      if (!Array.isArray(rows)) throw new Error("Invalid stored news candidates");
+      const categories = new Set(["AI/Tech", "Erhverv", "Danmark", "Aarhus"]);
+      const stories: Story[] = rows.flatMap((entry: StoredNewsCandidate) => {
+        if (!entry || typeof entry.url !== "string" ||
+            typeof entry.title !== "string" || typeof entry.summary !== "string" ||
+            entry.summary.trim().length < 50 || entry.title.trim().length < 5) return [];
+        try {
+          const url = new URL(entry.url);
+          if (url.protocol !== "https:" || url.username || url.password || url.port) return [];
+        } catch { return []; }
+        const raw = entry.meta && typeof entry.meta === "object" ? entry.meta : {};
+        const neutrality = raw.neutrality;
+        const method = entry.method === "WEB" ? "WEB" as const : "RSS" as const;
+        const source = typeof entry.source === "string" && entry.source.trim() ? entry.source : "Ukendt kilde";
+        return [{
+          id: typeof entry.storyId === "string" && entry.storyId ? entry.storyId : "stored:" + entry.id,
+          category: (categories.has(entry.category || "") ? entry.category : "Danmark") as Story["category"],
+          title: entry.title,
+          sourceLabel: source,
+          sourceMethod: method,
+          published: "Tidligere",
+          publishedAt: entry.publishedAt,
+          publishedDate: formatArchivePublishedDate(entry.publishedAt),
+          summary: entry.summary.slice(0, 2200),
+          mentions: Array.isArray(raw.mentions) ? raw.mentions.filter((value): value is string => typeof value === "string") : [],
+          andersOnly: raw.andersOnly === true,
+          why: "Redaktionel nyhed fra en angivet kilde.",
+          verification: raw.verification === "confirmed" || raw.verification === "nuance" ? raw.verification : "unverified",
+          verificationText: typeof raw.verificationText === "string" ? raw.verificationText : "Nyhed fra en angivet kilde.",
+          neutrality: neutrality && typeof neutrality === "object" &&
+            "wording" in neutrality ? neutrality as Story["neutrality"] : {
+              wording: 100, wordingNote: "Ikke vurderet.", wordingExamples: [],
+              sources: null, sourcesNote: "Ikke vurderet.", sourcesExamples: []
+            },
+          sources: [{ label: source, url: entry.url, title: entry.title, method }]
+        } satisfies Story];
+      });
+      recentCandidateCache = { stories, checkedAt: Date.now() };
+      return stories;
+    } catch (error) {
+      console.warn("Stored news candidates unavailable", String(error));
+      return [];
+    }
+  })();
+  try { return (await recentCandidateInFlight).slice(0, count); }
+  finally { recentCandidateInFlight = null; }
+}
+
+/** Prefer the freshest live RSS metadata and add recent stored articles once. */
+export function combineNewsCandidates(live: Story[], stored: Story[], limit = 500): Story[] {
+  const seen = new Set<string>();
+  return [...live, ...stored]
+    .sort((a, b) => (b.publishedAt ? Date.parse(b.publishedAt) || 0 : 0) -
+      (a.publishedAt ? Date.parse(a.publishedAt) || 0 : 0))
+    .filter(story => {
+      const url = story.sources[0]?.url;
+      if (!url || seen.has(url)) return false;
+      seen.add(url);
+      return true;
+    }).slice(0, Math.max(1, limit));
+}
+
 // A single Railway instance can serve many visitors at once. Briefly reuse
 // successful snapshots to reduce paid database egress without showing old news.
 let recentSnapshot: { value: { stories: Story[]; totalCount: number; generatedAt: string; availableStories: number }; checkedAt: number } | null = null;

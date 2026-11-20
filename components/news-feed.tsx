@@ -599,9 +599,6 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
         >
           {andersTopic} ({andersCount})
         </button>
-        <a className="filterTab archiveFilterLink" href="/arkiv" title="Åbn hele ØL.dk's nyhedsarkiv">
-          Nyhedsarkiv
-        </a>
       </div>
 
       <div className="mediaFilter" aria-label="Filtrer efter medie">
