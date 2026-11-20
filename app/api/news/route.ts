@@ -3,7 +3,7 @@ import { unstable_cache } from "next/cache";
 import { auditNewsStories } from "@/lib/news-quality";
 import { auditCurrentImageLinks } from "@/lib/image-health";
 import { getLiveStories, cleanNewsStories, addPublisherFeaturedImages, loadPublisherArticleEnricher } from "@/lib/live-news";
-import { getAndersWinnerskjoldArchiveStories, getVisibleArchiveCount, getNewsSnapshot, queuePreviewRepairs } from "@/lib/news-store";
+import { getNewsSnapshot, getRecentStoredNewsCandidates, combineNewsCandidates } from "@/lib/news-store";
 import { getSummaryStates, onlyCompletedStories } from "@/lib/ready-summaries";
 
 export const revalidate = 60;
@@ -54,22 +54,15 @@ export async function GET(req: NextRequest) {
       const snapshot = await getNewsSnapshot();
       if (snapshot) {
         try {
-        const cleanedStories = cleanNewsStories(snapshot.stories);
+        const storedStories = isFirstBatch ? [] : await getRecentStoredNewsCandidates(500);
+        const cleanedStories = cleanNewsStories(combineNewsCandidates(snapshot.stories, storedStories, 500));
         // Publication gate: no article goes to visitors without a completed
         // AI summary already stored in the shared database.
         const summaryStates = await getSummaryStates(cleanedStories);
         const readyStories = onlyCompletedStories(cleanedStories, summaryStates);
-        // Historical publisher links are visible without AI text; newly
-        // published stories must still pass the AI summary publication gate.
-        const readyIds = new Set(readyStories.map(story => story.id));
-        const archivalCutoff = Date.now() - 24 * 60 * 60 * 1000;
-        const archiveStories = cleanedStories.filter(story =>
-          !readyIds.has(story.id) &&
-          Boolean(story.sources[0]?.url && story.title.trim()) &&
-          Boolean(story.publishedAt && Number.isFinite(Date.parse(story.publishedAt)) &&
-            Date.parse(story.publishedAt) < archivalCutoff)
-        ).map(story => ({ ...story, archiveOnly: true as const }));
-        const displayStories = [...readyStories, ...archiveStories];
+        // Publish only articles with a completed, stored AI summary.
+        // Never surface archive-only headlines as a replacement for AI text.
+        const displayStories = readyStories;
         // Enrich only the already-published stories, never hundreds of pending
         // articles, which also speeds up the first five news cards.
         const displayCandidates = isFirstBatch ? readyStories.slice(0, 20) : displayStories;
@@ -77,7 +70,7 @@ export async function GET(req: NextRequest) {
           ? (await firstBatchEnricher)(displayCandidates)
           : await addPublisherFeaturedImages(displayCandidates);
         const visibleStories = cleanNewsStories(enrichedStories).filter(story =>
-          story.archiveOnly === true || typeof (story as {aiSummary?: string}).aiSummary === "string"
+          typeof (story as {aiSummary?: string}).aiSummary === "string"
         ).sort((a, b) => {
           const at = a.publishedAt ? Date.parse(a.publishedAt) : 0;
           const bt = b.publishedAt ? Date.parse(b.publishedAt) : 0;
@@ -85,12 +78,13 @@ export async function GET(req: NextRequest) {
         });
         if (!visibleStories.length) throw new Error("Snapshot has no publication-ready stories");
         const limit = Number.isFinite(requestedLimit) && requestedLimit > 0
-          ? Math.min(Math.floor(requestedLimit), visibleStories.length)
-          : visibleStories.length;
+          ? Math.min(Math.floor(requestedLimit), 200, visibleStories.length)
+          : Math.min(200, visibleStories.length);
         return NextResponse.json({
           ...snapshot,
           stories: visibleStories.slice(0, limit).map(limitPublicYExcerpt),
-          availableStories: visibleStories.length
+          availableStories: Math.min(200, visibleStories.length),
+          totalCount: Math.min(200, visibleStories.length)
         }, { headers: { "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60" } });
         } catch (error) { console.warn("Snapshot summary lookup unavailable; using publisher feed fallback", error); }
       }
@@ -117,23 +111,11 @@ export async function GET(req: NextRequest) {
     }
     // Scheduled fast collection only reads fresh RSS metadata; it must never
     // trigger the 1,500-article enrichment job on the visitor-facing service.
-    const liveStories = isFastCollector ? await getLiveStories({ fast: true, limit: 1000 }) : wantsFast ? await getFastStories() : await getCachedStories();
-    const rawArchive = (wantsFast || isFastCollector) ? [] : await getAndersWinnerskjoldArchiveStories();
-    if (isCollector) {
-      try {
-        await queuePreviewRepairs(rawArchive.filter((story) => story.summary.length < 180 || (story.sources[0]?.url?.includes("stiften.dk/") && story.summary.length < 700)));
-      } catch (error) { console.error("Archive preview repair failed", error); }
-    }
-    const andersArchive = rawArchive.length ? await addPublisherFeaturedImages(rawArchive) : [];
-    const seen = new Set(liveStories.map((story) => story.id));
-    let stories = cleanNewsStories([
-      ...liveStories,
-      ...andersArchive.filter((story) => !seen.has(story.id))
-    ]).sort((a, b) => {
-      const at = a.publishedAt ? Date.parse(a.publishedAt) : 0;
-      const bt = b.publishedAt ? Date.parse(b.publishedAt) : 0;
-      return bt - at;
-    });
+    const liveStories = isFastCollector ? await getLiveStories({ fast: true, limit: 100 }) : wantsFast ? await getFastStories() : await getCachedStories();
+    let stories = cleanNewsStories(liveStories).sort((a, b) =>
+      (b.publishedAt ? Date.parse(b.publishedAt) || 0 : 0) -
+      (a.publishedAt ? Date.parse(a.publishedAt) || 0 : 0)
+    );
     // Image health checks belong to scheduled ingestion, never public requests.
     // Only confirmed invalid links are removed; CDN blocks/timeouts remain unknown.
     if (isCollector && !isFastCollector) {
@@ -152,7 +134,7 @@ export async function GET(req: NextRequest) {
       const states = await getSummaryStates(stories);
       stories = onlyCompletedStories(stories, states);
     }
-    const totalCount = isFastCollector ? stories.length : await getVisibleArchiveCount();
+    const totalCount = stories.length;
     const limit = Number.isFinite(requestedLimit) && requestedLimit > 0
       ? Math.min(Math.floor(requestedLimit), stories.length)
       : stories.length;

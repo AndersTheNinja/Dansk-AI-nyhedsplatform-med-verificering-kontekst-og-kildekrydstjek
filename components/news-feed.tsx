@@ -60,12 +60,20 @@ function StoryCard({ story }: { story: Story }) {
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [aiSummary, setAiSummary] = useState<{ summary: string; bullets: string[]; basis?: string; basisType?: "article_text" | "excerpt"; articleTruncated?: boolean } | null>(null);
   const [summaryError, setSummaryError] = useState<string | null>(null);
-  const [textOpen, setTextOpen] = useState(false);
   const [resolvedImageUrl, setResolvedImageUrl] = useState<string | null>(story.imageUrl && !isGenericArticleImage(story.imageUrl, story.title, story.sources[0]?.label || story.sourceLabel) ? story.imageUrl : null);
   const [imageLookupAttempted, setImageLookupAttempted] = useState(false);
   const [photoCredit, setPhotoCredit] = useState<string | null>(null);
   const [articleImageFailed, setArticleImageFailed] = useState(false);
+  const [verifiedImageUrl, setVerifiedImageUrl] = useState<string | null>(null);
   const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null);
+  const imageRequestInFlightRef = useRef(false);
+  const imageOnDemandRequestedRef = useRef(false);
+  const imageFallbackCountRef = useRef(0);
+  const hasImageCandidate = Boolean(resolvedImageUrl && !articleImageFailed);
+  // Only show a camera when the image genuinely loaded in this browser.
+  const hasValidPhoto = hasImageCandidate && verifiedImageUrl === resolvedImageUrl;
+  // The headline and text are always clickable, even while photo discovery runs.
+  const canExpand = !story.archiveOnly;
   const [factOpen, setFactOpen] = useState(false);
   const [factLoading, setFactLoading] = useState(false);
   const [factCheck, setFactCheck] = useState<FactResult | null>(null);
@@ -104,7 +112,44 @@ function StoryCard({ story }: { story: Story }) {
     return () => observer.disconnect();
   }, [story, subscriptionRequired]);
 
-  // Discover publisher images for short RSS teasers as they enter the viewport.
+  // Retrieve photos proactively near the viewport, and retry once on opening a
+  // story. Some stored articles have images on the publisher page but not in RSS.
+  async function ensureArticleImage(force = false) {
+    const articleUrl = story.sources[0]?.url;
+    if (story.archiveOnly || !articleUrl || imageRequestInFlightRef.current ||
+        (imageLookupAttempted && !force) || resolvedImageUrl) return;
+    imageRequestInFlightRef.current = true;
+    setImageLookupAttempted(true);
+    try {
+      const response = await fetch("/api/article-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: articleUrl, title: story.title, failedImageUrl }),
+        signal: AbortSignal.timeout(13000)
+      });
+      if (!response.ok) return;
+      const data = await response.json();
+      if (typeof data.photoCredit === "string") setPhotoCredit(data.photoCredit);
+      if (typeof data.imageUrl === "string" &&
+          data.imageUrl !== failedImageUrl &&
+          !isGenericArticleImage(data.imageUrl, story.title, story.sources[0]?.label || story.sourceLabel, data.imageDescription || "")) {
+        setArticleImageFailed(false);
+        setResolvedImageUrl(data.imageUrl);
+      }
+    } catch { /* A blocked publisher image must not stop the news feed. */ }
+    finally { imageRequestInFlightRef.current = false; }
+  }
+
+  // Preserve images supplied by the full feed after the first five-story
+  // preview. React reuses the card, so its initial state would otherwise stick.
+  useEffect(() => {
+    const image = story.imageUrl;
+    if (!image || image === failedImageUrl ||
+        isGenericArticleImage(image, story.title, story.sources[0]?.label || story.sourceLabel)) return;
+    setResolvedImageUrl(current => current || image);
+    setArticleImageFailed(false);
+  }, [story.imageUrl, story.title, story.sourceLabel, failedImageUrl]);
+
   useEffect(() => {
     if (story.archiveOnly || imageLookupAttempted || resolvedImageUrl) return;
     const node = ref.current;
@@ -112,30 +157,49 @@ function StoryCard({ story }: { story: Story }) {
     const observer = new IntersectionObserver(entries => {
       if (!entries.some(entry => entry.isIntersecting)) return;
       observer.disconnect();
-    const articleUrl = story.sources[0]?.url;
-    if (!articleUrl) return;
-    setImageLookupAttempted(true);
-
-    fetch("/api/article-image", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: articleUrl, title: story.title, failedImageUrl })
-    })
-      .then((response) => response.ok ? response.json() : null)
-      .then((data) => {
-        if (typeof data?.photoCredit === "string" && (!resolvedImageUrl || data?.imageUrl === resolvedImageUrl)) {
-          setPhotoCredit(data.photoCredit);
-        }
-        if (typeof data?.imageUrl === "string" && !resolvedImageUrl && !isGenericArticleImage(data.imageUrl, story.title, story.sources[0]?.label || story.sourceLabel, data.imageDescription || "")) {
-          setResolvedImageUrl(data.imageUrl);
-          setArticleImageFailed(false);
-        }
-      })
-      .catch(() => {});
-    }, {rootMargin:"200px 0px"});
+      void ensureArticleImage();
+    }, { rootMargin: "300px 0px" });
     observer.observe(node);
     return () => observer.disconnect();
-  }, [resolvedImageUrl, imageLookupAttempted, failedImageUrl, story.sources, story.title, story.sourceLabel]);
+  }, [story.archiveOnly, story.title, story.sources, resolvedImageUrl, imageLookupAttempted, failedImageUrl]);
+
+  // Validate the camera icon unobtrusively. Never let a failed preflight
+  // suppress the actual image when the reader opens the article.
+  useEffect(() => {
+    if (!resolvedImageUrl || articleImageFailed) return;
+    let cancelled = false;
+    const check = new Image();
+    check.onload = () => {
+      if (!cancelled && check.naturalWidth > 1 && check.naturalHeight > 1) {
+        setVerifiedImageUrl(resolvedImageUrl);
+      }
+    };
+    check.onerror = () => {
+      if (!cancelled) setVerifiedImageUrl(null);
+    };
+    check.src = resolvedImageUrl;
+    return () => {
+      cancelled = true;
+      check.onload = null;
+      check.onerror = null;
+    };
+  }, [resolvedImageUrl, articleImageFailed]);
+
+  function toggleStory() {
+    const opening = !summaryExpanded;
+    setSummaryExpanded(opening);
+    if (opening && !resolvedImageUrl && !imageOnDemandRequestedRef.current) {
+      imageOnDemandRequestedRef.current = true;
+      void ensureArticleImage(true);
+    }
+  }
+
+  function handleStoryKeyDown(event: React.KeyboardEvent<HTMLElement>) {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      toggleStory();
+    }
+  }
 
   async function toggleSummary() {
     const nextOpen = !summaryOpen;
@@ -258,52 +322,52 @@ function StoryCard({ story }: { story: Story }) {
             })()}
           </span>
         </div>
-        <h2>{story.title}</h2>
+        <h2
+          className={canExpand ? "storyExpandableHeadline" : undefined}
+          role={canExpand ? "button" : undefined}
+          tabIndex={canExpand ? 0 : undefined}
+          aria-expanded={canExpand ? summaryExpanded : undefined}
+          aria-label={canExpand ? (summaryExpanded ? "Fold nyheden sammen: " : "Fold nyheden ud: ") + story.title : undefined}
+          onClick={canExpand ? toggleStory : undefined}
+          onKeyDown={canExpand ? handleStoryKeyDown : undefined}
+        >{story.title}</h2>
         {story.archiveOnly
           ? <p className="storyArchiveLabel">Arkiv · Læs hele artiklen hos originalkilden</p>
           : <div className="summaryRow aiSummaryRow">
               <div className="aiSummaryBody">
                 <p
-                  className={`aiSummaryText ${resolvedImageUrl && !articleImageFailed ? "clickablePhotoSummary" : ""}`}
-                  onClick={resolvedImageUrl && !articleImageFailed ? () => setTextOpen(value => !value) : undefined}
-                  onKeyDown={resolvedImageUrl && !articleImageFailed ? event => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
-                      setTextOpen(value => !value);
-                    }
-                  } : undefined}
-                  role={resolvedImageUrl && !articleImageFailed ? "button" : undefined}
-                  tabIndex={resolvedImageUrl && !articleImageFailed ? 0 : undefined}
-                  aria-expanded={resolvedImageUrl && !articleImageFailed ? textOpen : undefined}
-                  aria-label={resolvedImageUrl && !articleImageFailed ? (textOpen ? "Skjul artikelbillede" : "Vis artikelbillede") : undefined}
+                  className={`aiSummaryText ${canExpand ? "clickableSummaryText" : ""}`}
+                  onClick={canExpand ? toggleStory : undefined}
+                  onKeyDown={canExpand ? handleStoryKeyDown : undefined}
+                  role={canExpand ? "button" : undefined}
+                  tabIndex={canExpand ? 0 : undefined}
+                  aria-expanded={canExpand ? summaryExpanded : undefined}
+                  aria-label={canExpand ? (summaryExpanded ? "Fold nyhed og billede sammen" : "Fold nyhed og billede ud") : undefined}
                 ><AiSummaryPreview story={story} expanded={summaryExpanded} /></p>
-                {hasLongSummary && (
-                  <button
-                    type="button"
-                    className="aiSummaryToggle"
-                    aria-expanded={summaryExpanded}
-                    onClick={() => setSummaryExpanded(value => !value)}
-                  >
-                    {summaryExpanded ? "Vis mindre" : "Vis hele resuméet"} <span aria-hidden="true">{summaryExpanded ? "▴" : "▾"}</span>
-                  </button>
-                )}
               </div>
             </div>}
-        {textOpen && resolvedImageUrl && !articleImageFailed && (
+        {summaryExpanded && hasImageCandidate && (
           <div className="storyArticleImageWrap">
             <img
               className="storyArticleImage"
               src={resolvedImageUrl || ""}
               alt={`Billede til artiklen: ${story.title}`}
               loading="lazy"
-              referrerPolicy="no-referrer"
+              onLoad={(event) => {
+                if (event.currentTarget.naturalWidth > 1 && event.currentTarget.naturalHeight > 1) {
+                  setVerifiedImageUrl(resolvedImageUrl);
+                }
+              }}
               onError={() => {
                 // If the saved publisher image is expired or blocked, try the
                 // article's own verified metadata once before hiding it.
                 setArticleImageFailed(true);
-                if (!imageLookupAttempted) {
+                setVerifiedImageUrl(null);
+                if (imageFallbackCountRef.current < 1) {
+                  imageFallbackCountRef.current += 1;
                   setFailedImageUrl(resolvedImageUrl);
                   setResolvedImageUrl(null);
+                  setImageLookupAttempted(false);
                 }
               }}
             />
@@ -339,14 +403,14 @@ function StoryCard({ story }: { story: Story }) {
               </span>
             </a>
           )}
-          {resolvedImageUrl && !articleImageFailed && (
+          {hasValidPhoto && (
             <button
               type="button"
-              className={`storyExpandButton ${textOpen ? "open" : ""}`}
-              onClick={() => setTextOpen((value) => !value)}
-              aria-label={textOpen ? "Skjul artikelbillede" : "Vis artikelbillede"}
-              aria-expanded={textOpen}
-              title={textOpen ? "Skjul billede" : "Vis billede til artiklen"}
+              className={`storyExpandButton ${summaryExpanded ? "open" : ""}`}
+              onClick={toggleStory}
+              aria-label={summaryExpanded ? "Fold nyhed og billede sammen" : "Fold nyhed og billede ud"}
+              aria-expanded={summaryExpanded}
+              title={summaryExpanded ? "Fold nyhed sammen" : "Fold nyhed ud med billede"}
             >
               <svg className="storyCameraIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M14.5 4h-5L7.5 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3.5L14.5 4Z" />
@@ -493,61 +557,16 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
   const [categoriesSelected, setCategoriesSelected] = useState<string[]>([]);
   const [mediaSelected, setMediaSelected] = useState<string[]>([]);
   const [visibleCount, setVisibleCount] = useState(20);
-  const [archiveMode, setArchiveMode] = useState(false);
-  const [archiveStories, setArchiveStories] = useState<Story[]>([]);
-  const [archiveTotal, setArchiveTotal] = useState<number | null>(null);
-  const [archiveHasMore, setArchiveHasMore] = useState(true);
-  const [archiveLoading, setArchiveLoading] = useState(false);
-  const [archiveError, setArchiveError] = useState(false);
-  const archiveOffsetRef = useRef(0);
-  const archiveLoadingRef = useRef(false);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
-  const activeStories = archiveMode ? archiveStories : initialStories;
-
-  async function loadArchivePage() {
-    if (archiveLoadingRef.current || !archiveHasMore) return;
-    archiveLoadingRef.current = true;
-    setArchiveLoading(true);
-    setArchiveError(false);
-    try {
-      const response = await fetch(`/api/news/archive?limit=100&offset=${archiveOffsetRef.current}`);
-      if (!response.ok) throw new Error("Arkivet kunne ikke hentes.");
-      const data = await response.json();
-      if (!Array.isArray(data.stories) || typeof data.totalCount !== "number") {
-        throw new Error("Ugyldigt svar fra arkivet.");
-      }
-      const page: Story[] = data.stories.filter(
-        (story: Story) => story.archiveOnly === true && !!story.sources?.[0]?.url
-      );
-      setArchiveStories(current => {
-        const seen = new Set(current.map(story => story.sources[0]?.url));
-        return [...current, ...page.filter(story => !seen.has(story.sources[0]?.url))];
-      });
-      archiveOffsetRef.current += data.stories.length;
-      setArchiveTotal(data.totalCount);
-      setArchiveHasMore(data.hasMore === true && data.stories.length > 0);
-    } catch {
-      setArchiveError(true);
-    } finally {
-      archiveLoadingRef.current = false;
-      setArchiveLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    if (archiveMode && archiveStories.length === 0 && !archiveLoadingRef.current && !archiveError) {
-      void loadArchivePage();
-    }
-  }, [archiveMode, archiveStories.length, archiveError]);
   const categories = ["AI/Tech", "Erhverv", "Danmark", "Aarhus"];
   const andersTopic = "ANDERS W.";
   const andersCount = useMemo(
-    () => activeStories.filter(isAndersWinnerskjoldStory).length,
-    [activeStories]
+    () => initialStories.filter(isAndersWinnerskjoldStory).length,
+    [initialStories]
   );
 
   const mediaOptions = useMemo(() => {
-    const names = activeStories.filter((story) => !story.andersOnly).flatMap((story) =>
+    const names = initialStories.filter((story) => !story.andersOnly).flatMap((story) =>
       story.sources.map((source) => mediaName(source.label))
     );
     const hiddenMedia = new Set(["Fredericia Dagblad", "JydskeVestkysten", "Horsens Folkeblad", "Nordjyske", "Fyens.dk"]);
@@ -558,11 +577,11 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
     ]))
       .filter((name) => !hiddenMedia.has(name))
       .sort((a, b) => a.localeCompare(b, "da"));
-  }, [activeStories]);
+  }, [initialStories]);
 
   const visible = useMemo(
     () =>
-      activeStories
+      initialStories
         .filter((story) => {
           if (story.andersOnly && !categoriesSelected.includes(andersTopic)) return false;
           const matchesCategory =
@@ -577,7 +596,7 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
           if (diff !== 0) return diff;
           return b.id.localeCompare(a.id);
         }),
-    [activeStories, categoriesSelected, mediaSelected]
+    [initialStories, categoriesSelected, mediaSelected]
   );
 
   function toggleCategory(item: string) {
@@ -598,7 +617,7 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
 
   useEffect(() => {
     setVisibleCount(20);
-  }, [categoriesSelected, mediaSelected, archiveMode]);
+  }, [categoriesSelected, mediaSelected]);
 
   useEffect(() => {
     const node = loadMoreRef.current;
@@ -619,17 +638,6 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
   return (
     <section id="feed">
       <div className="filterBar">
-        <button
-          className={`filterTab ${archiveMode ? "active" : ""}`}
-          onClick={() => {
-            setArchiveMode(value => !value);
-            setCategoriesSelected([]);
-            setMediaSelected([]);
-          }}
-          aria-pressed={archiveMode}
-        >
-          {archiveMode ? "Tilbage til nyheder" : "Nyhedsarkiv"}
-        </button>
         <button
           className={`filterTab ${categoriesSelected.length === 0 ? "active" : ""}`}
           onClick={() => setCategoriesSelected([])}
@@ -683,11 +691,10 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
       </div>
 
       <div className="sectionTitle sectionTitleRow">
-        <span>{archiveMode ? "Nyhedsarkiv" : "Seneste nyheder"} <span className="sectionTitleNote">{archiveMode ? `(${archiveTotal === null ? "indlæser" : archiveTotal.toLocaleString("da-DK")} ældre artikler)` : "(baseret på dine valg)"}</span></span>
+        <span>Seneste nyheder <span className="sectionTitleNote">(baseret på dine valg)</span></span>
         <MobileMediaStats />
       </div>
 
-      {archiveMode && <p className="storyArchiveLabel">Ældre nyheder vises uden AI-resumé. Åbn originalartiklen via “Læs mere”.</p>}
       <div className="storyList">
         {visible.slice(0, visibleCount).map((story) => (
           <StoryCard key={story.id} story={story} />
@@ -696,18 +703,6 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
       {visibleCount < visible.length && (
         <div ref={loadMoreRef} className="newsLoadMore" aria-hidden="true">
           Indlæser flere nyheder…
-        </div>
-      )}
-      {archiveMode && visibleCount >= visible.length && archiveHasMore && (
-        <div className="newsLoadMore">
-          <button type="button" className="filterTab" disabled={archiveLoading} onClick={() => void loadArchivePage()}>
-            {archiveLoading ? "Henter arkivnyheder…" : "Vis 100 ældre nyheder"}
-          </button>
-        </div>
-      )}
-      {archiveMode && archiveError && (
-        <div className="newsLoadMore" role="alert">
-          Arkivet kunne ikke hentes. <button type="button" className="filterTab" onClick={() => void loadArchivePage()}>Prøv igen</button>
         </div>
       )}
     </section>

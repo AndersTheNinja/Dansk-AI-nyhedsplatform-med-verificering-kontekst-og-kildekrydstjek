@@ -5,6 +5,7 @@ const queries: Readonly<Record<string, { args: readonly string[]; sql: string }>
   oeldk_archive_page: { args: ["p_limit", "p_offset"], sql: "select public.oeldk_archive_page($1::integer, $2::integer) as result" },
   ingest_news_batch: { args: ["payload"], sql: "select public.ingest_news_batch($1::jsonb) as result" },
   oeldk_article_previews: { args: [], sql: "select public.oeldk_article_previews() as result" },
+  oeldk_recent_news_candidates: { args: ["p_limit"], sql: "select public.oeldk_recent_news_candidates($1::integer) as result" },
   oeldk_berlingske_rss: { args: [], sql: "select public.oeldk_berlingske_rss() as result" },
   oeldk_berlingske_web: { args: [], sql: "select public.oeldk_berlingske_web() as result" },
   oeldk_featured_images: { args: [], sql: "select public.oeldk_featured_images() as result" },

@@ -338,10 +338,79 @@ button{font:inherit}
 .clickablePhotoSummary{cursor:pointer}
 .clickablePhotoSummary:focus-visible{outline:2px solid currentColor;outline-offset:3px;border-radius:2px}
 
-/* Summary lead: 25 words by default; expand the full 80–100-word text inline. */
+/* Summary lead: click anywhere on the text to expand/collapse, without a separate button. */
 .aiSummaryRow .aiSummaryBody{flex:1;min-width:0}
 .storyContent .aiSummaryRow .aiSummaryBody p.aiSummaryText{display:inline;flex:none}
 .storyContent .aiSummaryRow .aiSummaryPreview{display:inline;width:auto}
 .aiSummaryToggle{appearance:none;border:0;background:transparent;margin-left:5px;padding:0;cursor:pointer;color:var(--teal-dark);font:700 11px/1.5 Arial,Helvetica,sans-serif;text-decoration:underline;text-underline-offset:2px}
 .aiSummaryToggle:hover{color:var(--teal)}
 .aiSummaryToggle:focus-visible{outline:2px solid var(--teal);outline-offset:3px;border-radius:2px}
+
+
+/* Readable, crawlable archive of all historic publisher links. */
+.archiveHomeLink{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:3px 0 16px;padding:12px 14px;border:1px solid #cee0df;border-left:4px solid var(--teal);background:#f2f8f7;font-family:Arial,Helvetica,sans-serif}
+.archiveHomeLink strong{display:block;color:#2c5054;font-size:13px;line-height:1.4}
+.archiveHomeLink span{display:block;color:#617278;font-size:11px;line-height:1.4}
+.archiveHomeLink a{font:700 12px/1.4 Arial,sans-serif;color:var(--teal-dark);text-decoration:underline;white-space:nowrap;text-underline-offset:3px}
+.archiveHomeLink a span{display:inline;font:inherit;color:inherit}
+.archiveSideBox p+p{margin-top:10px}
+.archiveSideBox a{font-weight:700;text-decoration:underline;text-underline-offset:3px}
+.archiveBack{font:700 12px Arial,Helvetica,sans-serif;text-decoration:none;margin-bottom:10px;white-space:nowrap}
+.archiveBack:hover{text-decoration:underline}
+.archivePage{padding-top:20px;padding-bottom:48px}
+.archiveBreadcrumb{display:flex;gap:9px;align-items:center;font:11px Arial,sans-serif;color:#8a949a;margin-bottom:28px}
+.archiveBreadcrumb a{text-decoration:none;color:var(--teal)}
+.archiveIntro{display:flex;align-items:flex-end;justify-content:space-between;gap:22px;border-bottom:4px solid var(--teal);padding-bottom:25px}
+.archiveEyebrow{font:700 10px Arial,sans-serif;letter-spacing:.1em;color:var(--teal);text-transform:uppercase}
+.archiveIntro h1{margin:6px 0 9px;font:700 clamp(30px,5vw,46px)/1.1 Georgia,serif;color:#24353c}
+.archiveIntro p{font:13px/1.5 Arial,sans-serif;color:#6b777d;margin:0;max-width:610px}
+.archiveCount{font-family:Arial,sans-serif;text-align:right;flex:none}
+.archiveCount strong{font-size:30px;line-height:1.15;display:block;color:var(--teal-dark);font-variant-numeric:tabular-nums}
+.archiveCount span{font:11px Arial,sans-serif;color:#7b888f}
+.archiveListHeading{display:flex;align-items:baseline;justify-content:space-between;gap:14px;margin:25px 0 0;padding-bottom:9px;border-bottom:1px solid var(--line);font-family:Arial,sans-serif}
+.archiveListHeading h2{font-size:15px;color:#46545b;margin:0}
+.archiveListHeading>span{font-size:11px;color:#858e94}
+.archiveArticle{padding:16px 0 15px;border-bottom:1px dotted #c9d0d2}
+.archiveArticleMeta{display:flex;gap:10px;flex-wrap:wrap;align-items:center;font:11px Arial,sans-serif;color:#90999e;margin-bottom:7px}
+.archiveSource{font-weight:700;color:#8c564e}
+.archiveArticleCategory{color:var(--teal-dark)}
+.archiveArticle h3{font:700 17px/1.32 Arial,Helvetica,sans-serif;letter-spacing:-.01em;margin:0}
+.archiveArticle h3 a{color:#3b4f56;text-decoration:none}
+.archiveArticle h3 a:hover{color:var(--teal);text-decoration:underline;text-underline-offset:3px}
+.archiveExternal{display:inline-block;font:400 12px Arial,sans-serif;color:var(--teal);margin-left:5px}
+.archiveNotice{padding:24px 0;font:13px/1.5 Arial,sans-serif;color:#7b5851}
+.archivePagination{display:flex;justify-content:center;align-items:center;gap:6px;flex-wrap:wrap;margin:27px 0 10px;font-family:Arial,sans-serif}
+.archivePageLinkWrap{display:inline-flex;align-items:center;gap:6px}
+.archivePagination a{display:inline-flex;align-items:center;justify-content:center;min-width:33px;height:33px;padding:6px 9px;border:1px solid #d6dcde;border-radius:3px;text-decoration:none;font-size:12px;color:var(--teal-dark);background:#fff}
+.archivePagination a:hover{border-color:var(--teal)}
+.archivePagination a.archivePageCurrent{background:var(--teal);color:#fff;border-color:var(--teal);font-weight:700}
+.archivePagination a.archivePageMove{font-weight:700}
+.archiveEllipsis{font-size:13px;color:#adb6b9}
+@media(max-width:700px){
+  .archiveHomeLink{gap:8px;flex-wrap:wrap;padding:10px 12px}
+  .archiveIntro{align-items:flex-start}
+  .archiveIntro p{font-size:12px}
+  .archiveCount strong{font-size:23px}
+  .archiveArticle h3{font-size:16px}
+  .archivePagination{justify-content:flex-start}
+}
+@media(max-width:440px){
+  .archiveCount strong{font-size:18px}
+  .archiveCount span{font-size:10px}
+  .archiveIntro{gap:8px}
+  .archiveBack{font-size:11px}
+  .archivePagination .archivePageMove{width:100%}
+}
+
+/* Both homepage archive links lead to the same paginated archive, with no duplicate feed loader. */
+.filterBar .archiveFilterLink{display:inline-flex;align-items:center;justify-content:center;width:auto;min-height:23px;white-space:nowrap;text-decoration:none;color:var(--teal-dark);border-color:#c5d9d7;background:#f4f9f8;font-weight:700}
+.filterBar .archiveFilterLink:hover{background:#e9f4f2;color:var(--teal-dark)}
+@media(max-width:560px){.filterBar .archiveFilterLink{font-size:10px;padding:4px}}
+
+/* Original ØL.dk interaction: the summary itself is the expandable control. */
+.storyContent .aiSummaryRow .aiSummaryBody p.aiSummaryText.clickableSummaryText{cursor:pointer}
+.storyContent .aiSummaryRow .aiSummaryBody p.aiSummaryText.clickableSummaryText:focus-visible{outline:2px solid var(--teal);outline-offset:3px;border-radius:2px}
+
+/* Restore the original headline-to-expand interaction without changing the layout. */
+.storyContent h2.storyExpandableHeadline{cursor:pointer}
+.storyContent h2.storyExpandableHeadline:focus-visible{outline:2px solid var(--teal);outline-offset:3px;border-radius:2px}
