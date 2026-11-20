@@ -493,16 +493,61 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
   const [categoriesSelected, setCategoriesSelected] = useState<string[]>([]);
   const [mediaSelected, setMediaSelected] = useState<string[]>([]);
   const [visibleCount, setVisibleCount] = useState(20);
+  const [archiveMode, setArchiveMode] = useState(false);
+  const [archiveStories, setArchiveStories] = useState<Story[]>([]);
+  const [archiveTotal, setArchiveTotal] = useState<number | null>(null);
+  const [archiveHasMore, setArchiveHasMore] = useState(true);
+  const [archiveLoading, setArchiveLoading] = useState(false);
+  const [archiveError, setArchiveError] = useState(false);
+  const archiveOffsetRef = useRef(0);
+  const archiveLoadingRef = useRef(false);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
+  const activeStories = archiveMode ? archiveStories : initialStories;
+
+  async function loadArchivePage() {
+    if (archiveLoadingRef.current || !archiveHasMore) return;
+    archiveLoadingRef.current = true;
+    setArchiveLoading(true);
+    setArchiveError(false);
+    try {
+      const response = await fetch(`/api/news/archive?limit=100&offset=${archiveOffsetRef.current}`);
+      if (!response.ok) throw new Error("Arkivet kunne ikke hentes.");
+      const data = await response.json();
+      if (!Array.isArray(data.stories) || typeof data.totalCount !== "number") {
+        throw new Error("Ugyldigt svar fra arkivet.");
+      }
+      const page: Story[] = data.stories.filter(
+        (story: Story) => story.archiveOnly === true && !!story.sources?.[0]?.url
+      );
+      setArchiveStories(current => {
+        const seen = new Set(current.map(story => story.sources[0]?.url));
+        return [...current, ...page.filter(story => !seen.has(story.sources[0]?.url))];
+      });
+      archiveOffsetRef.current += data.stories.length;
+      setArchiveTotal(data.totalCount);
+      setArchiveHasMore(data.hasMore === true && data.stories.length > 0);
+    } catch {
+      setArchiveError(true);
+    } finally {
+      archiveLoadingRef.current = false;
+      setArchiveLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (archiveMode && archiveStories.length === 0 && !archiveLoadingRef.current && !archiveError) {
+      void loadArchivePage();
+    }
+  }, [archiveMode, archiveStories.length, archiveError]);
   const categories = ["AI/Tech", "Erhverv", "Danmark", "Aarhus"];
   const andersTopic = "ANDERS W.";
   const andersCount = useMemo(
-    () => initialStories.filter(isAndersWinnerskjoldStory).length,
-    [initialStories]
+    () => activeStories.filter(isAndersWinnerskjoldStory).length,
+    [activeStories]
   );
 
   const mediaOptions = useMemo(() => {
-    const names = initialStories.filter((story) => !story.andersOnly).flatMap((story) =>
+    const names = activeStories.filter((story) => !story.andersOnly.flatMap((story) =>
       story.sources.map((source) => mediaName(source.label))
     );
     const hiddenMedia = new Set(["Fredericia Dagblad", "JydskeVestkysten", "Horsens Folkeblad", "Nordjyske", "Fyens.dk"]);
@@ -513,11 +558,11 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
     ]))
       .filter((name) => !hiddenMedia.has(name))
       .sort((a, b) => a.localeCompare(b, "da"));
-  }, [initialStories]);
+  }, [activeStories]);
 
   const visible = useMemo(
     () =>
-      initialStories
+      activeStories
         .filter((story) => {
           if (story.andersOnly && !categoriesSelected.includes(andersTopic)) return false;
           const matchesCategory =
@@ -532,7 +577,7 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
           if (diff !== 0) return diff;
           return b.id.localeCompare(a.id);
         }),
-    [initialStories, categoriesSelected, mediaSelected]
+    [activeStories, categoriesSelected, mediaSelected]
   );
 
   function toggleCategory(item: string) {
@@ -553,7 +598,7 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
 
   useEffect(() => {
     setVisibleCount(20);
-  }, [categoriesSelected, mediaSelected]);
+  }, [categoriesSelected, mediaSelected, archiveMode]);
 
   useEffect(() => {
     const node = loadMoreRef.current;
@@ -574,6 +619,17 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
   return (
     <section id="feed">
       <div className="filterBar">
+        <button
+          className={`filterTab ${archiveMode ? "active" : ""}`}
+          onClick={() => {
+            setArchiveMode(value => !value);
+            setCategoriesSelected([]);
+            setMediaSelected([]);
+          }}
+          aria-pressed={archiveMode}
+        >
+          {archiveMode ? "Tilbage til nyheder" : "Nyhedsarkiv"}
+        </button>
         <button
           className={`filterTab ${categoriesSelected.length === 0 ? "active" : ""}`}
           onClick={() => setCategoriesSelected([])}
@@ -627,10 +683,11 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
       </div>
 
       <div className="sectionTitle sectionTitleRow">
-        <span>Seneste nyheder <span className="sectionTitleNote">(baseret på dine valg)</span></span>
+        <span>{archiveMode ? "Nyhedsarkiv" : "Seneste nyheder"} <span className="sectionTitleNote">{archiveMode ? `(${archiveTotal === null ? "indlæser" : archiveTotal.toLocaleString("da-DK")} ældre artikler)` : "(baseret på dine valg)"}</span></span>
         <MobileMediaStats />
       </div>
 
+      {archiveMode && <p className="storyArchiveLabel">Ældre nyheder vises uden AI-resumé. Åbn originalartiklen via “Læs mere”.</p>}
       <div className="storyList">
         {visible.slice(0, visibleCount).map((story) => (
           <StoryCard key={story.id} story={story} />
@@ -639,6 +696,18 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
       {visibleCount < visible.length && (
         <div ref={loadMoreRef} className="newsLoadMore" aria-hidden="true">
           Indlæser flere nyheder…
+        </div>
+      )}
+      {archiveMode && visibleCount >= visible.length && archiveHasMore && (
+        <div className="newsLoadMore">
+          <button type="button" className="filterTab" disabled={archiveLoading} onClick={() => void loadArchivePage()}>
+            {archiveLoading ? "Henter arkivnyheder…" : "Vis 100 ældre nyheder"}
+          </button>
+        </div>
+      )}
+      {archiveMode && archiveError && (
+        <div className="newsLoadMore" role="alert">
+          Arkivet kunne ikke hentes. <button type="button" className="filterTab" onClick={() => void loadArchivePage()}>Prøv igen</button>
         </div>
       )}
     </section>
