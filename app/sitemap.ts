@@ -1,7 +1,8 @@
 import type { MetadataRoute } from "next";
 import { databaseRpc } from "@/lib/database-rpc";
 
-export const revalidate = 3600;
+// Query the live database at request time: build-time env does not contain live archive data.
+export const dynamic = "force-dynamic";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = "https://xn--l-4ga.dk";
