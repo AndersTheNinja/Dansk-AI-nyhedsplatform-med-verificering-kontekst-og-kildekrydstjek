@@ -945,7 +945,7 @@ async function fetchFeed(feed: FeedConfig, timeoutMs = 7000, retry = false): Pro
     }
 
     if (!response.ok) {
-      if (isBerlingske && !retry && response.status >= 500) return fallback();
+      if (isBerlingske && !retry && (response.status === 403 || response.status === 404 || response.status === 429 || response.status >= 500)) return fallback();
       if (isJp && !retry && [400, 403, 404, 429, 500, 502, 503, 504].includes(response.status)) return jpFallback();
       throw new Error(`${feed.name} returned ${response.status}`);
     }
