@@ -338,7 +338,7 @@ button{font:inherit}
 .clickablePhotoSummary{cursor:pointer}
 .clickablePhotoSummary:focus-visible{outline:2px solid currentColor;outline-offset:3px;border-radius:2px}
 
-/* Summary lead: 25 words by default; expand the full 80–100-word text inline. */
+/* Summary lead: click anywhere on the text to expand/collapse, without a separate button. */
 .aiSummaryRow .aiSummaryBody{flex:1;min-width:0}
 .storyContent .aiSummaryRow .aiSummaryBody p.aiSummaryText{display:inline;flex:none}
 .storyContent .aiSummaryRow .aiSummaryPreview{display:inline;width:auto}
@@ -406,3 +406,7 @@ button{font:inherit}
 .filterBar .archiveFilterLink{display:inline-flex;align-items:center;justify-content:center;width:auto;min-height:23px;white-space:nowrap;text-decoration:none;color:var(--teal-dark);border-color:#c5d9d7;background:#f4f9f8;font-weight:700}
 .filterBar .archiveFilterLink:hover{background:#e9f4f2;color:var(--teal-dark)}
 @media(max-width:560px){.filterBar .archiveFilterLink{font-size:10px;padding:4px}}
+
+/* Original ØL.dk interaction: the summary itself is the expandable control. */
+.storyContent .aiSummaryRow .aiSummaryBody p.aiSummaryText.clickableSummaryText{cursor:pointer}
+.storyContent .aiSummaryRow .aiSummaryBody p.aiSummaryText.clickableSummaryText:focus-visible{outline:2px solid var(--teal);outline-offset:3px;border-radius:2px}

@@ -264,29 +264,19 @@ function StoryCard({ story }: { story: Story }) {
           : <div className="summaryRow aiSummaryRow">
               <div className="aiSummaryBody">
                 <p
-                  className={`aiSummaryText ${resolvedImageUrl && !articleImageFailed ? "clickablePhotoSummary" : ""}`}
-                  onClick={resolvedImageUrl && !articleImageFailed ? () => setTextOpen(value => !value) : undefined}
-                  onKeyDown={resolvedImageUrl && !articleImageFailed ? event => {
+                  className={`aiSummaryText ${hasLongSummary ? "clickableSummaryText" : ""}`}
+                  onClick={hasLongSummary ? () => setSummaryExpanded(value => !value) : undefined}
+                  onKeyDown={hasLongSummary ? event => {
                     if (event.key === "Enter" || event.key === " ") {
                       event.preventDefault();
-                      setTextOpen(value => !value);
+                      setSummaryExpanded(value => !value);
                     }
                   } : undefined}
-                  role={resolvedImageUrl && !articleImageFailed ? "button" : undefined}
-                  tabIndex={resolvedImageUrl && !articleImageFailed ? 0 : undefined}
-                  aria-expanded={resolvedImageUrl && !articleImageFailed ? textOpen : undefined}
-                  aria-label={resolvedImageUrl && !articleImageFailed ? (textOpen ? "Skjul artikelbillede" : "Vis artikelbillede") : undefined}
+                  role={hasLongSummary ? "button" : undefined}
+                  tabIndex={hasLongSummary ? 0 : undefined}
+                  aria-expanded={hasLongSummary ? summaryExpanded : undefined}
+                  aria-label={hasLongSummary ? (summaryExpanded ? "Fold resumé sammen" : "Fold resumé ud") : undefined}
                 ><AiSummaryPreview story={story} expanded={summaryExpanded} /></p>
-                {hasLongSummary && (
-                  <button
-                    type="button"
-                    className="aiSummaryToggle"
-                    aria-expanded={summaryExpanded}
-                    onClick={() => setSummaryExpanded(value => !value)}
-                  >
-                    {summaryExpanded ? "Vis mindre" : "Vis hele resuméet"} <span aria-hidden="true">{summaryExpanded ? "▴" : "▾"}</span>
-                  </button>
-                )}
               </div>
             </div>}
         {textOpen && resolvedImageUrl && !articleImageFailed && (
