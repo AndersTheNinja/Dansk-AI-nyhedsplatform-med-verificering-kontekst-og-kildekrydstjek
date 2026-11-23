@@ -423,4 +423,6 @@ button{font:inherit}
   .aiSummaryPreviewDesktop{display:inline}
   /* Slightly tighter article-summary line spacing on desktop only. */
   .storyContent .aiSummaryRow .aiSummaryBody p.aiSummaryText{line-height:1.3}
+  /* More breathing room between the media filters and the news heading. */
+  #feed > .sectionTitle{margin-top:12px}
 }
