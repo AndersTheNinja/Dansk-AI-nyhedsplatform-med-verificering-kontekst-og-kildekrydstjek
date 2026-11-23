@@ -414,3 +414,11 @@ button{font:inherit}
 /* Restore the original headline-to-expand interaction without changing the layout. */
 .storyContent h2.storyExpandableHeadline{cursor:pointer}
 .storyContent h2.storyExpandableHeadline:focus-visible{outline:2px solid var(--teal);outline-offset:3px;border-radius:2px}
+
+/* Longer collapsed AI summary previews on desktop; mobile remains at 25 words.
+   Both variants are server-rendered to avoid viewport-based hydration flicker. */
+.aiSummaryPreviewDesktop{display:none}
+@media(min-width:781px){
+  .aiSummaryPreviewMobile{display:none}
+  .aiSummaryPreviewDesktop{display:inline}
+}
