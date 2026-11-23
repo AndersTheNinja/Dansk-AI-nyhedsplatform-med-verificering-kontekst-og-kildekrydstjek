@@ -1,3 +1,24 @@
+/**
+ * Politiken sometimes publishes alternative RSS headlines for the same article.
+ * Accept the publisher's canonical identity only when both URLs identify the
+ * very same Politiken article ID; never equate articles just by similar topics.
+ */
+export function samePolitikenArticleUrl(requested: URL, canonicalValue: string): boolean {
+  const isPolitiken = (host: string) => host === "politiken.dk" || host === "www.politiken.dk";
+  if (!isPolitiken(requested.hostname) || requested.protocol !== "https:") return false;
+  const articleId = (url: URL) => url.pathname.match(/\/art(\d{6,})(?:\/|$)/i)?.[1] || "";
+  const requestedId = articleId(requested);
+  if (!requestedId || !canonicalValue) return false;
+  try {
+    const canonical = new URL(canonicalValue, requested);
+    return canonical.protocol === "https:" && isPolitiken(canonical.hostname) &&
+      articleId(canonical) === requestedId;
+  } catch {
+    return false;
+  }
+}
+
+
 const genericImageTokens = /(?:^|[-_\/.])(?:standard|default|placeholder|fallback|generic|breaking[-_]?news|news[-_]?graphic|news[-_]?image|world[-_]?map|globe|jordklode|verdenskort|nyhedsgrafik|illustration[-_]?generic|logo|favicon|avatar)(?:[-_\/.]|$)/i;
 const stopWords = new Set(["dette","denne","efter","blevet","havde","under","over","med","fra","til","som","der","det","for","dømt","årig","års","gammel","nye","nyhed","nyheder"]);
 

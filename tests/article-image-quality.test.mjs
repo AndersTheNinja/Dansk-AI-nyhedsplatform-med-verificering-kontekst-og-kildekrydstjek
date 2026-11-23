@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { isGenericArticleImage, techSavvyFeaturedImage, techSavvyPostEndpoint } from "../lib/article-image-quality.ts";
+import { isGenericArticleImage, samePolitikenArticleUrl, techSavvyFeaturedImage, techSavvyPostEndpoint } from "../lib/article-image-quality.ts";
 
 test("generic publisher graphics are rejected",()=>{
  assert.equal(isGenericArticleImage("https://cdn.dr.dk/images/standard-nyhedsgrafik.webp","43-årig dømt efter DNA-match","DR"),true);
@@ -36,4 +36,14 @@ test("TechSavvy validates the canonical article, featured media ID and image hos
   assert.equal(techSavvyFeaturedImage(response("https://techsavvy.media/anden-artikel/", original), page), null);
   assert.equal(techSavvyFeaturedImage(response(page.href, original, 44), page), null);
   assert.equal(techSavvyFeaturedImage(response(page.href, "https://example.com/foto.jpg"), page), null);
+});
+
+test("Politiken RSS alternative headlines can use a photo only from the same canonical article", () => {
+  const requested = new URL("https://politiken.dk/internationalt/art11060001/Selv-elbusserne-har-danske-flag");
+  assert.equal(samePolitikenArticleUrl(requested, "https://politiken.dk/internationalt/art11060001/Danmark-har-kastet-sig-ud-i-et-eksperiment"), true);
+  assert.equal(samePolitikenArticleUrl(requested, "https://politiken.dk/internationalt/art11060002/Anden-artikel"), false);
+  assert.equal(samePolitikenArticleUrl(requested, "https://politiken.dk.evil.test/internationalt/art11060001/Falsk"), false);
+  assert.equal(samePolitikenArticleUrl(requested, "https://example.com/internationalt/art11060001/Falsk"), false);
+  assert.equal(samePolitikenArticleUrl(new URL("https://politiken.dk/nyheder/"), "https://politiken.dk/nyheder/"), false);
+  assert.equal(samePolitikenArticleUrl(new URL("https://dr.dk/nyheder/art11060001"), "https://politiken.dk/art11060001"), false);
 });

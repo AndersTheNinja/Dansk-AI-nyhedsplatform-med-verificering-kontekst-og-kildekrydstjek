@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { isGenericArticleImage, techSavvyFeaturedImage, techSavvyPostEndpoint } from "@/lib/article-image-quality";
+import { isGenericArticleImage, samePolitikenArticleUrl, techSavvyFeaturedImage, techSavvyPostEndpoint } from "@/lib/article-image-quality";
 
 export const dynamic = "force-dynamic";
 
@@ -146,7 +146,13 @@ async function imageFromPage(body: { url?: string; title?: string; failedImageUr
 
     const html = (await response.text()).slice(0, 500000);
     const actualTitle = metadata(html, "og:title") || metadata(html, "twitter:title");
-    if (!titleMatches(expectedTitle, actualTitle)) {
+    // A Politiken RSS headline can differ from the page's OG headline. The
+    // publisher's canonical article ID is a safer fallback than title overlap.
+    const canonicalTag = (html.match(/<link\\b(?=[^>]*\\brel\\s*=\\s*["']canonical["'])[^>]*>/i)?.[0] || "");
+    const canonicalHref = canonicalTag.match(/\\bhref\\s*=\\s*["']([^"']+)["']/i)?.[1] || "";
+    const sameArticle = samePolitikenArticleUrl(page, metadata(html, "og:url")) ||
+      samePolitikenArticleUrl(page, canonicalHref);
+    if (!titleMatches(expectedTitle, actualTitle) && !sameArticle) {
       return NextResponse.json({ imageUrl: null });
     }
 
@@ -191,7 +197,12 @@ async function imageFromPage(body: { url?: string; title?: string; failedImageUr
             /(?:^|\/)(?:logo|favicon|avatar|placeholder)(?:[-_.\/]|$)/i.test(candidate.pathname)) continue;
         if (failedImageUrl && candidate.toString() === failedImageUrl) continue;
         if (isGenericArticleImage(candidate.toString(), expectedTitle, publisher, imageDescription)) continue;
-        if (!(await imageRespondsAsImage(candidate))) continue;
+        // Politiken's image CDN may reject server-side ranged preflights even
+        // though the photo loads in the reader's browser. Let the browser's
+        // existing Image.onload validation decide whether to show the camera.
+        const browserVerifiedPolitiken = (page.hostname === "politiken.dk" ||
+          page.hostname === "www.politiken.dk") && allowedImageHost(candidate.hostname);
+        if (!browserVerifiedPolitiken && !(await imageRespondsAsImage(candidate))) continue;
         image = candidate;
         break;
       } catch { /* Ignore invalid publisher image metadata. */ }
