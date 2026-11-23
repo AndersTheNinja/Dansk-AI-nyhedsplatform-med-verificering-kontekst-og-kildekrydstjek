@@ -421,4 +421,6 @@ button{font:inherit}
 @media(min-width:781px){
   .aiSummaryPreviewMobile{display:none}
   .aiSummaryPreviewDesktop{display:inline}
+  /* Slightly tighter article-summary line spacing on desktop only. */
+  .storyContent .aiSummaryRow .aiSummaryBody p.aiSummaryText{line-height:1.4}
 }
