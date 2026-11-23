@@ -64,8 +64,8 @@ export async function GET(req: NextRequest) {
         // Publish only articles with a completed, stored AI summary.
         // Never surface archive-only headlines as a replacement for AI text.
         // Preserve at least two AI-ready articles from each available publisher
-        // before filling the remaining 200 slots with the freshest stories.
-        const displayStories = selectAcrossPublishers(readyStories, 200, 2);
+        // before filling the remaining 500 slots with the freshest stories.
+        const displayStories = selectAcrossPublishers(readyStories, 500, 2);
         // Enrich only the already-published stories, never hundreds of pending
         // articles, which also speeds up the first five news cards.
         const displayCandidates = isFirstBatch ? readyStories.slice(0, 20) : displayStories;
@@ -81,13 +81,13 @@ export async function GET(req: NextRequest) {
         });
         if (!visibleStories.length) throw new Error("Snapshot has no publication-ready stories");
         const limit = Number.isFinite(requestedLimit) && requestedLimit > 0
-          ? Math.min(Math.floor(requestedLimit), 200, visibleStories.length)
-          : Math.min(200, visibleStories.length);
+          ? Math.min(Math.floor(requestedLimit), 500, visibleStories.length)
+          : Math.min(500, visibleStories.length);
         return NextResponse.json({
           ...snapshot,
           stories: visibleStories.slice(0, limit).map(limitPublicYExcerpt),
-          availableStories: Math.min(200, visibleStories.length),
-          totalCount: Math.min(200, visibleStories.length)
+          availableStories: Math.min(500, visibleStories.length),
+          totalCount: Math.min(500, visibleStories.length)
         }, { headers: { "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60" } });
         } catch (error) { console.warn("Snapshot summary lookup unavailable; using publisher feed fallback", error); }
       }
