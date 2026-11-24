@@ -96,24 +96,50 @@ export function repairNewsStories(stories: Story[]): { stories: Story[]; repairs
  return {stories:result,repairs};
 }
 
-/** Remove repeated headlines from the same publisher within one publication
- * window, even when the URLs differ. Keep independent publisher coverage and
- * genuinely later publications. Call after the summary-readiness gate so a
- * pending duplicate cannot hide a publication-ready article.
+/** Suppress same-publisher duplicate versions after summary readiness.
+ * Preserve independent coverage and avoid fuzzy matching across publication windows.
  */
 export function deduplicatePublisherHeadlines<T extends Story>(stories: T[]): T[] {
-  const seen = new Map<string, number[]>();
   const normalize = (value: string) => value.normalize("NFKC").toLocaleLowerCase("da-DK").replace(/\s+/g, " ").trim();
+  const stop = new Set("artiklen nyheden skribenten teksten klumme beskriver kritiserer ifølge handler medier mediet dagens denne dette deres bliver været være også ikke eller mens hvor hvordan efter under over som der det den til for med fra ved har om og på af en et at i er".split(" "));
+  const tokens = (value: string) => new Set((normalize(value).match(/[\p{L}\p{N}]+/gu) || []).filter(word => word.length >= 4 && !stop.has(word)));
+  const overlap = (a: Set<string>, b: Set<string>) => [...a].filter(word => b.has(word));
+  const urlKey = (story: Story) => {
+    try {
+      const url = new URL(story.sources?.[0]?.url || "");
+      return url.hostname.replace(/^www\./i, "").toLowerCase() + url.pathname.replace(/\/$/, "");
+    } catch { return ""; }
+  };
+  const seen = new Map<string, { title: string; time: number; url: string; titleWords: Set<string>; texts: Set<string>[] }[]>();
   return stories.filter(story => {
     const publisher = normalize(story.sources?.[0]?.label || story.sourceLabel || "");
     const title = normalize(story.title || "");
-    const timestamp = story.publishedAt ? Date.parse(story.publishedAt) : NaN;
-    if (!publisher || title.length < 24 || !Number.isFinite(timestamp)) return true;
-    const key = JSON.stringify([publisher, title]);
-    const times = seen.get(key) || [];
-    if (times.some(previous => Math.abs(timestamp - previous) <= 60 * 60_000)) return false;
-    times.push(timestamp);
-    seen.set(key, times);
+    const time = story.publishedAt ? Date.parse(story.publishedAt) : NaN;
+    if (!publisher) return true;
+    const url = urlKey(story);
+    const titleWords = tokens(title);
+    const texts = [story.summary || "", story.aiSummary || ""].map(tokens).filter(words => words.size >= 8);
+    const previous = seen.get(publisher) || [];
+    const duplicate = previous.some(item => {
+      if (url && item.url === url) return true;
+      if (!Number.isFinite(time) || !Number.isFinite(item.time)) return false;
+      const elapsed = Math.abs(time - item.time);
+      if (elapsed <= 60 * 60_000 && title.length >= 24 && title === item.title) return true;
+      if (elapsed > 10 * 60_000) return false;
+      const anchors = overlap(titleWords, item.titleWords).filter(word => word.length >= 5 && !tokens(publisher).has(word));
+      return texts.some(a => item.texts.some(b => {
+        const shared = overlap(a, b);
+        const containment = shared.length / Math.min(a.size, b.size);
+        const jaccard = shared.length / (a.size + b.size - shared.length);
+        // Different headlines require both a shared subject and substantial
+        // editorial-text agreement; generic publisher names are not anchors.
+        return shared.length >= 7 && containment >= 0.50 && jaccard >= 0.34 &&
+          anchors.some(word => a.has(word) && b.has(word));
+      }));
+    });
+    if (duplicate) return false;
+    previous.push({ title, time, url, titleWords, texts });
+    seen.set(publisher, previous);
     return true;
   });
 }
