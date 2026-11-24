@@ -400,19 +400,19 @@ function StoryCard({ story }: { story: Story }) {
               </span>
             </a>
           )}
-          {hasValidPhoto && (
+          {canExpand && (hasLongSummary || hasValidPhoto) && (
             <button
               type="button"
               className={`storyExpandButton ${summaryExpanded ? "open" : ""}`}
               onClick={toggleStory}
-              aria-label={summaryExpanded ? "Fold nyhed og billede sammen" : "Fold nyhed og billede ud"}
+              aria-label={summaryExpanded ? "Fold nyheden sammen" : "Fold nyheden ud"}
               aria-expanded={summaryExpanded}
-              title={summaryExpanded ? "Fold nyhed sammen" : "Fold nyhed ud med billede"}
+              title={summaryExpanded ? "Fold nyhed sammen" : "Fold nyhed ud"}
             >
-              <svg className="storyCameraIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              {hasValidPhoto && <svg className="storyCameraIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M14.5 4h-5L7.5 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3.5L14.5 4Z" />
                 <circle cx="12" cy="13.5" r="3.5" />
-              </svg>
+              </svg>}
               <span className="storyExpandChevron" aria-hidden="true">▾</span>
             </button>
           )}
