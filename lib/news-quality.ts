@@ -107,7 +107,10 @@ export function deduplicatePublisherHeadlines<T extends Story>(stories: T[]): T[
   const urlKey = (story: Story) => {
     try {
       const url = new URL(story.sources?.[0]?.url || "");
-      return url.hostname.replace(/^www\./i, "").toLowerCase() + url.pathname.replace(/\/$/, "");
+      const host = url.hostname.replace(/^www\./i, "").toLowerCase();
+      // Politiken retains this article ID when an edited headline changes its slug.
+      const articleId = host === "politiken.dk" ? url.pathname.match(/\/art(\d+)(?:\/|$)/i)?.[1] : undefined;
+      return articleId ? `${host}/art${articleId}` : host + url.pathname.replace(/\/$/, "");
     } catch { return ""; }
   };
   const seen = new Map<string, { title: string; time: number; url: string; titleWords: Set<string>; texts: Set<string>[] }[]>();

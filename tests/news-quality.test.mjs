@@ -73,3 +73,14 @@ test("same-minute Politiken versions with rewritten headlines collapse; differen
  // Stored AI summaries can carry the match even if the raw publisher excerpts differ.
  assert.equal(deduplicatePublisherHeadlines([{...first,aiSummary:first.summary,summary:"Kort teaser"},{...duplicate,aiSummary:duplicate.summary,summary:"Anden teaser"}]).length,1);
 });
+
+test("real Politiken article ID survives rewritten slugs and dissimilar short excerpts", () => {
+ const first = {...base,id:"actual-current",title:"Netflix-serien forgylder et kejserrige med blod på hænderne",sourceLabel:"Politiken",publishedAt:"2026-11-24T05:53:55Z",summary:"Kort aktuelt kildeuddrag.",sources:[{label:"Politiken",url:"https://politiken.dk/kultur/set_og_hoert/art11053519/Netflix-serien-forgylder-et-kejserrige-med-blod-p%C3%A5-h%C3%A6nderne"}]};
+ const rewritten = {...first,id:"actual-old",title:"Netflix-serie er underholdende som karneval i Rio",publishedAt:"2026-11-24T05:53:55+00:00",summary:"En anden tidligere introduktion.",sources:[{label:"Politiken",url:"https://www.politiken.dk/kultur/set_og_hoert/art11053519/Netflix-serie-er-underholdende-som-karneval-i-Rio?rss"}]};
+ const distinct = {...first,id:"different-id",title:"Et selvstændigt interview med seriens instruktør",sources:[{label:"Politiken",url:"https://politiken.dk/kultur/art11053520/Interview"}]};
+ const independent = {...rewritten,id:"independent",sourceLabel:"DR",sources:[{label:"DR",url:"https://dr.dk/kultur/art11053519/Anmeldelse"}]};
+ const lookalike = {...rewritten,id:"lookalike",sources:[{label:"Politiken",url:"https://politiken.dk.example.org/kultur/art11053519/Anden"}]};
+ assert.deepEqual(deduplicatePublisherHeadlines([first,rewritten,distinct,independent,lookalike]).map(x=>x.id),["actual-current","different-id","independent","lookalike"]);
+ assert.equal(deduplicatePublisherHeadlines([rewritten,first])[0],rewritten);
+ assert.equal(deduplicatePublisherHeadlines([rewritten,first]).length,1);
+});
