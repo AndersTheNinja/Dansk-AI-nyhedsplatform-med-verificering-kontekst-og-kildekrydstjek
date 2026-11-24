@@ -2,7 +2,7 @@
 
 import type { Story } from "@/lib/stories";
 
-export const SUMMARY_PREVIEW_WORDS = 25;
+export const SUMMARY_PREVIEW_WORDS = 35;
 export const DESKTOP_SUMMARY_PREVIEW_WORDS = 65;
 
 /** Show a compact headline-like lead, with the rest of the stored summary on demand. */
