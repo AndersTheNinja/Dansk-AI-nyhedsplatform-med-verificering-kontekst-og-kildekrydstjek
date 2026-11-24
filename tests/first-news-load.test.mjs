@@ -4,6 +4,8 @@ import { FIRST_NEWS_CACHE_TTL_MS, parseFirstNewsCache } from "../lib/first-news-
 import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
 import ts from "typescript";
+import { deduplicatePublisherHeadlines } from "../lib/news-quality.ts";
+import { selectAcrossPublishers } from "../lib/media-publishers.ts";
 
 const first = { id:"a", title:"Seneste nyhed", summary:"Nyhedens indhold", sources:[{label:"DR",url:"https://www.dr.dk/nyheder/nyhed"}] };
 const now = Date.parse("2026-10-28T18:00:00Z");
@@ -71,19 +73,31 @@ test("premium loading animation adds no scripts, assets or progress claim",()=>{
 });
 
 test("the first batch starts the snapshot and metadata reads together and preserves enrichment", async () => {
- const older = { id: "older", publishedAt: "2026-10-28T17:00:00Z", summary: "Original excerpt" };
+ const older = { id: "older", publishedAt: "2026-10-28T17:00:00Z", summary: "Original excerpt", sources: [{ label: "DR", url: "https://dr.dk/older" }] };
  const yExcerpt = Array(101).fill("ord").join(" ");
- const newer = { id: "newer", publishedAt: "2026-10-28T18:00:00Z", summary: yExcerpt, sources: [{ url: "https://y.dk/story" }] };
- const placeholder = { id: "placeholder", publishedAt: "2026-10-28T19:00:00Z" };
+ const newer = { id: "newer", publishedAt: "2026-10-28T18:00:00Z", summary: yExcerpt, sources: [{ label: "Y.dk", url: "https://y.dk/story" }] };
+ const placeholder = { id: "placeholder", publishedAt: "2026-10-28T19:00:00Z", summary: "A source excerpt without a completed AI summary", sources: [{ label: "DR", url: "https://dr.dk/pending" }] };
  const stories = [older, placeholder, newer];
  const calls = [];
  const enrich = entries => entries.map(story => ({ ...story, imageUrl: "https://example.com/article.jpg" }));
  let finishMetadata;
  const pendingMetadata = new Promise(resolve => { finishMetadata = resolve; });
+ // Exercise the real candidate merge and publisher selection without database I/O.
+ const storeExports = {};
+ const storeSource = readFileSync(new URL("../lib/news-store.ts", import.meta.url), "utf8");
+ runInNewContext(ts.transpileModule(storeSource, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, {
+  exports: storeExports,
+  require: id => {
+   if (id === "@/lib/media-publishers") return { selectAcrossPublishers };
+   if (id === "@/lib/database-rpc") return new Proxy({}, { get: () => () => { throw new Error("Unexpected database I/O in first-load test"); } });
+   throw new Error("Unexpected store dependency: " + id);
+  },
+ });
  const modules = {
   "next/server": { NextResponse: { json: data => JSON.parse(JSON.stringify(data)) } },
   "next/cache": { unstable_cache: fn => fn },
-  "@/lib/news-quality": {},
+  "@/lib/news-quality": { deduplicatePublisherHeadlines },
+  "@/lib/media-publishers": { selectAcrossPublishers },
   "@/lib/image-health": {},
   "@/lib/live-news": {
    cleanNewsStories: entries => entries.filter(story => story.summary),
@@ -102,6 +116,8 @@ test("the first batch starts the snapshot and metadata reads together and preser
     .map(entry => ({ ...entry, aiSummary: states.get(entry.id) })),
   },
   "@/lib/news-store": {
+   combineNewsCandidates: storeExports.combineNewsCandidates,
+   getRecentStoredNewsCandidates: async () => { calls.push("stored"); return []; },
    getNewsSnapshot: async () => {
     calls.push("snapshot");
     return { stories, totalCount: 200, availableStories: 3 };
@@ -118,7 +134,7 @@ test("the first batch starts the snapshot and metadata reads together and preser
  assert.deepEqual(calls, ["metadata", "snapshot"]);
  finishMetadata(enrich);
  const firstBatch = await firstRequest;
- assert.equal(firstBatch.totalCount, 200);
+ assert.equal(firstBatch.totalCount, 2);
  assert.equal(firstBatch.availableStories, 2);
  assert.equal(firstBatch.stories.length, 1);
  assert.equal(firstBatch.stories[0].id, newer.id);
@@ -129,6 +145,6 @@ test("the first batch starts the snapshot and metadata reads together and preser
 
  calls.length = 0;
  const full = await exports.GET(request("?limit=1"));
- assert.deepEqual(calls, ["snapshot", "metadata"]);
+ assert.deepEqual(calls, ["snapshot", "stored", "metadata"]);
  assert.deepEqual(full, firstBatch);
 });
