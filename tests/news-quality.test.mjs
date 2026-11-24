@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { auditNewsStories, repairNewsStories } from "../lib/news-quality.ts";
+import { auditNewsStories, repairNewsStories, deduplicatePublisherHeadlines } from "../lib/news-quality.ts";
 const base = {
  id:"a",title:"Nyhed om DNA og kriminalsag",sourceLabel:"DR",published:"I dag",
  publishedAt:"2026-10-27T12:00:00.000Z",
@@ -51,4 +51,14 @@ test("quality audit flags Computerworld site description in a real news headline
  const report=auditNewsStories([bad],Date.parse("2026-10-28T00:00:00Z"));
  assert.equal(report.issueCounts.publisher_ui,1);
  assert.equal(report.examples[0].source,"Computerworld");
+});
+
+test("same publisher, title and publication time collapse even with different URLs and summaries", () => {
+ const title = "Her er de ni modtagere af Politikens Undervisningspris";
+ const first = {...base,id:"pol-1",title,publishedAt:"2026-11-24T05:56:00Z",sourceLabel:"Politiken",sources:[{label:"Politiken",url:"https://politiken.dk/art/1"}]};
+ const duplicate = {...first,id:"pol-2",summary:"Et andet AI-resumé",sources:[{label:"Politiken",url:"https://politiken.dk/art/2"}]};
+ const otherPublisher = {...first,id:"other",sourceLabel:"DR",sources:[{label:"DR",url:"https://dr.dk/art/3"}]};
+ const later = {...first,id:"later",publishedAt:"2026-11-25T05:56:00Z",sources:[{label:"Politiken",url:"https://politiken.dk/art/4"}]};
+ const otherTitle = {...first,id:"distinct",title:"Andre modtagere af en ny undervisningspris",sources:[{label:"Politiken",url:"https://politiken.dk/art/5"}]};
+ assert.deepEqual(deduplicatePublisherHeadlines([first,duplicate,otherPublisher,later,otherTitle]).map(x=>x.id),["pol-1","other","later","distinct"]);
 });

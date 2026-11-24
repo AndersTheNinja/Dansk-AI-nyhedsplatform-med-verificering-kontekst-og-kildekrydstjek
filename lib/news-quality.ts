@@ -95,3 +95,25 @@ export function repairNewsStories(stories: Story[]): { stories: Story[]; repairs
  }
  return {stories:result,repairs};
 }
+
+/** Remove repeated headlines from the same publisher within one publication
+ * window, even when the URLs differ. Keep independent publisher coverage and
+ * genuinely later publications. Call after the summary-readiness gate so a
+ * pending duplicate cannot hide a publication-ready article.
+ */
+export function deduplicatePublisherHeadlines<T extends Story>(stories: T[]): T[] {
+  const seen = new Map<string, number[]>();
+  const normalize = (value: string) => value.normalize("NFKC").toLocaleLowerCase("da-DK").replace(/\s+/g, " ").trim();
+  return stories.filter(story => {
+    const publisher = normalize(story.sources?.[0]?.label || story.sourceLabel || "");
+    const title = normalize(story.title || "");
+    const timestamp = story.publishedAt ? Date.parse(story.publishedAt) : NaN;
+    if (!publisher || title.length < 24 || !Number.isFinite(timestamp)) return true;
+    const key = JSON.stringify([publisher, title]);
+    const times = seen.get(key) || [];
+    if (times.some(previous => Math.abs(timestamp - previous) <= 60 * 60_000)) return false;
+    times.push(timestamp);
+    seen.set(key, times);
+    return true;
+  });
+}
