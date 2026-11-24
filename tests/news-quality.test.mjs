@@ -62,3 +62,14 @@ test("same publisher, title and publication time collapse even with different UR
  const otherTitle = {...first,id:"distinct",title:"Andre modtagere af en ny undervisningspris",sources:[{label:"Politiken",url:"https://politiken.dk/art/5"}]};
  assert.deepEqual(deduplicatePublisherHeadlines([first,duplicate,otherPublisher,later,otherTitle]).map(x=>x.id),["pol-1","other","later","distinct"]);
 });
+
+test("same-minute Politiken versions with rewritten headlines collapse; different reporting remains", () => {
+ const first = {...base,id:"kejs-1",title:"Netflix-serien forgylder et kejserrige med blod på hænderne",sourceLabel:"Politiken",publishedAt:"2026-11-24T05:53:00Z",summary:"Politikens klumme kritiserer Netflix-serien Kejserinden for at være præget af pragt og romantik. Ifølge skribenten lader serien Østrigs mørke historie stå i baggrunden, mens kejserinden",sources:[{label:"Politiken",url:"https://politiken.dk/art/1"}]};
+ const duplicate = {...first,id:"kejs-2",title:"Netflix-serie er underholdende som karneval i Rio",summary:"Politikens klumme beskriver Netflix-serien Kejserinden som pragtfuld og romantisk, men kritiserer dens historiske fokus. Ifølge teksten lægger serien Østrigs mørke historie i baggrunden, mens den",sources:[{label:"Politiken",url:"https://politiken.dk/art/2"}]};
+ const crossPublisher = {...duplicate,id:"other-publisher",sourceLabel:"DR",sources:[{label:"DR",url:"https://dr.dk/art/2"}]};
+ const different = {...first,id:"distinct",title:"Netflix-serien får rekordmange seere",summary:"Netflix-serien har slået streamingrekorder i Danmark, hvor seerne i weekenden har set flere millioner timer af den nye sæson. Selskabet offentliggør tallene tirsdag.",sources:[{label:"Politiken",url:"https://politiken.dk/art/3"}]};
+ const later = {...duplicate,id:"later",publishedAt:"2026-11-25T05:53:00Z",sources:[{label:"Politiken",url:"https://politiken.dk/art/4"}]};
+ assert.deepEqual(deduplicatePublisherHeadlines([first,duplicate,crossPublisher,different,later]).map(x=>x.id),["kejs-1","other-publisher","distinct","later"]);
+ // Stored AI summaries can carry the match even if the raw publisher excerpts differ.
+ assert.equal(deduplicatePublisherHeadlines([{...first,aiSummary:first.summary,summary:"Kort teaser"},{...duplicate,aiSummary:duplicate.summary,summary:"Anden teaser"}]).length,1);
+});
