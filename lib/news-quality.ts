@@ -173,18 +173,22 @@ export function deduplicateNewsStories<T extends Story>(stories: T[]): T[] {
     const n = [...a].filter(w => b.has(w)).length;
     return { n, containment: n / Math.max(1, Math.min(a.size, b.size)), jaccard: n / Math.max(1, a.size + b.size - n) };
   };
-  type Entry = { publisher: string; time: number; title: string; headline: Set<string>; texts: Set<string>[] };
+  type Entry = { publisher: string; time: number; primaryUrl: string; alternateUrls: Set<string>; title: string; headline: Set<string>; texts: Set<string>[] };
   const days = new Map<number, Entry[]>();
   return deduplicatePublisherHeadlines(stories).filter(story => {
     const time = Date.parse(story.publishedAt || "");
     if (!Number.isFinite(time)) return true;
     const day = Math.floor(time / 86400000);
     const publisher = canonicalMediaName(story.sources?.[0]?.label || story.sourceLabel || "", story.sources?.[0]?.url);
+    const [primary, ...alternates] = story.sources || [];
+    const primaryUrl = primary?.url || "";
+    const alternateUrls = new Set(alternates.map(source => source.url));
     const title = normal(story.title || "");
     const headline = words(title);
     const texts = [story.summary || "", story.aiSummary || ""].map(words).filter(s => s.size >= 8);
     const duplicate = [day - 1, day, day + 1].some(key => (days.get(key) || []).some(other => {
       if (other.publisher === publisher || Math.abs(time - other.time) > 24 * 3600000) return false;
+      if (alternateUrls.has(other.primaryUrl) || other.alternateUrls.has(primaryUrl)) return true;
       if (title.length >= 24 && title === other.title) return true;
       const h = metrics(headline, other.headline);
       if (h.n >= 4 && h.containment >= 0.8 && h.jaccard >= 0.67) return true;
@@ -197,7 +201,7 @@ export function deduplicateNewsStories<T extends Story>(stories: T[]): T[] {
     }));
     if (duplicate) return false;
     const bucket = days.get(day) || [];
-    bucket.push({ publisher, time, title, headline, texts });
+    bucket.push({ publisher, time, primaryUrl, alternateUrls, title, headline, texts });
     days.set(day, bucket);
     return true;
   });
