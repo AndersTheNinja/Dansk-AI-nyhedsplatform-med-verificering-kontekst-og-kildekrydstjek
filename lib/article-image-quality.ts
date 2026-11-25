@@ -1,18 +1,19 @@
+/** Stable identity shared by alternate Politiken article URLs. */
+export function politikenArticleId(url: URL): string {
+  if (url.protocol !== "https:" || !["politiken.dk", "www.politiken.dk"].includes(url.hostname)) return "";
+  return url.pathname.match(/\/art(\d{6,})(?:\/|$)/i)?.[1] || "";
+}
+
 /**
  * Politiken sometimes publishes alternative RSS headlines for the same article.
  * Accept the publisher's canonical identity only when both URLs identify the
  * very same Politiken article ID; never equate articles just by similar topics.
  */
 export function samePolitikenArticleUrl(requested: URL, canonicalValue: string): boolean {
-  const isPolitiken = (host: string) => host === "politiken.dk" || host === "www.politiken.dk";
-  if (!isPolitiken(requested.hostname) || requested.protocol !== "https:") return false;
-  const articleId = (url: URL) => url.pathname.match(/\/art(\d{6,})(?:\/|$)/i)?.[1] || "";
-  const requestedId = articleId(requested);
+  const requestedId = politikenArticleId(requested);
   if (!requestedId || !canonicalValue) return false;
   try {
-    const canonical = new URL(canonicalValue, requested);
-    return canonical.protocol === "https:" && isPolitiken(canonical.hostname) &&
-      articleId(canonical) === requestedId;
+    return politikenArticleId(new URL(canonicalValue, requested)) === requestedId;
   } catch {
     return false;
   }

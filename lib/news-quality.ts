@@ -1,3 +1,4 @@
+import { politikenArticleId } from "./article-image-quality.ts";
 import type { Story } from "./stories";
 
 
@@ -107,6 +108,8 @@ export function deduplicatePublisherHeadlines<T extends Story>(stories: T[]): T[
   const urlKey = (story: Story) => {
     try {
       const url = new URL(story.sources?.[0]?.url || "");
+      const articleId = politikenArticleId(url);
+      if (articleId) return `politiken.dk/art${articleId}`;
       return url.hostname.replace(/^www\./i, "").toLowerCase() + url.pathname.replace(/\/$/, "");
     } catch { return ""; }
   };

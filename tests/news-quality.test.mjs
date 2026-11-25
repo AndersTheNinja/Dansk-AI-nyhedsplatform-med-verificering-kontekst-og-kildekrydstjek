@@ -73,3 +73,17 @@ test("same-minute Politiken versions with rewritten headlines collapse; differen
  // Stored AI summaries can carry the match even if the raw publisher excerpts differ.
  assert.equal(deduplicatePublisherHeadlines([{...first,aiSummary:first.summary,summary:"Kort teaser"},{...duplicate,aiSummary:duplicate.summary,summary:"Anden teaser"}]).length,1);
 });
+
+test("Politiken article ID collapses alternate RSS headlines and preserves other articles", () => {
+ const first = {...base, id: "pol-new", sourceLabel: "Politiken",
+  title: "Elementært velspillet serie udkommer alt for tidligt",
+  publishedAt: "2026-11-24T20:51:38.000Z",
+  sources: [{label: "Politiken", url: "https://politiken.dk/kultur/film_og_tv/tvanmeldelser/art11052413/Element%C3%A6rt-velspillet-serie-udkommer-alt-for-tidligt"}]};
+ const alternate = {...first, id: "pol-old",
+  title: "Det er ikke helt godt, når en ellers spændende tv-serie får en til at længes efter tør dokumentarisme",
+  sources: [{label: "Politiken", url: "https://www.politiken.dk/kultur/film_og_tv/tvanmeldelser/art11052413/Det-er-ikke-helt-godt"}]};
+ const separate = {...alternate, id: "pol-other", title: "En anden anmeldelse",
+  sources: [{label: "Politiken", url: "https://politiken.dk/kultur/film_og_tv/tvanmeldelser/art11052414/En-anden-anmeldelse"}]};
+ assert.deepEqual(deduplicatePublisherHeadlines([first, alternate, separate]).map(story => story.id),
+  ["pol-new", "pol-other"]);
+});
