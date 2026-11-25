@@ -4,6 +4,7 @@ import { FIRST_NEWS_CACHE_TTL_MS, parseFirstNewsCache } from "../lib/first-news-
 import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
 import ts from "typescript";
+import { deduplicatePublisherHeadlines } from "../lib/news-quality.ts";
 
 const first = { id:"a", title:"Seneste nyhed", summary:"Nyhedens indhold", sources:[{label:"DR",url:"https://www.dr.dk/nyheder/nyhed"}] };
 const now = Date.parse("2026-10-28T18:00:00Z");
@@ -83,7 +84,7 @@ test("the first batch starts the snapshot and metadata reads together and preser
  const modules = {
   "next/server": { NextResponse: { json: data => JSON.parse(JSON.stringify(data)) } },
   "next/cache": { unstable_cache: fn => fn },
-  "@/lib/news-quality": { deduplicatePublisherHeadlines: entries => entries },
+  "@/lib/news-quality": { deduplicatePublisherHeadlines },
   "@/lib/media-publishers": { selectAcrossPublishers: entries => entries },
   "@/lib/image-health": {},
   "@/lib/live-news": {
@@ -122,7 +123,8 @@ test("the first batch starts the snapshot and metadata reads together and preser
  assert.deepEqual(calls, ["metadata", "snapshot"]);
  finishMetadata(enrich);
  const firstBatch = await firstRequest;
- assert.equal(firstBatch.totalCount, 200);
+ assert.equal(firstBatch.totalCount, 2);
+ assert.equal(firstBatch.storedArticleCount, 200);
  assert.equal(firstBatch.availableStories, 2);
  assert.equal(firstBatch.stories.length, 1);
  assert.equal(firstBatch.stories[0].id, newer.id);
@@ -135,4 +137,25 @@ test("the first batch starts the snapshot and metadata reads together and preser
  const full = await exports.GET(request("?limit=1"));
  assert.deepEqual(calls, ["snapshot", "metadata"]);
  assert.deepEqual(full, firstBatch);
+});
+
+test("first and full public batches collapse the observed cross-publisher event and report events separately from archive articles", async()=>{
+ const first={id:"event-dr",title:"Hertuginde Meghans far tiltalt for at besidde overgrebsmateriale med børn",sourceLabel:"DR",publishedAt:"2026-11-25T00:17:12Z",summary:"En føderal domstol har rejst tiltale mod Thomas Markle for besiddelse af overgrebsmateriale med børn. Han risikerer angiveligt op til 40 års fængsel.",sources:[{label:"DR",url:"https://dr.dk/nyheder/event"}]};
+ const second={...first,id:"event-berl",sourceLabel:"Berlingske",publishedAt:"2026-11-24T23:54:48Z",title:"Hertuginde Meghans far tiltalt i sag om overgrebsmateriale med børn",summary:"En føderal domstol har tirsdag rejst tiltale mod Thomas Markle for besiddelse af overgrebsmateriale med børn.",sources:[{label:"Berlingske",url:"https://berlingske.dk/event"}]};
+ const originals=[first,second], before=JSON.stringify(originals);
+ const modules={
+  "next/server":{NextResponse:{json:data=>JSON.parse(JSON.stringify(data))}},"next/cache":{unstable_cache:fn=>fn},
+  "@/lib/news-quality":{deduplicatePublisherHeadlines},"@/lib/media-publishers":{selectAcrossPublishers:entries=>entries},"@/lib/image-health":{},
+  "@/lib/live-news":{cleanNewsStories:entries=>entries,loadPublisherArticleEnricher:async()=>entries=>entries,addPublisherFeaturedImages:async entries=>entries},
+  "@/lib/ready-summaries":{getSummaryStates:async()=>new Map(),onlyCompletedStories:entries=>entries.map(x=>({...x,aiSummary:"Stored AI summary."}))},
+  "@/lib/news-store":{getNewsSnapshot:async()=>({stories:originals}),getRecentStoredNewsCandidates:async()=>[],combineNewsCandidates:entries=>entries,getVisibleArchiveCount:async()=>16199}
+ };
+ const source=readFileSync(new URL("../app/api/news/route.ts",import.meta.url),"utf8"), exports={};
+ runInNewContext(ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText,{exports,require:id=>modules[id],console});
+ for(const query of ["?fast=1&limit=20","?limit=500"]){
+  const result=await exports.GET({nextUrl:new URL(query,"https://example.com/api/news")});
+  assert.equal(result.stories.length,1);assert.equal(result.availableStories,1);assert.equal(result.totalCount,1);
+  assert.equal(result.storedArticleCount,16199);assert.equal(result.stories[0].sources.length,2);
+ }
+ assert.equal(JSON.stringify(originals),before);
 });

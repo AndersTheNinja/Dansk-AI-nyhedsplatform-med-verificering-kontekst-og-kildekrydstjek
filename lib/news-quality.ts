@@ -115,7 +115,7 @@ export function deduplicatePublisherHeadlines<T extends Story>(stories: T[]): T[
     } catch { return ""; }
   };
   const seen = new Map<string, { title: string; time: number; url: string; titleWords: Set<string>; texts: Set<string>[] }[]>();
-  return stories.filter(story => {
+  const publisherUnique = stories.filter(story => {
     const publisher = normalize(canonicalMediaName(story.sources?.[0]?.label || story.sourceLabel || "", story.sources?.[0]?.url));
     const title = normalize(story.title || "");
     const time = story.publishedAt ? Date.parse(story.publishedAt) : NaN;
@@ -149,4 +149,69 @@ export function deduplicatePublisherHeadlines<T extends Story>(stories: T[]): T[
     seen.set(publisher, previous);
     return true;
   });
+  return deduplicateCrossPublisherEvents(publisherUnique);
+}
+
+/** Conservative event matching from publisher excerpts, never generated AI text.
+ * Kept source links are display metadata; persisted articles are never deleted.
+ */
+export function deduplicateCrossPublisherEvents<T extends Story>(stories: T[]): T[] {
+  const words = (s: string) => new Set((s.normalize("NFKC").toLocaleLowerCase("da-DK").match(/[\p{L}\p{N}]+/gu) || [])
+    .filter(w => w.length >= 4 && !/^(?:dette|denne|efter|ifølge|siger|skriver|også|ikke|medier|nyheder|artikel)$/.test(w)));
+  const shared = (a: Set<string>, b: Set<string>) => [...a].filter(w => b.has(w));
+  const sourceKey = (value: string) => {
+    try {
+      const u = new URL(value);
+      for (const key of [...u.searchParams.keys()]) if (/^(?:utm_.+|rss|referrer|fbclid|gclid)$/i.test(key)) u.searchParams.delete(key);
+      u.searchParams.sort();
+      return u.hostname.replace(/^www\./, "") + u.pathname.replace(/\/$/, "") + u.search;
+    }
+    catch { return ""; }
+  };
+  const describe = (s: T) => ({
+    story: s, time: Date.parse(s.publishedAt || ""),
+    publisher: canonicalMediaName(s.sources?.[0]?.label || s.sourceLabel, s.sources?.[0]?.url),
+    title: words(s.title || ""), body: words(s.summary || ""),
+    names: new Set((s.summary.match(/\b[A-ZÆØÅ][a-zæøå]{2,}/g) || []).filter(w => !/^(?:Ifølge|Efter|Denne|Dette|Han|Hun|Det|Der|Den)$/.test(w))),
+    urls: new Set((s.sources || []).map(x => sourceKey(x.url)).filter(Boolean)),
+    numbers: new Set(s.summary.match(/\b\d+\b/g) || []),
+    stages: new Set([/\b(?:tiltale|tiltalt)\b/i, /\b(?:frifundet|frifindelse)\b/i, /\b(?:dømt|domfældelse)\b/i]
+      .flatMap((pattern, i) => pattern.test(s.summary) ? [String(i)] : []))
+  });
+  const groups: ReturnType<typeof describe>[] = [];
+  for (const story of stories) {
+    const candidate = describe(story);
+    const match = groups.find(old => {
+      if (old.publisher === candidate.publisher || !Number.isFinite(old.time) || !Number.isFinite(candidate.time) ||
+          Math.abs(old.time - candidate.time) > 3 * 60 * 60_000) return false;
+      if (uiPattern.test(story.summary) || uiPattern.test(old.story.summary)) return false;
+      if (candidate.body.size < 8 || old.body.size < 8) return false;
+      const titles = shared(candidate.title, old.title);
+      const body = shared(candidate.body, old.body);
+      if (titles.length < 3 || titles.length / Math.min(candidate.title.size, old.title.size) < 0.65 ||
+          body.length < 8 || body.length / Math.min(candidate.body.size, old.body.size) < 0.85 ||
+          body.length / new Set([...candidate.body, ...old.body]).size < 0.65) return false;
+      if (titles.filter(w => candidate.body.has(w) && old.body.has(w)).length < 2) return false;
+      // A shared entity alone is insufficient. New figures or legal milestones
+      // are separate developments even when most background wording is reused.
+      if (candidate.numbers.size && old.numbers.size &&
+          [...candidate.numbers].sort().join() !== [...old.numbers].sort().join()) return false;
+      if ([...candidate.stages].sort().join() !== [...old.stages].sort().join()) return false;
+      return shared(candidate.urls, old.urls).length > 0 || shared(candidate.names, old.names).length >= 2;
+    });
+    if (!match) { groups.push(candidate); continue; }
+    // Prefer existing broader source coverage, then more publisher text.
+    const best = candidate.urls.size > match.urls.size ||
+      (candidate.urls.size === match.urls.size && story.summary.length > match.story.summary.length) ? candidate : match;
+    const sources = [...best.story.sources];
+    const seen = new Set(sources.map(x => sourceKey(x.url)));
+    for (const source of [...match.story.sources, ...story.sources]) {
+      const key = sourceKey(source.url);
+      if (key && !seen.has(key)) { sources.push(source); seen.add(key); }
+    }
+    // Do not upgrade factual verification merely because wording agrees.
+    const merged = { ...best.story, sources };
+    Object.assign(match, describe(merged));
+  }
+  return groups.map(x => x.story);
 }
