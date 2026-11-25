@@ -732,9 +732,8 @@ function isFresh(pubDate?: string) {
   if (!parsed) return true;
   const time = parsed.getTime();
   const ageHours = (Date.now() - time) / 3600000;
-  const maxHours = 21 * 24;
   // A two-hour tolerance made future-dated publisher items jump above actual breaking news.
-  return ageHours >= -0.25 && ageHours <= maxHours;
+  return ageHours >= -0.25;
 }
 
 function isGenericLandingPage(title: string, description: string, link = "") {
