@@ -3,7 +3,7 @@ import { unstable_cache } from "next/cache";
 import { auditNewsStories, deduplicatePublisherHeadlines } from "@/lib/news-quality";
 import { auditCurrentImageLinks } from "@/lib/image-health";
 import { getLiveStories, cleanNewsStories, addPublisherFeaturedImages, loadPublisherArticleEnricher } from "@/lib/live-news";
-import { getNewsSnapshot, getRecentStoredNewsCandidates, combineNewsCandidates } from "@/lib/news-store";
+import { getNewsSnapshot, getRecentStoredNewsCandidates, combineNewsCandidates, getVisibleArchiveCount } from "@/lib/news-store";
 import { getSummaryStates, onlyCompletedStories } from "@/lib/ready-summaries";
 import { selectAcrossPublishers } from "@/lib/media-publishers";
 
@@ -80,6 +80,7 @@ export async function GET(req: NextRequest) {
           return (Number.isFinite(bt) ? bt : 0) - (Number.isFinite(at) ? at : 0);
         });
         if (!visibleStories.length) throw new Error("Snapshot has no publication-ready stories");
+        const archiveCount = await getVisibleArchiveCount();
         const limit = Number.isFinite(requestedLimit) && requestedLimit > 0
           ? Math.min(Math.floor(requestedLimit), 500, visibleStories.length)
           : Math.min(500, visibleStories.length);
@@ -87,7 +88,7 @@ export async function GET(req: NextRequest) {
           ...snapshot,
           stories: visibleStories.slice(0, limit).map(limitPublicYExcerpt),
           availableStories: Math.min(500, visibleStories.length),
-          totalCount: Math.min(500, visibleStories.length)
+          totalCount: Math.max(archiveCount, visibleStories.length)
         }, { headers: { "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60" } });
         } catch (error) { console.warn("Snapshot summary lookup unavailable; using publisher feed fallback", error); }
       }
@@ -114,7 +115,7 @@ export async function GET(req: NextRequest) {
     }
     // Scheduled fast collection only reads fresh RSS metadata; it must never
     // trigger the 1,500-article enrichment job on the visitor-facing service.
-    const liveStories = isFastCollector ? await getLiveStories({ fast: true, limit: 100 }) : wantsFast ? await getFastStories() : await getCachedStories();
+    const liveStories = isFastCollector ? await getLiveStories({ fast: true, limit: 500 }) : wantsFast ? await getFastStories() : await getCachedStories();
     let stories = cleanNewsStories(liveStories).sort((a, b) =>
       (b.publishedAt ? Date.parse(b.publishedAt) || 0 : 0) -
       (a.publishedAt ? Date.parse(a.publishedAt) || 0 : 0)
