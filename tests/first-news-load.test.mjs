@@ -35,7 +35,7 @@ test("initial view does not issue a redundant third news-count fetch",()=>{
  const status=readFileSync(new URL("../components/news-status.tsx",import.meta.url),"utf8");
  assert.match(loader, /const FIRST_NEWS_LIMIT = 5;/);
  assert.match(loader, /loadNews\(FIRST_NEWS_LIMIT\)\.finally/);
- assert.match(loader, /setStories\(cache\.stories\.slice\(0, FIRST_NEWS_LIMIT\)\)/);
+ assert.match(loader, /setStories\(deduplicatePublisherHeadlines\(cache\.stories\)\.slice\(0, FIRST_NEWS_LIMIT\)\)/);
  assert.match(loader, /stories: nextStories\.slice\(0, FIRST_NEWS_LIMIT\)/);
  assert.match(loader, /"oel-news-loaded"/);
  assert.match(status, /addEventListener\("oel-news-loaded"/);
@@ -83,7 +83,8 @@ test("the first batch starts the snapshot and metadata reads together and preser
  const modules = {
   "next/server": { NextResponse: { json: data => JSON.parse(JSON.stringify(data)) } },
   "next/cache": { unstable_cache: fn => fn },
-  "@/lib/news-quality": {},
+  "@/lib/news-quality": { deduplicatePublisherHeadlines: entries => entries },
+  "@/lib/media-publishers": { selectAcrossPublishers: entries => entries },
   "@/lib/image-health": {},
   "@/lib/live-news": {
    cleanNewsStories: entries => entries.filter(story => story.summary),
@@ -102,6 +103,9 @@ test("the first batch starts the snapshot and metadata reads together and preser
     .map(entry => ({ ...entry, aiSummary: states.get(entry.id) })),
   },
   "@/lib/news-store": {
+   combineNewsCandidates: (entries, stored) => [...entries, ...stored],
+   getRecentStoredNewsCandidates: async () => [],
+   getVisibleArchiveCount: async () => 200,
    getNewsSnapshot: async () => {
     calls.push("snapshot");
     return { stories, totalCount: 200, availableStories: 3 };
