@@ -117,3 +117,16 @@ test("cross-media syndication collapses Meghan Markle story but keeps a differen
  const later = {...first,id:"later",publishedAt:"2026-10-30T12:00:00Z",sources:[{label:"TV 2",url:"https://tv2.dk/d"}]};
  assert.deepEqual(deduplicateNewsStories([first,duplicate,different,later]).map(s=>s.id),["meghan-a","meghan-c","later"]);
 });
+
+test("a linked alternate article cannot also appear as a separate feed card", () => {
+ const politiken = {...base, id:"napoli-politiken", title:"Højlund-kasse sikrer Napoli point i Manchester",
+  publishedAt:"2026-11-24T22:06:02Z", summary:"Uafgjort i Champions League.",
+  sources:[{label:"Politiken",url:"https://politiken.dk/sport/fodbold/art11073206/Hojlund"}]};
+ const berlingske = {...base, id:"napoli-berlingske", title:"Højlund efter scoring mod City: Der er kun én klub i Manchester",
+  publishedAt:"2026-11-25T01:10:48Z", summary:"En kommentar til fansene efter kampen.",
+  sources:[{label:"Berlingske",url:"https://berlingske.dk/sport/hojlund"},politiken.sources[0]]};
+ const separate = {...politiken,id:"unrelated",title:"En ny kamp spilles i Rom",
+  sources:[{label:"TV 2",url:"https://tv2.dk/sport/ny-kamp"},politiken.sources[0]]};
+ assert.deepEqual(deduplicateNewsStories([berlingske,politiken,separate]).map(s=>s.id),["napoli-berlingske","unrelated"]);
+ assert.deepEqual(deduplicateNewsStories([politiken,berlingske]).map(s=>s.id),["napoli-politiken"]);
+});
