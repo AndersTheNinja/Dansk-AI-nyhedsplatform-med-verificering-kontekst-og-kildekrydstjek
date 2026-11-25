@@ -8,6 +8,7 @@ import { isGenericArticleImage } from "@/lib/article-image-quality";
 import { MobileMediaStats } from "@/components/news-stats";
 import { AiSummaryPreview, SUMMARY_PREVIEW_WORDS } from "@/components/ai-summary-preview";
 import { canonicalMediaName } from "@/lib/media-publishers";
+import { deduplicatePublisherHeadlines } from "@/lib/news-quality";
 
 const categoryLabel: Record<string,string> = {
   "AI/Tech": "AI",
@@ -541,7 +542,8 @@ function isAndersWinnerskjoldStory(story: Story) {
   const haystack = [
     story.title,
     story.summary,
-    ...story.sources.map((source) => source.title || "")
+    story.aiSummary,
+    ...story.sources.map((source) => [source.title, source.url].join(" "))
   ]
     .join(" ")
     .toLocaleLowerCase("da-DK");
@@ -557,10 +559,36 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const categories = ["AI/Tech", "Erhverv", "Danmark", "Aarhus"];
   const andersTopic = "ANDERS W.";
-  const andersCount = useMemo(
-    () => initialStories.filter(isAndersWinnerskjoldStory).length,
-    [initialStories]
-  );
+  const [andersArchive, setAndersArchive] = useState<Story[]>([]);
+  const [andersStatus, setAndersStatus] = useState<"loading" | "ready" | "error">("loading");
+  useEffect(() => {
+    const controller = new AbortController();
+    async function loadAnders() {
+      try {
+        const response = await fetch("/api/news/anders", { signal: controller.signal, cache: "no-store" });
+        if (!response.ok) throw new Error("Topic archive request failed");
+        const data = await response.json();
+        if (!Array.isArray(data.stories)) throw new Error("Invalid topic archive");
+        if (!controller.signal.aborted) {
+          setAndersArchive(data.stories);
+          setAndersStatus("ready");
+        }
+      } catch {
+        if (!controller.signal.aborted) setAndersStatus("error");
+      }
+    }
+    void loadAnders();
+    const interval = window.setInterval(loadAnders, 60000);
+    return () => { controller.abort(); window.clearInterval(interval); };
+  }, []);
+  const andersStories = useMemo(() => {
+    const byId = new Map<string, Story>();
+    for (const story of [...initialStories.filter(isAndersWinnerskjoldStory), ...andersArchive]) {
+      if (!byId.has(story.id)) byId.set(story.id, story);
+    }
+    return deduplicatePublisherHeadlines(Array.from(byId.values()));
+  }, [initialStories, andersArchive]);
+  const andersCount = andersStories.length;
 
   const mediaOptions = useMemo(() => {
     const names = initialStories.filter(story => !story.andersOnly).map(story => {
@@ -577,7 +605,9 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
 
   const visible = useMemo(
     () =>
-      initialStories
+      (categoriesSelected.includes(andersTopic)
+        ? [...initialStories.filter(story => !isAndersWinnerskjoldStory(story)), ...andersStories]
+        : initialStories)
         .filter((story) => {
           if (story.andersOnly && !categoriesSelected.includes(andersTopic)) return false;
           const matchesCategory =
@@ -592,7 +622,7 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
           if (diff !== 0) return diff;
           return b.id.localeCompare(a.id);
         }),
-    [initialStories, categoriesSelected, mediaSelected]
+    [initialStories, andersStories, categoriesSelected, mediaSelected]
   );
 
   function toggleCategory(item: string) {
@@ -657,7 +687,7 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
           aria-pressed={categoriesSelected.includes(andersTopic)}
           title="Nyheder om Aarhus-borgmester Anders Winnerskjold"
         >
-          {andersTopic} ({andersCount})
+          {andersTopic} ({andersStatus === "loading" ? "…" : andersCount})
         </button>
       </div>
 
@@ -691,6 +721,8 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
         <MobileMediaStats />
       </div>
 
+      {categoriesSelected.includes(andersTopic) && andersStatus === "loading" && <p role="status">Henter Anders W.-arkivet…</p>}
+      {categoriesSelected.includes(andersTopic) && andersStatus === "error" && <p role="status">Arkivet kunne ikke hentes. Prøver automatisk igen.</p>}
       <div className="storyList">
         {visible.slice(0, visibleCount).map((story) => (
           <StoryCard key={story.id} story={story} />
