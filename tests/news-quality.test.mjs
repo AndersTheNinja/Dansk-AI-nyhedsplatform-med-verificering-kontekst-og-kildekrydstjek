@@ -97,3 +97,43 @@ test("strict publisher minute rule catches Computerworld variants, seconds and a
  const tomorrow = {...duplicate,id:"tomorrow",publishedAt:"2026-11-24T12:41:59Z",sources:[{label:"Computerworld",url:"https://computerworld.dk/art/4"}]};
  assert.deepEqual(deduplicatePublisherHeadlines([first,duplicate,other,next,tomorrow]).map(x=>x.id),["cw-first","other","next","tomorrow"]);
 });
+
+// Publisher excerpts below reproduce the observed duplicate; they are not a
+// verification of the allegation and AI text never participates in matching.
+const eventDR = {...base,id:"event-dr",sourceLabel:"Danmarks Radio",publishedAt:"2026-11-25T00:17:12Z",
+ title:"Hertuginde Meghans far tiltalt for at besidde overgrebsmateriale med børn",
+ summary:"En føderal domstol har rejst tiltale mod Thomas Markle for besiddelse af overgrebsmateriale med børn. Han risikerer angiveligt op til 40 års fængsel.",
+ verification:"unverified",sources:[{label:"Danmarks Radio",url:"https://www.dr.dk/nyheder/udland/meghans-far"},{label:"Berlingske",url:"https://www.berlingske.dk/internationalt/meghans-far?referrer=RSS"}]};
+const eventBerl = {...eventDR,id:"event-berl",sourceLabel:"Berlingske",publishedAt:"2026-11-24T23:54:48+00:00",
+ title:"Hertuginde Meghans far tiltalt i sag om overgrebsmateriale med børn",
+ summary:"En føderal domstol har tirsdag rejst tiltale mod Thomas Markle for besiddelse af overgrebsmateriale med børn.",
+ sources:[eventDR.sources[1]]};
+
+test("cross-publisher event duplicate collapses using source excerpts and retains all URLs without upgrading verification",()=>{
+ const before=JSON.stringify([eventDR,eventBerl]);
+ for(const input of [[eventDR,eventBerl],[eventBerl,eventDR]]){
+  const out=deduplicatePublisherHeadlines(input);
+  assert.equal(out.length,1);
+  assert.equal(out[0].id,eventDR.id);
+  assert.equal(out[0].sources.length,2);
+  assert.equal(out[0].verification,"unverified");
+  assert.deepEqual(deduplicatePublisherHeadlines(out),out);
+ }
+ assert.equal(JSON.stringify([eventDR,eventBerl]),before);
+ // Matching also works without a pre-existing cluster URL.
+ assert.equal(deduplicatePublisherHeadlines([{...eventDR,sources:[eventDR.sources[0]]},eventBerl]).length,1);
+});
+
+test("cross-publisher matching preserves a new legal milestone, different figures, substantial new reporting and later developments",()=>{
+ const acquittal={...eventBerl,id:"acquittal",summary:eventBerl.summary.replace("rejst tiltale mod","frifundet")};
+ const otherFigure={...eventBerl,id:"figure",summary:eventDR.summary.replace("40","20")};
+ const newAngle={...eventBerl,id:"new-information",summary:eventBerl.summary+" Forsvarsadvokat Anna Hansen fremlægger nye dokumenter fra politiets undersøgelse. Dokumenterne beskriver vidneafhøringer, tidsplaner og tekniske undersøgelser, som ændrer grundlaget for anklagemyndighedens vurdering af beviserne."};
+ const later={...eventBerl,id:"later",publishedAt:"2026-11-26T00:17:12Z"};
+ for(const other of [acquittal,otherFigure,newAngle,later]) assert.equal(deduplicatePublisherHeadlines([eventDR,other]).length,2,other.id);
+});
+
+test("AI agreement, weak teasers and a shared person alone cannot suppress an independent article",()=>{
+ const other={...eventBerl,id:"independent",summary:"Thomas Markle og Meghan drøfter et helt andet emne i et interview om familiens historie og deres forhold til pressen.",aiSummary:eventDR.summary};
+ assert.equal(deduplicatePublisherHeadlines([{...eventDR,aiSummary:eventDR.summary},other]).length,2);
+ assert.equal(deduplicatePublisherHeadlines([{...eventDR,summary:"Kort kildeuddrag.",aiSummary:eventDR.summary},{...eventBerl,summary:"Andet kort kildeuddrag.",aiSummary:eventDR.summary}]).length,2);
+});
