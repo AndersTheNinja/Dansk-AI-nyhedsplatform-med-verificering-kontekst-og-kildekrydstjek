@@ -3,6 +3,14 @@ import type { Story } from "./stories";
 import { canonicalMediaName } from "./media-publishers.ts";
 
 
+/** Editorial exclusion: ice hockey, including reports that only name teams. */
+export function isIceHockeyNews(title: string, summary = "", url = ""): boolean {
+  const text = (title + " " + summary).normalize("NFKC").replace(/[‐‑‒–—]/g, "-");
+  const hockey = /(?:\bishockey[\p{L}-]*|\bice[ -]hockey\b|\bNHL\b|\bKHL\b|\bIIHF\b|\bMetal[ -]?Ligaen\b|\bStanley Cup\b|\b(?:hockeyspillere?|hockeyklub(?:ben|ber)?|hockeyhold(?:et)?|hockeykamp(?:en|e)?|hockeylandshold(?:et)?|ishockeyligaen)\b|\b(?:Frederikshavn White Hawks|Odense Bulldogs|Herning Blue Fox|Aalborg Pirates|Esbjerg Energy|Rungsted Seier Capital|Rødovre Mighty Bulls|SønderjyskE Ishockey|Herlev Eagles|Aarhus Hockey|Toronto Maple Leafs|Edmonton Oilers|Florida Panthers|Vegas Golden Knights|New York Rangers)\b)/iu;
+  if (hockey.test(text)) return true;
+  try { return /(?:^|[\/_-])(?:ishockey|ice-hockey|nhl|metal-?ligaen)(?:[\/_-]|$)/i.test(decodeURIComponent(new URL(url).pathname)); } catch { return false; }
+}
+
 export type QualityIssue = "short_text" | "publisher_ui" | "generic_image" | "missing_image" | "invalid_date" | "future_date" | "duplicate" | "truncated_sentence" | "weak_source_check" | "reading_time" | "photo_credit" | "repeated_lead";
 export type QualityFinding = { id: string; source: string; issues: QualityIssue[] };
 export type QualityReport = { checked: number; issueCounts: Record<QualityIssue, number>; examples: QualityFinding[] };
@@ -66,6 +74,7 @@ export function repairNewsStories(stories: Story[]): { stories: Story[]; repairs
    /(?:^|\s+)bliv abonnent for at læse videre\b/i
  ];
  for(const story of stories){
+   if (isIceHockeyNews(story.title, story.summary, story.sources?.[0]?.url) || isIceHockeyNews(story.title, story.aiSummary)) continue;
    const source=story.sources?.[0];
    let key="";
    if(source?.url){
@@ -116,6 +125,7 @@ export function deduplicatePublisherHeadlines<T extends Story>(stories: T[]): T[
   };
   const seen = new Map<string, { title: string; time: number; url: string; titleWords: Set<string>; texts: Set<string>[] }[]>();
   return stories.filter(story => {
+    if (isIceHockeyNews(story.title, story.summary, story.sources?.[0]?.url) || isIceHockeyNews(story.title, story.aiSummary)) return false;
     const publisher = normalize(canonicalMediaName(story.sources?.[0]?.label || story.sourceLabel || "", story.sources?.[0]?.url));
     const title = normalize(story.title || "");
     const time = story.publishedAt ? Date.parse(story.publishedAt) : NaN;
