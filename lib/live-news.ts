@@ -1,7 +1,7 @@
 import { databaseConfigured, databaseRpc } from "@/lib/database-rpc";
 import { XMLParser } from "fast-xml-parser";
 import { isGenericArticleImage } from "@/lib/article-image-quality";
-import { repairNewsStories } from "@/lib/news-quality";
+import { repairNewsStories, isIceHockeyNews } from "@/lib/news-quality";
 import { measureArticleEnrichment } from "@/lib/article-enrichment-metrics";
 import { hasPublisherInterfaceText, publisherDescriptionKey, repeatedPublisherDescriptionKeys, repairMissingSentenceStops, stripPublisherBoilerplate } from "@/lib/article-preview-quality";
 import { extractYPublicArticlePreview } from "@/lib/y-article-preview";
@@ -2146,7 +2146,8 @@ export async function getLiveStories(options?: { fast?: boolean; limit?: number 
     .flatMap((result) => (result.status === "fulfilled" ? result.value : []))
     .filter((item) => isFresh(item.pubDate))
     .filter((item) => isVisiblePublisher(item.source))
-    .filter((item) => !isLiveCoverage(item)));
+    .filter((item) => !isLiveCoverage(item))
+    .filter((item) => !isIceHockeyNews(item.title, item.description, item.link)));
 
   if (!fetched.length) return [];
 
@@ -2320,7 +2321,8 @@ export async function getLiveStories(options?: { fast?: boolean; limit?: number 
     } satisfies Story;
   });
 
-  const illustratedStories = fast ? stories : await addPublisherFeaturedImages(stories);
+  const illustratedStories = (fast ? stories : await addPublisherFeaturedImages(stories))
+    .filter(story => !isIceHockeyNews(story.title, story.summary, story.sources[0]?.url));
   const chronologicalStories = illustratedStories.filter((story) => hasEditorialPreview(story.summary, story.title)).sort((a, b) => {
     const aTime = parseNewsDate(a.publishedAt)?.getTime() ?? 0;
     const bTime = parseNewsDate(b.publishedAt)?.getTime() ?? 0;
