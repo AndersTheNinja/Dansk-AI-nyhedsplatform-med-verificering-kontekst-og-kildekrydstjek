@@ -83,7 +83,7 @@ test("the first batch starts the snapshot and metadata reads together and preser
  const modules = {
   "next/server": { NextResponse: { json: data => JSON.parse(JSON.stringify(data)) } },
   "next/cache": { unstable_cache: fn => fn },
-  "@/lib/news-quality": { deduplicatePublisherHeadlines: entries => entries },
+  "@/lib/news-quality": { deduplicateNewsStories: entries => entries },
   "@/lib/media-publishers": { selectAcrossPublishers: entries => entries },
   "@/lib/image-health": {},
   "@/lib/live-news": {
