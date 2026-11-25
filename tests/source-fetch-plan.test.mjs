@@ -42,3 +42,13 @@ test("all existing source filtering and freshness safeguards remain",()=>{
   assert.match(news, /\.filter\(\(item\) => isVisiblePublisher\(item\.source\)\)/);
   assert.match(news, /repeatedPublisherDescriptionKeys\(fetched\)/);
 });
+
+test("collector accepts valid historical dates and still rejects timestamps too far ahead", () => {
+  const predicate = news.match(/function isFresh\(pubDate\?: string\) \{([\s\S]*?)\n\}/)?.[1];
+  assert.ok(predicate);
+  const now = Date.parse("2026-11-25T08:00:00Z");
+  const accepts = new Function("pubDate", "parseNewsDate", "Date", predicate);
+  const check = date => accepts(date, value => new Date(value), { now: () => now });
+  assert.equal(check("2026-10-01T10:00:00Z"), true);
+  assert.equal(check("2026-11-25T08:30:00Z"), false);
+});
