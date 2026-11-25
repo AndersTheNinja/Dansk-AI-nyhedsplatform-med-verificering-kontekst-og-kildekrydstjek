@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { auditNewsStories, repairNewsStories, deduplicatePublisherHeadlines } from "../lib/news-quality.ts";
+import { auditNewsStories, repairNewsStories, deduplicatePublisherHeadlines, isIceHockeyNews } from "../lib/news-quality.ts";
 const base = {
  id:"a",title:"Nyhed om DNA og kriminalsag",sourceLabel:"DR",published:"I dag",
  publishedAt:"2026-10-27T12:00:00.000Z",
@@ -96,4 +96,16 @@ test("strict publisher minute rule catches Computerworld variants, seconds and a
  const next = {...duplicate,id:"next",title:"En separat historie",publishedAt:"2026-11-23T12:42:00Z",sources:[{label:"Computerworld",url:"https://computerworld.dk/art/3"}]};
  const tomorrow = {...duplicate,id:"tomorrow",publishedAt:"2026-11-24T12:41:59Z",sources:[{label:"Computerworld",url:"https://computerworld.dk/art/4"}]};
  assert.deepEqual(deduplicatePublisherHeadlines([first,duplicate,other,next,tomorrow]).map(x=>x.id),["cw-first","other","next","tomorrow"]);
+});
+
+test("ice hockey is excluded by league, club, summary and URL without blocking other sports", () => {
+ const hockey = {...base,id:"hockey",title:"Frederikshavn rejser sig efter tre nederlag i træk",summary:"Frederikshavn White Hawks vandt over Odense Bulldogs i Metal Ligaen."};
+ assert.equal(isIceHockeyNews(hockey.title,hockey.summary),true);
+ assert.equal(isIceHockeyNews("Dansker scorer i NHL"),true);
+ assert.equal(isIceHockeyNews("Dansker vinder", "", "https://example.com/sport/ishockey/artikel"),true);
+ assert.equal(isIceHockeyNews("Aarhus GF vinder i Superligaen"),false);
+ assert.equal(isIceHockeyNews("Frederikshavn får ny erhvervshavn"),false);
+ assert.equal(isIceHockeyNews("Danmark vinder VM i håndbold"),false);
+ assert.deepEqual(repairNewsStories([hockey,base]).stories.map(s=>s.id),["a"]);
+ assert.deepEqual(deduplicatePublisherHeadlines([hockey,base]).map(s=>s.id),["a"]);
 });
