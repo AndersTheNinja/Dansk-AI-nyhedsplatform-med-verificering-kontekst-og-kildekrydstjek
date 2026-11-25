@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { NewsFeed } from "@/components/news-feed";
 import type { Story } from "@/lib/stories";
+import { deduplicatePublisherHeadlines } from "@/lib/news-quality";
 import { FIRST_NEWS_CACHE_KEY, parseFirstNewsCache } from "@/lib/first-news-cache";
 
 const FIRST_NEWS_LIMIT = 5;
@@ -26,7 +27,7 @@ export function NewsLoader() {
     try {
       const cache = parseFirstNewsCache(localStorage.getItem(FIRST_NEWS_CACHE_KEY) || sessionStorage.getItem(FIRST_NEWS_CACHE_KEY));
       if (cache && cache.stories.every(story => !story.archiveOnly && typeof story.aiSummary === "string" && story.aiSummary.trim().length >= 40)) {
-        setStories(cache.stories.slice(0, FIRST_NEWS_LIMIT));
+        setStories(deduplicatePublisherHeadlines(cache.stories).slice(0, FIRST_NEWS_LIMIT));
         notifyNewsCount(cache.totalCount);
       }
     } catch {}
@@ -40,9 +41,9 @@ export function NewsLoader() {
         });
         if (!response.ok) throw new Error("News request failed");
         const data = await response.json();
-        const nextStories: Story[] = Array.isArray(data.stories) ? data.stories.filter((story: Story) =>
+        const nextStories: Story[] = Array.isArray(data.stories) ? deduplicatePublisherHeadlines(data.stories.filter((story: Story) =>
           !story.archiveOnly && !data.degraded && typeof story.aiSummary === "string" && story.aiSummary.trim().length >= 40
-        ) : [];
+        )) : [];
         if (!nextStories.length) throw new Error("Empty news response");
         if (controller.signal.aborted) return;
 

@@ -72,7 +72,7 @@ export async function GET(req: NextRequest) {
         const enrichedStories = firstBatchEnricher
           ? (await firstBatchEnricher)(displayCandidates)
           : await addPublisherFeaturedImages(displayCandidates);
-        const visibleStories = cleanNewsStories(enrichedStories).filter(story =>
+        const visibleStories = deduplicatePublisherHeadlines(cleanNewsStories(enrichedStories)).filter(story =>
           typeof (story as {aiSummary?: string}).aiSummary === "string"
         ).sort((a, b) => {
           const at = a.publishedAt ? Date.parse(a.publishedAt) : 0;

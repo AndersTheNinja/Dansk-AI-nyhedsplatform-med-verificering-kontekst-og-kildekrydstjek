@@ -1,5 +1,6 @@
 import { politikenArticleId } from "./article-image-quality.ts";
 import type { Story } from "./stories";
+import { canonicalMediaName } from "./media-publishers.ts";
 
 
 export type QualityIssue = "short_text" | "publisher_ui" | "generic_image" | "missing_image" | "invalid_date" | "future_date" | "duplicate" | "truncated_sentence" | "weak_source_check" | "reading_time" | "photo_credit" | "repeated_lead";
@@ -115,10 +116,10 @@ export function deduplicatePublisherHeadlines<T extends Story>(stories: T[]): T[
   };
   const seen = new Map<string, { title: string; time: number; url: string; titleWords: Set<string>; texts: Set<string>[] }[]>();
   return stories.filter(story => {
-    const publisher = normalize(story.sources?.[0]?.label || story.sourceLabel || "");
+    const publisher = normalize(canonicalMediaName(story.sources?.[0]?.label || story.sourceLabel || "", story.sources?.[0]?.url));
     const title = normalize(story.title || "");
     const time = story.publishedAt ? Date.parse(story.publishedAt) : NaN;
-    if (!publisher) return true;
+    if (!publisher || publisher === "ukendt kilde") return true;
     const url = urlKey(story);
     const titleWords = tokens(title);
     const texts = [story.summary || "", story.aiSummary || ""].map(tokens).filter(words => words.size >= 8);
@@ -126,6 +127,9 @@ export function deduplicatePublisherHeadlines<T extends Story>(stories: T[]): T[
     const duplicate = previous.some(item => {
       if (url && item.url === url) return true;
       if (!Number.isFinite(time) || !Number.isFinite(item.time)) return false;
+      // Strict display rule: one story per canonical publisher and absolute minute.
+      // Keep the first eligible version; do not delete the stored original.
+      if (Math.floor(time / 60_000) === Math.floor(item.time / 60_000)) return true;
       const elapsed = Math.abs(time - item.time);
       if (elapsed <= 60 * 60_000 && title.length >= 24 && title === item.title) return true;
       if (elapsed > 10 * 60_000) return false;

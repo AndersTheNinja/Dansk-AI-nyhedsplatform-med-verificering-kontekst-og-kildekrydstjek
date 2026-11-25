@@ -60,21 +60,21 @@ test("same publisher, title and publication time collapse even with different UR
  const otherPublisher = {...first,id:"other",sourceLabel:"DR",sources:[{label:"DR",url:"https://dr.dk/art/3"}]};
  const later = {...first,id:"later",publishedAt:"2026-11-25T05:56:00Z",sources:[{label:"Politiken",url:"https://politiken.dk/art/4"}]};
  const otherTitle = {...first,id:"distinct",title:"Andre modtagere af en ny undervisningspris",sources:[{label:"Politiken",url:"https://politiken.dk/art/5"}]};
- assert.deepEqual(deduplicatePublisherHeadlines([first,duplicate,otherPublisher,later,otherTitle]).map(x=>x.id),["pol-1","other","later","distinct"]);
+ assert.deepEqual(deduplicatePublisherHeadlines([first,duplicate,otherPublisher,later,otherTitle]).map(x=>x.id),["pol-1","other","later"]);
 });
 
-test("same-minute Politiken versions with rewritten headlines collapse; different reporting remains", () => {
+test("same-minute Politiken versions collapse even for distinct headlines; other publishers and dates remain", () => {
  const first = {...base,id:"kejs-1",title:"Netflix-serien forgylder et kejserrige med blod på hænderne",sourceLabel:"Politiken",publishedAt:"2026-11-24T05:53:00Z",summary:"Politikens klumme kritiserer Netflix-serien Kejserinden for at være præget af pragt og romantik. Ifølge skribenten lader serien Østrigs mørke historie stå i baggrunden, mens kejserinden",sources:[{label:"Politiken",url:"https://politiken.dk/art/1"}]};
  const duplicate = {...first,id:"kejs-2",title:"Netflix-serie er underholdende som karneval i Rio",summary:"Politikens klumme beskriver Netflix-serien Kejserinden som pragtfuld og romantisk, men kritiserer dens historiske fokus. Ifølge teksten lægger serien Østrigs mørke historie i baggrunden, mens den",sources:[{label:"Politiken",url:"https://politiken.dk/art/2"}]};
  const crossPublisher = {...duplicate,id:"other-publisher",sourceLabel:"DR",sources:[{label:"DR",url:"https://dr.dk/art/2"}]};
  const different = {...first,id:"distinct",title:"Netflix-serien får rekordmange seere",summary:"Netflix-serien har slået streamingrekorder i Danmark, hvor seerne i weekenden har set flere millioner timer af den nye sæson. Selskabet offentliggør tallene tirsdag.",sources:[{label:"Politiken",url:"https://politiken.dk/art/3"}]};
  const later = {...duplicate,id:"later",publishedAt:"2026-11-25T05:53:00Z",sources:[{label:"Politiken",url:"https://politiken.dk/art/4"}]};
- assert.deepEqual(deduplicatePublisherHeadlines([first,duplicate,crossPublisher,different,later]).map(x=>x.id),["kejs-1","other-publisher","distinct","later"]);
+ assert.deepEqual(deduplicatePublisherHeadlines([first,duplicate,crossPublisher,different,later]).map(x=>x.id),["kejs-1","other-publisher","later"]);
  // Stored AI summaries can carry the match even if the raw publisher excerpts differ.
  assert.equal(deduplicatePublisherHeadlines([{...first,aiSummary:first.summary,summary:"Kort teaser"},{...duplicate,aiSummary:duplicate.summary,summary:"Anden teaser"}]).length,1);
 });
 
-test("Politiken article ID collapses alternate RSS headlines and preserves other articles", () => {
+test("Politiken article ID collapses alternate RSS headlines; strict minute rule also hides other same-minute articles", () => {
  const first = {...base, id: "pol-new", sourceLabel: "Politiken",
   title: "Elementært velspillet serie udkommer alt for tidligt",
   publishedAt: "2026-11-24T20:51:38.000Z",
@@ -85,5 +85,15 @@ test("Politiken article ID collapses alternate RSS headlines and preserves other
  const separate = {...alternate, id: "pol-other", title: "En anden anmeldelse",
   sources: [{label: "Politiken", url: "https://politiken.dk/kultur/film_og_tv/tvanmeldelser/art11052414/En-anden-anmeldelse"}]};
  assert.deepEqual(deduplicatePublisherHeadlines([first, alternate, separate]).map(story => story.id),
-  ["pol-new", "pol-other"]);
+  ["pol-new"]);
+});
+
+
+test("strict publisher minute rule catches Computerworld variants, seconds and aliases without hiding other minutes or media", () => {
+ const first = {...base,id:"cw-first",title:"Han står i spidsen for Danmarks bedste outsourcing-virksomhed: Vi er i et sweet spot på markedet",publishedAt:"2026-11-23T12:41:01Z",sourceLabel:"Computerworld",sources:[{label:"Computerworld",url:"https://www.computerworld.dk/art/1"}]};
+ const duplicate = {...first,id:"cw-second",title:"Har fundet gylden niche i det grønlandske marked",publishedAt:"2026-11-23T13:41:59+01:00",summary:"En helt anden tekst om Comby.",sources:[{label:"Computerworld.dk",url:"https://computerworld.dk/art/2"}]};
+ const other = {...duplicate,id:"other",sources:[{label:"Ingeniøren",url:"https://ing.dk/art/2"}]};
+ const next = {...duplicate,id:"next",title:"En separat historie",publishedAt:"2026-11-23T12:42:00Z",sources:[{label:"Computerworld",url:"https://computerworld.dk/art/3"}]};
+ const tomorrow = {...duplicate,id:"tomorrow",publishedAt:"2026-11-24T12:41:59Z",sources:[{label:"Computerworld",url:"https://computerworld.dk/art/4"}]};
+ assert.deepEqual(deduplicatePublisherHeadlines([first,duplicate,other,next,tomorrow]).map(x=>x.id),["cw-first","other","next","tomorrow"]);
 });
