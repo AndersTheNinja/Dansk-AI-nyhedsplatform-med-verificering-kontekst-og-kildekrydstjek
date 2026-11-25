@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { getAndersWinnerskjoldArchiveStories } from "@/lib/news-store";
 import { getSummaryStates, onlyCompletedStories } from "@/lib/ready-summaries";
-import { deduplicatePublisherHeadlines } from "@/lib/news-quality";
+import { deduplicateNewsStories } from "@/lib/news-quality";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   const archive = await getAndersWinnerskjoldArchiveStories();
-  const matching = deduplicatePublisherHeadlines(archive
+  const matching = deduplicateNewsStories(archive
     .filter(story => story.mentions?.includes("anders-winnerskjold") ||
       /\bwinners(?:kjold|kiold)\b/i.test([story.title, story.summary,
         ...story.sources.map(source => [source.title, source.url].join(" "))].join(" ")))

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { auditNewsStories, repairNewsStories, deduplicatePublisherHeadlines, isIceHockeyNews } from "../lib/news-quality.ts";
+import { auditNewsStories, repairNewsStories, deduplicatePublisherHeadlines, deduplicateNewsStories, isIceHockeyNews } from "../lib/news-quality.ts";
 const base = {
  id:"a",title:"Nyhed om DNA og kriminalsag",sourceLabel:"DR",published:"I dag",
  publishedAt:"2026-10-27T12:00:00.000Z",
@@ -108,4 +108,12 @@ test("ice hockey is excluded by league, club, summary and URL without blocking o
  assert.equal(isIceHockeyNews("Danmark vinder VM i håndbold"),false);
  assert.deepEqual(repairNewsStories([hockey,base]).stories.map(s=>s.id),["a"]);
  assert.deepEqual(deduplicatePublisherHeadlines([hockey,base]).map(s=>s.id),["a"]);
+});
+
+test("cross-media syndication collapses Meghan Markle story but keeps a different event", () => {
+ const first = {...base,id:"meghan-a",title:"Meghan Markle lancerer sin nye julekollektion",summary:"Meghan Markle præsenterer en ny julekollektion med marmelade, gavekurve og stearinlys fra sit livsstilsbrand. Produkterne blev offentliggjort tirsdag på brandets hjemmeside.",sources:[{label:"DR",url:"https://dr.dk/a"}]};
+ const duplicate = {...first,id:"meghan-b",title:"Ny julekollektion fra Meghan Markle",publishedAt:"2026-10-27T12:20:00Z",summary:"Meghan Markle har præsenteret en ny julekollektion med marmelade, gavekurve og stearinlys fra sit livsstilsbrand. Produkterne blev offentliggjort tirsdag på hjemmesiden.",sources:[{label:"TV 2",url:"https://tv2.dk/b"}]};
+ const different = {...duplicate,id:"meghan-c",title:"Meghan Markle besøger velgørenhedsorganisation",summary:"Hertuginden besøgte et hospital i Californien og talte med frivillige om støtte til familier og børn.",publishedAt:"2026-10-27T12:30:00Z",sources:[{label:"TV 2",url:"https://tv2.dk/c"}]};
+ const later = {...first,id:"later",publishedAt:"2026-10-30T12:00:00Z",sources:[{label:"TV 2",url:"https://tv2.dk/d"}]};
+ assert.deepEqual(deduplicateNewsStories([first,duplicate,different,later]).map(s=>s.id),["meghan-a","meghan-c","later"]);
 });

@@ -160,3 +160,45 @@ export function deduplicatePublisherHeadlines<T extends Story>(stories: T[]): T[
     return true;
   });
 }
+
+/** Display one version of the same event across media, without deleting originals.
+ * Require matching headline or substantial editorial overlap; a shared person alone is not enough.
+ * Bucket by publication date to keep large archives efficient.
+ */
+export function deduplicateNewsStories<T extends Story>(stories: T[]): T[] {
+  const stop = new Set("artiklen nyheden teksten skriver ifølge fortæller handler siger deres denne dette bliver været være også ikke eller mens hvor hvordan efter under over som der det den til for med fra ved har om og på af en et at i er".split(" "));
+  const normal = (s: string) => s.normalize("NFKC").toLocaleLowerCase("da-DK").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+  const words = (s: string) => new Set(normal(s).split(" ").filter(w => w.length >= 4 && !stop.has(w)));
+  const metrics = (a: Set<string>, b: Set<string>) => {
+    const n = [...a].filter(w => b.has(w)).length;
+    return { n, containment: n / Math.max(1, Math.min(a.size, b.size)), jaccard: n / Math.max(1, a.size + b.size - n) };
+  };
+  type Entry = { publisher: string; time: number; title: string; headline: Set<string>; texts: Set<string>[] };
+  const days = new Map<number, Entry[]>();
+  return deduplicatePublisherHeadlines(stories).filter(story => {
+    const time = Date.parse(story.publishedAt || "");
+    if (!Number.isFinite(time)) return true;
+    const day = Math.floor(time / 86400000);
+    const publisher = canonicalMediaName(story.sources?.[0]?.label || story.sourceLabel || "", story.sources?.[0]?.url);
+    const title = normal(story.title || "");
+    const headline = words(title);
+    const texts = [story.summary || "", story.aiSummary || ""].map(words).filter(s => s.size >= 8);
+    const duplicate = [day - 1, day, day + 1].some(key => (days.get(key) || []).some(other => {
+      if (other.publisher === publisher || Math.abs(time - other.time) > 24 * 3600000) return false;
+      if (title.length >= 24 && title === other.title) return true;
+      const h = metrics(headline, other.headline);
+      if (h.n >= 4 && h.containment >= 0.8 && h.jaccard >= 0.67) return true;
+      return texts.some(a => other.texts.some(b => {
+        const t = metrics(a, b);
+        return (t.n >= 12 && t.containment >= 0.8 && t.jaccard >= 0.62)
+          || (h.n >= 2 && t.n >= 8 && t.containment >= 0.56 && t.jaccard >= 0.37)
+          || (h.n >= 3 && h.containment >= 0.6 && t.n >= 6 && t.containment >= 0.45 && t.jaccard >= 0.28);
+      }));
+    }));
+    if (duplicate) return false;
+    const bucket = days.get(day) || [];
+    bucket.push({ publisher, time, title, headline, texts });
+    days.set(day, bucket);
+    return true;
+  });
+}

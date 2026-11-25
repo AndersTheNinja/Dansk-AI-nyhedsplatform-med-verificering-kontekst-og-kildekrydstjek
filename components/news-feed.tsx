@@ -8,7 +8,7 @@ import { isGenericArticleImage } from "@/lib/article-image-quality";
 import { MobileMediaStats } from "@/components/news-stats";
 import { AiSummaryPreview, SUMMARY_PREVIEW_WORDS } from "@/components/ai-summary-preview";
 import { canonicalMediaName } from "@/lib/media-publishers";
-import { deduplicatePublisherHeadlines } from "@/lib/news-quality";
+import { deduplicateNewsStories } from "@/lib/news-quality";
 
 const categoryLabel: Record<string,string> = {
   "AI/Tech": "AI",
@@ -586,7 +586,7 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
     for (const story of [...initialStories.filter(isAndersWinnerskjoldStory), ...andersArchive]) {
       if (!byId.has(story.id)) byId.set(story.id, story);
     }
-    return deduplicatePublisherHeadlines(Array.from(byId.values()));
+    return deduplicateNewsStories(Array.from(byId.values()));
   }, [initialStories, andersArchive]);
   const andersCount = andersStories.length;
 

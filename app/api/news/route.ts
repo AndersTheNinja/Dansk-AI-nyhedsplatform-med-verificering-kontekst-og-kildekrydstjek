@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { unstable_cache } from "next/cache";
-import { auditNewsStories, deduplicatePublisherHeadlines } from "@/lib/news-quality";
+import { auditNewsStories, deduplicateNewsStories } from "@/lib/news-quality";
 import { auditCurrentImageLinks } from "@/lib/image-health";
 import { getLiveStories, cleanNewsStories, addPublisherFeaturedImages, loadPublisherArticleEnricher } from "@/lib/live-news";
 import { getNewsSnapshot, getRecentStoredNewsCandidates, combineNewsCandidates, getVisibleArchiveCount } from "@/lib/news-store";
@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
         // Publication gate: no article goes to visitors without a completed
         // AI summary already stored in the shared database.
         const summaryStates = await getSummaryStates(cleanedStories);
-        const readyStories = deduplicatePublisherHeadlines(onlyCompletedStories(cleanedStories, summaryStates));
+        const readyStories = deduplicateNewsStories(onlyCompletedStories(cleanedStories, summaryStates));
         // Publish only articles with a completed, stored AI summary.
         // Never surface archive-only headlines as a replacement for AI text.
         // Preserve at least two AI-ready articles from each available publisher
@@ -72,7 +72,7 @@ export async function GET(req: NextRequest) {
         const enrichedStories = firstBatchEnricher
           ? (await firstBatchEnricher)(displayCandidates)
           : await addPublisherFeaturedImages(displayCandidates);
-        const visibleStories = deduplicatePublisherHeadlines(cleanNewsStories(enrichedStories)).filter(story =>
+        const visibleStories = deduplicateNewsStories(cleanNewsStories(enrichedStories)).filter(story =>
           typeof (story as {aiSummary?: string}).aiSummary === "string"
         ).sort((a, b) => {
           const at = a.publishedAt ? Date.parse(a.publishedAt) : 0;
@@ -98,7 +98,7 @@ export async function GET(req: NextRequest) {
     // attributed publisher excerpts, NOT fabricated AI summaries.
     if (!isCollector) {
       const live = wantsFast ? await getFastStories() : await getFallbackStories();
-      const fallbackStories = deduplicatePublisherHeadlines(cleanNewsStories(live))
+      const fallbackStories = deduplicateNewsStories(cleanNewsStories(live))
         .filter(story => typeof story.summary === "string" && story.summary.trim().length >= 40 && story.sources[0]?.url)
         .slice(0, wantsFast ? 5 : 120)
         .map(story => {
@@ -136,7 +136,7 @@ export async function GET(req: NextRequest) {
     // refresh. All public fallback responses are strictly ready-only.
     if (!isCollector) {
       const states = await getSummaryStates(stories);
-      stories = deduplicatePublisherHeadlines(onlyCompletedStories(stories, states));
+      stories = deduplicateNewsStories(onlyCompletedStories(stories, states));
     }
     const totalCount = stories.length;
     const limit = Number.isFinite(requestedLimit) && requestedLimit > 0
