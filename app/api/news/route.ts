@@ -88,7 +88,10 @@ export async function GET(req: NextRequest) {
           ...snapshot,
           stories: visibleStories.slice(0, limit).map(limitPublicYExcerpt),
           availableStories: Math.min(500, visibleStories.length),
-          totalCount: Math.max(archiveCount, visibleStories.length)
+          // Display counts describe unique ready events in this candidate window.
+          // The persistent raw-article archive is a separate, non-comparable count.
+          totalCount: visibleStories.length,
+          storedArticleCount: archiveCount
         }, { headers: { "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60" } });
         } catch (error) { console.warn("Snapshot summary lookup unavailable; using publisher feed fallback", error); }
       }
