@@ -111,6 +111,17 @@ async function refreshNews(client) {
   try {
     await client.query("select set_config('request.headers', $1, true)",
       [JSON.stringify({ "x-oel-ingest-secret": process.env.OEL_INGEST_SECRET })]);
+    // A fresh RSS-only version must not erase an already established mention.
+    const prior = await client.query(
+      "select canonical_url from public.articles where canonical_url = any($1::text[]) and coalesce(raw_metadata->'mentions','[]'::jsonb) ? 'anders-winnerskjold'",
+      [entries.map(entry => entry.canonical_url)]
+    );
+    const knownMentions = new Set(prior.rows.map(row => row.canonical_url));
+    for (const entry of entries) {
+      if (knownMentions.has(entry.canonical_url)) {
+        entry.raw_metadata.mentions = [...new Set([...entry.raw_metadata.mentions, "anders-winnerskjold"])];
+      }
+    }
     await client.query("select public.ingest_news_batch($1::jsonb)", [JSON.stringify(entries)]);
     await client.query(
       `insert into public.oeldk_news_snapshot(slot,response_id,generated_at,updated_at,payload)
@@ -194,7 +205,9 @@ async function runJobs(client) {
   await refreshNews(client);
   const jobs = [];
   if (initial || minute % 30 >= 10 && minute % 30 < 15) jobs.push("berlingske", "berlingskeWeb", "berlingskeRefresh");
-  if (initial || minute >= 15 && minute < 20) jobs.push("techsavvy", "featured", "images", "previews");
+  if (initial || minute >= 15 && minute < 20) jobs.push("techsavvy", "featured", "images");
+  // Repair article previews on every existing collection cycle, rather than once hourly.
+  jobs.push("previews");
   if (initial || minute % 15 < 5) jobs.push("counts");
   for (const job of jobs) await client.query(cacheJobs[job]);
   const publisherResponses = await drain(client);
