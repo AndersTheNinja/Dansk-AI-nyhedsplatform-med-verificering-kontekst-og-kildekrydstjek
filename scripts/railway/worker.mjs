@@ -155,7 +155,40 @@ async function initialize(client) {
   console.log("Worker schema and scoped web database role verified");
 }
 
+
+// The old topic index misses articles imported without person metadata.
+// Search the entire archive and repaired, publisher-scoped previews instead.
+async function ensureAndersArchive(client) {
+  const { rows } = await client.query("select to_regprocedure('public.oeldk_anders_archive_v2()') is not null as present");
+  if (rows[0]?.present) return;
+  await client.query(`
+    create function public.oeldk_anders_archive_v2() returns jsonb
+    language sql stable security definer set search_path = pg_catalog as $topic$
+      select coalesce(jsonb_agg(jsonb_build_object(
+        'id', a.id, 'canonical_url', a.canonical_url, 'title', a.title,
+        'source', a.source, 'source_method', a.source_method, 'category', a.category,
+        'published_at', a.published_at, 'story_group', a.story_group,
+        'teaser', coalesce(a.teaser, ''),
+        'raw_metadata', coalesce(a.raw_metadata, '{}'::jsonb) ||
+          jsonb_build_object('mentions', jsonb_build_array('anders-winnerskjold'))
+      ) order by a.published_at desc nulls last, a.id desc), '[]'::jsonb)
+      from public.articles a
+      left join private.oeldk_article_previews p on p.url = a.canonical_url
+        and lower(trim(p.title)) = lower(trim(a.title))
+      where a.canonical_url like 'https://%'
+        and a.published_at <= now() + interval '1 hour'
+        and (coalesce(a.raw_metadata->'mentions','[]'::jsonb) ? 'anders-winnerskjold'
+          or concat_ws(' ', a.title, a.teaser, a.canonical_url, p.description) ~*
+            '(winners(kjold|kiold)|aarhus[-_ ]*borgmester|borgmester(en)? (i|for) aarhus|aarhus(s)? borgmester)')
+    $topic$;
+    revoke all on function public.oeldk_anders_archive_v2() from public;
+    grant execute on function public.oeldk_anders_archive_v2() to oeldk_web;
+  `);
+}
+
 async function runJobs(client) {
+  try { await ensureAndersArchive(client); }
+  catch (error) { console.warn("Anders archive migration:", String(error)); }
   const minute = new Date().getUTCMinutes();
   const initial = process.argv.includes("--initial");
   await refreshNews(client);
