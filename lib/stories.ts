@@ -67,3 +67,19 @@ export const demoStories: Story[] = [
     ]
   }
 ];
+
+
+/** Match actual editorial text and unambiguous references to the Aarhus mayor. */
+export function mentionsAndersWinnerskjold(...parts: (string | undefined | null)[]): boolean {
+  const text = parts.filter(Boolean).join(" ").normalize("NFKC")
+    .replace(/&nbsp;|&#160;/gi, " ").replace(/[\u00ad\u200b]/g, "").replace(/[-‐‑–—_]/g, " ");
+  return /\bwinners(?:kjold|kiold)s?\b/iu.test(text)
+    || /\b(?:aarhus(?:s|')?\s+borgmester(?:en)?|borgmester(?:en)?\s+(?:i|for)\s+aarhus|aarhusborgmester(?:en)?)\b/iu.test(text)
+    || /\bborgmester(?:en)?\s+anders\s+w\b/iu.test(text);
+}
+
+export function isAndersWinnerskjoldStory(story: Story): boolean {
+  const lead = story.sources?.[0];
+  return !!story.mentions?.includes("anders-winnerskjold") ||
+    mentionsAndersWinnerskjold(story.title, story.summary, story.aiSummary, lead?.title, lead?.url);
+}
