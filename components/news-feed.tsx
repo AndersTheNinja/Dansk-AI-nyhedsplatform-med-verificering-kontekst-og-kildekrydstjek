@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { Story } from "@/lib/stories";
+import { isAndersWinnerskjoldStory, type Story } from "@/lib/stories";
 import type { FactResult } from "@/lib/factcheck";
 import { previewWordCount } from "@/lib/article-preview-quality";
 import { isGenericArticleImage } from "@/lib/article-image-quality";
@@ -536,22 +536,6 @@ function StoryCard({ story }: { story: Story }) {
   );
 }
 
-function isAndersWinnerskjoldStory(story: Story) {
-  if (story.mentions?.includes("anders-winnerskjold")) return true;
-
-  const haystack = [
-    story.title,
-    story.summary,
-    story.aiSummary,
-    ...story.sources.map((source) => [source.title, source.url].join(" "))
-  ]
-    .join(" ")
-    .toLocaleLowerCase("da-DK");
-
-  return /\banders\s+winners(?:kjold|kiold)\b/i.test(haystack) ||
-    /\bwinners(?:kjold|kiold)\b/i.test(haystack);
-}
-
 export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
   const [categoriesSelected, setCategoriesSelected] = useState<string[]>([]);
   const [mediaSelected, setMediaSelected] = useState<string[]>([]);
@@ -583,8 +567,10 @@ export function NewsFeed({ initialStories }: { initialStories: Story[] }) {
   }, []);
   const andersStories = useMemo(() => {
     const byId = new Map<string, Story>();
-    for (const story of [...initialStories.filter(isAndersWinnerskjoldStory), ...andersArchive]) {
-      if (!byId.has(story.id)) byId.set(story.id, story);
+    for (const story of [...andersArchive, ...initialStories.filter(isAndersWinnerskjoldStory)]) {
+      const key = story.sources[0]?.url || story.id;
+      const previous = byId.get(key);
+      if (!previous || (previous.archiveOnly && !story.archiveOnly)) byId.set(key, story);
     }
     return deduplicateNewsStories(Array.from(byId.values()));
   }, [initialStories, andersArchive]);
