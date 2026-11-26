@@ -146,15 +146,19 @@ export async function getAndersWinnerskjoldArchiveStories(): Promise<Story[]> {
   if (!databaseConfigured()) return [];
 
   try {
-    const response = await databaseRpc("anders_winnerskjold_archive", {
+    const request = () => ({
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers: { "Content-Type": "application/json" },
       body: "{}",
-      cache: "no-store",
+      cache: "no-store" as const,
       signal: AbortSignal.timeout(5000)
     });
+    let response: Response | undefined;
+    if (process.env.OEL_DATABASE_URL) {
+      try { response = await databaseRpc("oeldk_anders_archive_v2", request()); }
+      catch (error) { console.warn("Full Anders archive not available yet", String(error)); }
+    }
+    if (!response?.ok) response = await databaseRpc("anders_winnerskjold_archive", request());
 
     if (!response.ok) return [];
     const rows = await response.json();
