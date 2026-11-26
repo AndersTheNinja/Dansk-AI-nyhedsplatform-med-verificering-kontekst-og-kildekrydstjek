@@ -2108,7 +2108,7 @@ export async function addPublisherFeaturedImages(stories: Story[]): Promise<Stor
   return enrich(stories);
 }
 
-export async function getLiveStories(options?: { fast?: boolean; limit?: number }): Promise<Story[]> {
+export async function getLiveStories(options?: { fast?: boolean; limit?: number; topicEnrichment?: boolean }): Promise<Story[]> {
   const fast = Boolean(options?.fast);
   // Use the same visible-publisher plan for scheduled and fast collection.
   // Hidden publishers are removed later anyway; fetching them wastes capacity.
@@ -2212,10 +2212,16 @@ export async function getLiveStories(options?: { fast?: boolean; limit?: number 
   let articlePageAttempts = 0;
   // Only fetch article pages for stories whose RSS/web teaser is too short.
   // This also works for subscriber articles because we only use public metadata/teasers.
-  const enrichedSelected = fast
+  const topicCandidates = new Set(options?.topicEnrichment ? selected.filter(({ lead }) =>
+    lead.category === "Aarhus" || /(?:stiften\.dk|migogaarhus\.dk)/i.test(lead.link) ||
+    /\baarhus\b/i.test(lead.title + " " + lead.description)
+  ).slice(0, 40).map(({ lead }) => lead.id) : []);
+  const enrichedSelected = fast && !options?.topicEnrichment
     ? selected
     : await Promise.all(
     selected.map(async (entry, index) => {
+      if (fast) return topicCandidates.has(entry.lead.id)
+        ? { ...entry, lead: await enrichPreview(entry.lead) } : entry;
       let leadHost = "";
       try {
         leadHost = new URL(entry.lead.link).hostname.toLowerCase();
@@ -2357,5 +2363,7 @@ export async function getLiveStories(options?: { fast?: boolean; limit?: number 
     }
   }
 
-  return options?.limit ? chronologicalStories.slice(0, options.limit) : chronologicalStories;
+  const result = options?.topicEnrichment ? [...chronologicalStories, ...illustratedStories.filter(story =>
+    !hasEditorialPreview(story.summary, story.title) && isAndersWinnerskjoldStory(story))] : chronologicalStories;
+  return options?.limit ? result.slice(0, options.limit) : result;
 }
