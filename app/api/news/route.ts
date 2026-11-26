@@ -115,7 +115,7 @@ export async function GET(req: NextRequest) {
     }
     // Scheduled fast collection only reads fresh RSS metadata; it must never
     // trigger the 1,500-article enrichment job on the visitor-facing service.
-    const liveStories = isFastCollector ? await getLiveStories({ fast: true, limit: 500 }) : wantsFast ? await getFastStories() : await getCachedStories();
+    const liveStories = isFastCollector ? await getLiveStories({ fast: true, limit: 500, topicEnrichment: true }) : wantsFast ? await getFastStories() : await getCachedStories();
     let stories = cleanNewsStories(liveStories).sort((a, b) =>
       (b.publishedAt ? Date.parse(b.publishedAt) || 0 : 0) -
       (a.publishedAt ? Date.parse(a.publishedAt) || 0 : 0)
