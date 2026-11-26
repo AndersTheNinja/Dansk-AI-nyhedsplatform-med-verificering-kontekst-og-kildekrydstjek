@@ -5,7 +5,7 @@ import { repairNewsStories, isIceHockeyNews } from "@/lib/news-quality";
 import { measureArticleEnrichment } from "@/lib/article-enrichment-metrics";
 import { hasPublisherInterfaceText, publisherDescriptionKey, repeatedPublisherDescriptionKeys, repairMissingSentenceStops, stripPublisherBoilerplate } from "@/lib/article-preview-quality";
 import { extractYPublicArticlePreview } from "@/lib/y-article-preview";
-import type { Story } from "@/lib/stories";
+import { mentionsAndersWinnerskjold, isAndersWinnerskjoldStory, type Story } from "@/lib/stories";
 import { persistStories, queuePreviewRepairs } from "@/lib/news-store";
 
 type Category = Story["category"];
@@ -1228,12 +1228,12 @@ function editorialHtml(html: string) {
 }
 
 function articleMentionText(html: string, asyncHtml = "") {
-  if (asyncHtml) return stripHtml(editorialHtml(asyncHtml));
+  const asyncText = asyncHtml ? stripHtml(editorialHtml(asyncHtml)) : "";
   const body = extractArticleBodyFromJson(html);
   const article = html.match(/<article\b[^>]*>([\s\S]*?)<\/article>/i)?.[1] || "";
   // Never search a whole page: navigation and related cards are not evidence
   // that the person is mentioned in the current story.
-  return `${body} ${stripHtml(editorialHtml(article))}`;
+  return `${asyncText} ${body} ${stripHtml(editorialHtml(article))}`;
 }
 
 function extractPublicPreview(html: string, title: string, seed: string) {
@@ -1720,7 +1720,7 @@ async function enrichPreview(item: NewsItem): Promise<NewsItem> {
 
     const fullArticleMentionText = articleMentionText(html, stiftenAsyncHtml);
     const isStiftenOpinion = isStiften && /(?:\/debat\/|\/kronik\/|\/laeserbrev\/|kronik)/i.test(`${item.link} ${item.title}`);
-    const fullArticleMentions = /\bwinners(?:kjold|kiold)\b/i.test(fullArticleMentionText)
+    const fullArticleMentions = mentionsAndersWinnerskjold(fullArticleMentionText)
       ? Array.from(new Set([...(item.mentions || []), "anders-winnerskjold"]))
       : (item.mentions || []);
 
@@ -1924,7 +1924,7 @@ function parseBerlingskeWebArticle(raw: Record<string, unknown>): NewsItem | nul
     id: `Berlingske-web:${link}`, source: "Berlingske", method: "WEB", link, title,
     description, pubDate, imageUrl,
     category: /\/(?:business|virksomheder|oekonomi|penge)\//.test(link) ? "Erhverv" : "Danmark",
-    mentions: /\bwinners(?:kjold|kiold)\b/i.test(description) ? ["anders-winnerskjold"] : []
+    mentions: mentionsAndersWinnerskjold(description) ? ["anders-winnerskjold"] : []
   };
 }
 
@@ -2049,7 +2049,7 @@ function applyPublisherPreviews(stories: Story[], value: unknown): Story[] {
     if (!hasEditorialPreview(summary, story.title) ||
       (hasCurrentPreview && summary.length <= story.summary.length)) return story;
     return { ...story, summary, mentions: Array.from(new Set([
-      ...(story.mentions || []), ...(/\bwinners(?:kjold|kiold)\b/i.test(summary) ? ["anders-winnerskjold"] : [])
+      ...(story.mentions || []), ...(mentionsAndersWinnerskjold(summary) ? ["anders-winnerskjold"] : [])
     ])) };
   });
 }
@@ -2262,7 +2262,7 @@ export async function getLiveStories(options?: { fast?: boolean; limit?: number 
   const repeatedEnrichedDescriptions = repeatedPublisherDescriptionKeys(
     enrichedSelected.map((entry) => entry.lead)
   );
-  const stories = enrichedSelected.filter(({ lead }) => !lead.andersOnly || /\bwinners(?:kjold|kiold)\b/i.test(`${lead.title} ${lead.description}`) || lead.mentions?.includes("anders-winnerskjold")).map((entry, index) => {
+  const stories = enrichedSelected.filter(({ lead }) => !lead.andersOnly || mentionsAndersWinnerskjold(lead.title, lead.description, lead.link) || lead.mentions?.includes("anders-winnerskjold")).map((entry, index) => {
     const { lead, sources } = entry;
     const hasCrossCheck = sources.length >= 2;
     const wordingNeutrality = scoreWordingNeutrality(`${lead.title} ${lead.description}`);
@@ -2276,7 +2276,7 @@ export async function getLiveStories(options?: { fast?: boolean; limit?: number 
     const mentionHaystack = `${lead.title} ${cleanDescription}`;
     const mentions = Array.from(new Set([
       ...(lead.mentions || []),
-      ...(/\bwinners(?:kjold|kiold)\b/i.test(mentionHaystack) ? ["anders-winnerskjold"] : [])
+      ...(mentionsAndersWinnerskjold(mentionHaystack, lead.link) ? ["anders-winnerskjold"] : [])
     ]));
     let summary = isBoilerplatePreview(cleanDescription) ? "" : cleanDescription;
     if (!summary) {
@@ -2351,7 +2351,7 @@ export async function getLiveStories(options?: { fast?: boolean; limit?: number 
       console.error("Preview repair queue failed:", error);
     }
     try {
-      await persistStories(chronologicalStories);
+      await persistStories(illustratedStories.filter(story => hasEditorialPreview(story.summary, story.title) || isAndersWinnerskjoldStory(story)));
     } catch (error) {
       console.error("Supabase news persistence failed:", error);
     }
